@@ -1,0 +1,41 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args:
+          - --enforce-all
+          - --maxkb=1000
+        exclude: \.dic$
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-yaml
+      - id: destroyed-symlinks
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args:
+          - --fix=lf
+      - id: trailing-whitespace
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: 5b5dddc4fb0f83c3ea1fc5616fa63e115dce83e0 # v0.49.1
+    hooks:
+      - id: markdownlint-fix
+        language_version: 26.7.0
+        args:
+          - --dot
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: ad1b27d73581aa16cca06fc4a0761fc563ffe8e8 # v1.5.6
+    hooks:
+      - id: forbid-tabs
+        exclude: >-
+          (?x)(
+            installer$|
+          )
+  - repo: https://github.com/pocc/pre-commit-hooks
+    rev: 9a9bbc00895bbdb7670231c2565d4f1309c42905 # v1.3.5
+    hooks:
+      - id: clang-format
+        args: ["--style=file", "-i"]
+      - id: clang-tidy
