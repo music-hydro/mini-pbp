@@ -16,13 +16,7 @@ body:
     attributes:
       label: To Reproduce
       description: >-
-        A minimal working example of code to reproduce the unexpected behaviour,
-        this will render as `Python` code so no need for backticks.
-      value: >-
-        import glass
-
-        ...
-      render: python
+        A minimal working example to reproduce the unexpected behaviour.
   - id: expected
     type: textarea
     attributes:
@@ -40,22 +34,5 @@ body:
     type: input
     attributes:
       label: Version In Use
-      description: |-
-        Can be found by
-        ```sh
-        python -c "import glass; print(glass.__version__)"
-        ```
-        or
-        ```sh
-        nox -s version
-        ```
     validations:
       required: true
-  - id: additional
-    type: textarea
-    attributes:
-      label: Additional Context
-      value: |-
-        - Python version:
-        - Operating system:
-      render: markdown
