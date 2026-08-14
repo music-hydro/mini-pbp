@@ -1,28 +1,25 @@
-# Description
+## Description
 
 <!-- Describe what this PR is doing and, more importantly, why. -->
 
-<!-- Link to the relevant issue -->
+<!-- Link to the relevant issue:
+     Closes: #(issue number)  (auto-closes)
+     Refs: #(issue number)    (cross-ref only) -->
 
-<!-- If you wish to auto close the issue -->
-<!-- Closes: #(issue number) -->
+## Testing
 
-<!-- If you wish to just reference the issue -->
-<!-- Refs: #(issue number) -->
+<!-- What you ran and on what configuration, and anything you did not
+     check. "Not tested" is acceptable; but please specify. -->
 
-<!-- add a one liner changelog entry here
 ## Changelog entry
 
-Added: Some new feature
-Changed: Some change in existing functionality
-Removed: Some now removed feature
-Fixed: Some bug fix
--->
+<!-- One line, prefixed with one of:
+     Added: / Changed: / Removed: / Fixed: -->
 
 ## Checks
 
-- [ ] Is your code passing linting?
-- [ ] Is your code passing tests?
-- [ ] Have you added additional tests (if required)?
-- [ ] Have you modified/extended the documentation (if required)?
-- [ ] Have you added a one-liner changelog entry above (if required)?
+- [ ] Linting passes
+- [ ] Tests pass
+- [ ] Tests added or extended, or N/A
+- [ ] Docs updated, or N/A
+- [ ] Changelog entry added above, or N/A
