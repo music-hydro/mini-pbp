@@ -1,4 +1,5 @@
-######################
-# Python environment #
-######################
+# Python environment
 .venv
+
+# Build artifacts
+build

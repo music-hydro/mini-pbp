@@ -1,0 +1,22 @@
+cmake_minimum_required(VERSION 3.23 FATAL_ERROR)
+
+project(
+    "mini-pbp"
+    LANGUAGES "CXX"
+    VERSION "0.0.1"
+    DESCRIPTION "Standalone Physic Based Preconditioner for music"
+)
+
+set(SRC_DIR "${PROJECT_SOURCE_DIR}/src")
+set(INCLUDE_DIRS "${SRC_DIR}/include")
+include_directories(${INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Define src files
+set(HEADER_FILES
+    "${INCLUDE_DIRS}/Array3D.h"
+)
+set(IMPLEMENTATION_FILES
+    "${SRC_DIR}/main.cxx"
+)
+
+add_executable(mini-pbp ${HEADER_FILES} ${IMPLEMENTATION_FILES})
