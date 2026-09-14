@@ -20,3 +20,6 @@ set(IMPLEMENTATION_FILES
 )
 
 add_executable(mini-pbp ${HEADER_FILES} ${IMPLEMENTATION_FILES})
+
+enable_testing()
+add_subdirectory("test")
