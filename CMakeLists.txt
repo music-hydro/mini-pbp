@@ -14,12 +14,13 @@ include_directories(${INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_
 # Define src files
 set(HEADER_FILES
     "${INCLUDE_DIRS}/Array3D.h"
+    "${INCLUDE_DIRS}/PackedVariables.h"
 )
 set(IMPLEMENTATION_FILES
-    "${SRC_DIR}/main.cxx"
+    "${SRC_DIR}/PackedVariables.cxx"
 )
 
-add_executable(mini-pbp ${HEADER_FILES} ${IMPLEMENTATION_FILES})
+add_executable(mini-pbp "${SRC_DIR}/main.cxx" ${HEADER_FILES} ${IMPLEMENTATION_FILES})
 
 enable_testing()
 add_subdirectory("test")
