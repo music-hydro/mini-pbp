@@ -16,9 +16,11 @@ set(HEADER_FILES
     "${INCLUDE_DIRS}/Array3D.h"
     "${INCLUDE_DIRS}/PackedVariables.h"
     "${INCLUDE_DIRS}/Slab.h"
+    "${INCLUDE_DIRS}/PhysicsBasedPreconditioner.h"
 )
 set(IMPLEMENTATION_FILES
     "${SRC_DIR}/PackedVariables.cxx"
+    "${SRC_DIR}/PhysicsBasedPreconditioner.cxx"
 )
 
 add_executable(mini-pbp "${SRC_DIR}/main.cxx" ${HEADER_FILES} ${IMPLEMENTATION_FILES})
