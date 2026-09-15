@@ -19,7 +19,7 @@ class Array3D
      * @param nj - The number of elements to be extracted in the second direction.
      * @param nk - The number of elements to be extracted in the third direction.
      */
-    Array3D(T* data_1D, int ni, int nj, int nk) :
+    Array3D(T* const data_1D, const int ni, const int nj, const int nk) :
         m_data_origin(data_1D),
         m_ni(ni),
         m_nj(nj),
@@ -44,11 +44,11 @@ class Array3D
 
   private:
     /// Pointer to origin of the 3D view in the larger 1D array
-    T* m_data_origin;
+    T* const m_data_origin;
     /// Dimension sizes in 3D view
-    int m_ni;
-    int m_nj;
-    int m_nk;
+    const int m_ni;
+    const int m_nj;
+    const int m_nk;
 };
 
 #endif  // Array3D_H

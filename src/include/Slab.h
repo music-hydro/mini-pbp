@@ -28,7 +28,7 @@ class Slab
      *
      * @return The index begining the range for the given `dimension`
      */
-    const int start(int dimension) const
+    const int start(const int dimension) const
     { return m_start[dimension]; }
 
     /**
@@ -38,7 +38,7 @@ class Slab
      *
      * @return The index begining the range for the given `dimension`
      */
-    const int end(int dimension) const
+    const int end(const int dimension) const
     { return m_end[dimension]; }
 
   private:

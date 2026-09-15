@@ -1,6 +1,6 @@
 #include "PackedVariables.h"
 
-PackedVariables::PackedVariables(double* packed_array_pointer, int ni, int nj, int nk) :
+PackedVariables::PackedVariables(double* const packed_array_pointer, const int ni, const int nj, const int nk) :
     m_packed_array(packed_array_pointer),
     m_ni(ni),
     m_nj(nj),
@@ -8,7 +8,7 @@ PackedVariables::PackedVariables(double* packed_array_pointer, int ni, int nj, i
 {
 }
 
-Array3D<double> PackedVariables::singleVariableView(VariableIndex variable_index) const
+Array3D<double> PackedVariables::singleVariableView(const VariableIndex variable_index) const
 {
     int offset = m_ni * m_nj * m_nk * (int)variable_index;
     Array3D<double> variable_view(m_packed_array + offset, m_ni, m_nj, m_nk);
