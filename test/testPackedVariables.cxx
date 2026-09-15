@@ -13,7 +13,7 @@ TEST_CASE("PackedVariables::singleVariableView stores contiguously without copie
     // Allocate a 1D array equal to the size of a 3D array
     double* input_1d_pointer = new double[size * num_variables];
 
-    // Populate the 1D array with an incrementing contiguous counter
+    // Populate the 1D array with the variable index
     for (int i = 0; i < num_variables; i++)
     {
         int offset = size * i;
@@ -22,11 +22,11 @@ TEST_CASE("PackedVariables::singleVariableView stores contiguously without copie
     }
 
     // Create a PackedVariables instance wrapping the 1D array
-    PackedVariables packed_variables(input_1d_pointer, ni, nj, nk);
+    PackedVariables packed_variables(input_1d_pointer, ni, nj, nk, num_variables);
 
     for (int variable_index = 0; variable_index < num_variables; variable_index++)
     {
-        Array3D<double> variable_array = packed_variables.singleVariableView((VariableIndex)variable_index);
+        Array3D<double> variable_array = packed_variables.singleVariableView(variable_index);
 
         int offset = variable_index * size;
 
@@ -45,4 +45,22 @@ TEST_CASE("PackedVariables::singleVariableView stores contiguously without copie
             }
         }
     }
+}
+
+TEST_CASE("PackedVariables::singleVariableView fails for invalid variable_index")
+{
+    // Define the problem
+    int num_variables = 6;
+    int ni            = 2;
+    int nj            = 2;
+    int nk            = 3;
+    int size          = ni * nj * nk;
+
+    // Allocate a 1D array equal to the size of a 3D array
+    double* input_1d_pointer = new double[size * num_variables];
+
+    // Create a PackedVariables instance wrapping the 1D array
+    PackedVariables packed_variables(input_1d_pointer, ni, nj, nk, num_variables);
+
+    REQUIRE_THROWS_AS(packed_variables.singleVariableView(12), std::invalid_argument);
 }
