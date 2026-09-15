@@ -39,7 +39,7 @@ TEST_CASE("PackedVariables::singleVariableView stores contiguously without copie
                 for (int k = 0; k < nk; k++)
                 {
                     CHECK(variable_array(i, j, k) == input_1d_pointer[counter + offset]);
-                    CHECK(&variable_array(i, j, k) == &input_1d_pointer[counter + offset]);
+                    REQUIRE(&variable_array(i, j, k) == &input_1d_pointer[counter + offset]);
                     counter++;
                 }
             }

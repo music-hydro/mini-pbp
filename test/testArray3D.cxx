@@ -1,6 +1,5 @@
 #include "Array3D.h"
 #include <catch2/catch_test_macros.hpp>
-#include <iostream>
 
 TEST_CASE("Array3D(i,j,k) accesses contiguously")
 {
@@ -30,7 +29,7 @@ TEST_CASE("Array3D(i,j,k) accesses contiguously")
             for (int k = 0; k < nk_view; k++)
             {
                 CHECK(my_array(i, j, k) == input_1d_pointer[starting_index]);
-                CHECK(&my_array(i, j, k) == &input_1d_pointer[starting_index]);
+                REQUIRE(&my_array(i, j, k) == &input_1d_pointer[starting_index]);
                 starting_index++;
             }
         }

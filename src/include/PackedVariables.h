@@ -34,8 +34,10 @@ class PackedVariables
      * @brief Return the full 3D array view for a chosen variable
      *
      * @param variable_index - The variable whose 3D array is to be extracted.
+     *
+     * @return An Array3D instance providing a 3D view of the requested variable's 1D array
      */
-    Array3D<double> singleVariableView(VariableIndex variable_index);
+    Array3D<double> singleVariableView(VariableIndex variable_index) const;
 
   private:
     /// Pointer to origin of the 3D view in the larger 1D array

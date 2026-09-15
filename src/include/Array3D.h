@@ -33,6 +33,8 @@ class Array3D
      * @param i - The index in the first dimension.
      * @param j - The index in the second dimension.
      * @param k - The index in the third dimension.
+     *
+     * @return The value stored at the requested 3D coordinates
      */
     T& operator ()(int i, int j, int k) const
     {
