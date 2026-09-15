@@ -15,6 +15,7 @@ include_directories(${INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_
 set(HEADER_FILES
     "${INCLUDE_DIRS}/Array3D.h"
     "${INCLUDE_DIRS}/PackedVariables.h"
+    "${INCLUDE_DIRS}/Slab.h"
 )
 set(IMPLEMENTATION_FILES
     "${SRC_DIR}/PackedVariables.cxx"

@@ -7,6 +7,8 @@
 #ifndef Array3D_H
 #define Array3D_H
 
+#include "Slab.h"
+
 template<typename T>
 class Array3D
 {
@@ -40,6 +42,15 @@ class Array3D
     {
         int offset = (i * m_nk * m_nj) + (j * m_nk) + k;
         return m_data_origin[offset];
+    }
+
+    /**
+     * @brief Getter for the slab this array represents
+     */
+    Slab cellSlab()
+    {
+        Slab slab({0, 0, 0}, {m_ni, m_nj, m_nk});
+        return slab;
     }
 
   private:

@@ -35,3 +35,30 @@ TEST_CASE("Array3D(i,j,k) accesses contiguously")
         }
     }
 }
+
+TEST_CASE("Array3D.cellSlab() returns correct range")
+{
+    // Define the problem
+    int n_full[3] = {3, 4, 3};
+    int n_view[3] = {2, 2, 3};
+    int size      = n_full[0] * n_full[1] * n_full[2];
+
+    // Allocate a 1D array equal to the size of a 3D array
+    double* input_1d_pointer = new double[size];
+
+    // Populate the 1D array with an incrementing contiguous counter
+    for (int i = 0; i < size; i++)
+        input_1d_pointer[i] = (double)i;
+
+    // Create an Array3D instance wrapping the 1D array
+    int starting_index = 2;
+    Array3D<double> my_array(input_1d_pointer + starting_index, n_view[0], n_view[1], n_view[2]);
+
+    Slab my_slab = my_array.cellSlab();
+
+    for (int i = 0; i < 3; i++)
+    {
+        CHECK(my_slab.start(i) == 0);
+        REQUIRE(my_slab.end(i) == n_view[i]);
+    }
+}
