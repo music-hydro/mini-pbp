@@ -25,22 +25,53 @@ class Array3D
         m_data_origin(data_1D),
         m_ni(ni),
         m_nj(nj),
-        m_nk(nk)
+        m_nk(nk),
+        m_stride_i(1),
+        m_stride_j(ni),
+        m_stride_k(ni * nj)
     {
     }
 
     /**
-     * @brief access operator to return the value at the given element.
+     * @brief Constructs an Array3D from a pointer to a 1D array
+     *
+     * @param data_1D - Pointer to the input 1D array.
+     * @param ni - The number of elements to be extracted in the first direction.
+     * @param nj - The number of elements to be extracted in the second direction.
+     * @param nk - The number of elements to be extracted in the third direction.
+     * @param[in] stride_i Stride along the first direction.
+     * @param[in] stride_j Stride along the second direction.
+     * @param[in] stride_k Stride along the third direction.
+     */
+    Array3D(T* const data_1D,
+            const int ni,
+            const int nj,
+            const int nk,
+            const int stride_i,
+            const int stride_j,
+            const int stride_k) :
+        m_data_origin(data_1D),
+        m_ni(ni),
+        m_nj(nj),
+        m_nk(nk),
+        m_stride_i(stride_i),
+        m_stride_j(stride_j),
+        m_stride_k(stride_k)
+    {
+    }
+
+    /**
+     * @brief access operator to return a reference to the given element.
      *
      * @param i - The index in the first dimension.
      * @param j - The index in the second dimension.
      * @param k - The index in the third dimension.
      *
-     * @return The value stored at the requested 3D coordinates
+     * @return Reference to the element at the requested 3D coordinates
      */
     T& operator ()(int i, int j, int k) const
     {
-        int offset = (i * m_nk * m_nj) + (j * m_nk) + k;
+        int offset = (i * m_stride_i) + (j * m_stride_j) + (k * m_stride_k);
         return m_data_origin[offset];
     }
 
@@ -54,12 +85,13 @@ class Array3D
     }
 
   private:
-    /// Pointer to origin of the 3D view in the larger 1D array
-    T* const m_data_origin;
-    /// Dimension sizes in 3D view
-    const int m_ni;
-    const int m_nj;
-    const int m_nk;
+    T* const m_data_origin; /**< @brief Pointer to array memory origin */
+    const int m_ni;         /**< @brief Dimension length the first dimension */
+    const int m_nj;         /**< @brief Dimension length the second dimension */
+    const int m_nk;         /**< @brief Dimension length the third dimension */
+    const int m_stride_i;   /**< @brief Index stride along the first dimension */
+    const int m_stride_j;   /**< @brief Index stride along the second dimension */
+    const int m_stride_k;   /**< @brief Index stride along the third dimension */
 };
 
 #endif  // Array3D_H
