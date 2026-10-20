@@ -32,11 +32,11 @@ TEST_CASE("PackedVariables::singleVariableView stores contiguously without copie
 
         // Verify that looping through row-major i,j,k remains contiguous.
         int counter = 0;
-        for (int i = 0; i < ni; i++)
+        for (int k = 0; k < nk; k++)
         {
             for (int j = 0; j < nj; j++)
             {
-                for (int k = 0; k < nk; k++)
+                for (int i = 0; i < ni; i++)
                 {
                     CHECK(variable_array(i, j, k) == input_1d_pointer[counter + offset]);
                     REQUIRE(&variable_array(i, j, k) == &input_1d_pointer[counter + offset]);

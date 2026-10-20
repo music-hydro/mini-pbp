@@ -43,11 +43,11 @@ TEST_CASE("PhysicsBasedPreconditioner::setPressureRHS trivial zeros to check poi
 
         // Verify that looping through row-major i,j,k remains contiguous.
         int counter = 0;
-        for (int i = 0; i < n; i++)
+        for (int k = 0; k < n; k++)
         {
             for (int j = 0; j < n; j++)
             {
-                for (int k = 0; k < n; k++)
+                for (int i = 0; i < n; i++)
                 {
                     // delta_prim
                     CHECK(delta_prim_var_array(i, j, k) == delta_prim_raw[counter + offset]);
@@ -102,14 +102,16 @@ void verifySetPressureRHS(int prec_nvar, double* expected_energy)
 
     // Verify that looping through row-major i,j,k remains contiguous.
     int counter = 0;
-    for (int i = 0; i < n; i++)
+    for (int k = 0; k < n; k++)
     {
         for (int j = 0; j < n; j++)
         {
-            for (int k = 0; k < n; k++)
+            for (int i = 0; i < n; i++)
             {
                 CHECK(actual_pressure(i, j, k) == expected_pressure[counter]);
-                REQUIRE(actual_energy(i, j, k) == expected_energy[counter]);
+                CHECK(&actual_pressure(i, j, k) == &dp_rhs_raw[counter]);
+                CHECK(actual_energy(i, j, k) == expected_energy[counter]);
+                REQUIRE(&actual_energy(i, j, k) == &dp_rhs_raw[counter + size]);
                 counter++;
             }
         }

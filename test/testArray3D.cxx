@@ -4,11 +4,12 @@
 TEST_CASE("Array3D(i,j,k) accesses contiguously")
 {
 
-    // Define the problem
+    // Define the problem starting from an arbitrary point along the array
     int ni_full = 3, ni_view = 2;
     int nj_full = 4, nj_view = 2;
     int nk_full = 3, nk_view = 3;
-    int size = ni_full * nj_full * nk_full;
+    int starting_index = 2;
+    int size           = ni_full * nj_full * nk_full;
 
     // Allocate a 1D array equal to the size of a 3D array
     double* input_1d_pointer = new double[size];
@@ -18,15 +19,14 @@ TEST_CASE("Array3D(i,j,k) accesses contiguously")
         input_1d_pointer[i] = (double)i;
 
     // Create an Array3D instance wrapping the 1D array
-    int starting_index = 2;
     Array3D<double> my_array(input_1d_pointer + starting_index, ni_view, nj_view, nk_view);
 
     // Verify that looping through row-major i,j,k remains contiguous.
-    for (int i = 0; i < ni_view; i++)
+    for (int k = 0; k < nk_view; k++)
     {
         for (int j = 0; j < nj_view; j++)
         {
-            for (int k = 0; k < nk_view; k++)
+            for (int i = 0; i < ni_view; i++)
             {
                 CHECK(my_array(i, j, k) == input_1d_pointer[starting_index]);
                 REQUIRE(&my_array(i, j, k) == &input_1d_pointer[starting_index]);
