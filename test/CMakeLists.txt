@@ -21,4 +21,7 @@ set(TEST_FILES
 # These tests can use the Catch2-provided main
 add_executable(tests ${TEST_FILES} ${HEADER_FILES} ${IMPLEMENTATION_FILES})
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain)
+target_compile_definitions(tests PRIVATE
+    TEST_DATA_DIR="${PROJ_TEST_DIR}/data"
+)
 add_test(NAME tests COMMAND tests)
