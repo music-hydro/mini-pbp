@@ -4,7 +4,6 @@ name: Test
 on:
   push:
     branches:
-      - connor/20-add-CI-tests
       - main
   pull_request:
     types:
