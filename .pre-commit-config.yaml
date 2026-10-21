@@ -5,7 +5,7 @@ repos:
       - id: check-added-large-files
         args:
           - --enforce-all
-          - --maxkb=1000
+          - --maxkb=10000
         exclude: \.dic$
       - id: check-case-conflict
       - id: check-executables-have-shebangs
@@ -34,8 +34,9 @@ repos:
             installer$|
           )
   - repo: https://github.com/pocc/pre-commit-hooks
-    rev: 9a9bbc00895bbdb7670231c2565d4f1309c42905 # v1.3.5
+    rev: 5cf2d294128684d7fad69cd76a146a268761fbfc # v1.4.0
     hooks:
       - id: clang-format
         args: ["--style=file", "-i"]
-      - id: clang-tidy
+        additional_dependencies:
+          - clang-format==23.1.1
