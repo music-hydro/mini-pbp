@@ -2,8 +2,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <stdio.h>
+#include <vector>
 
-double tolerance = 1e-6;
+double tolerance = 1e-14;
 
 TEST_CASE("PhysicsBasedPreconditioner::setPressureRHS trivial zeros to check pointers remain unchanged")
 {
@@ -13,9 +14,9 @@ TEST_CASE("PhysicsBasedPreconditioner::setPressureRHS trivial zeros to check poi
     int size          = n * n * n;
 
     // Allocate a 1D array equal to the size of a 3D array
-    double* delta_prim_raw = new double[size * num_variables];
-    double* dp_rhs_raw     = new double[size * num_variables];
-    double* solution_raw   = new double[size * num_variables];
+    std::vector<double> delta_prim_raw(size * num_variables);
+    std::vector<double> dp_rhs_raw(size * num_variables);
+    std::vector<double> solution_raw(size * num_variables);
 
     // Initialise arrays
     for (int i = 0; i < size * num_variables; i++)
@@ -26,9 +27,9 @@ TEST_CASE("PhysicsBasedPreconditioner::setPressureRHS trivial zeros to check poi
     }
 
     // Create Packed variable arrays
-    PackedVariables delta_prim_view(delta_prim_raw, n, n, n, num_variables);
-    PackedVariables dp_rhs_view(dp_rhs_raw, n, n, n, num_variables);
-    PackedVariables solution(solution_raw, n, n, n, num_variables);
+    PackedVariables delta_prim_view(&delta_prim_raw[0], n, n, n, num_variables);
+    PackedVariables dp_rhs_view(&dp_rhs_raw[0], n, n, n, num_variables);
+    PackedVariables solution(&solution_raw[0], n, n, n, num_variables);
 
     PhysicsBasedPreconditioner pbp(solution, 0, 1, 0, 1, 0, 1);
 
@@ -54,17 +55,17 @@ TEST_CASE("PhysicsBasedPreconditioner::setPressureRHS trivial zeros to check poi
                 for (int i = 0; i < n; i++)
                 {
                     // delta_prim
-                    CHECK(delta_prim_var_array(i, j, k) == delta_prim_raw[counter + offset]);
+                    REQUIRE(delta_prim_var_array(i, j, k) == delta_prim_raw[counter + offset]);
                     REQUIRE(&delta_prim_var_array(i, j, k) == &delta_prim_raw[counter + offset]);
 
                     // dp_rhs
-                    CHECK(dp_rhs_var_array(i, j, k) == dp_rhs_raw[counter + offset]);
+                    REQUIRE(dp_rhs_var_array(i, j, k) == dp_rhs_raw[counter + offset]);
                     REQUIRE(&dp_rhs_var_array(i, j, k) == &dp_rhs_raw[counter + offset]);
 
                     // solution
-                    CHECK(solution_var_array(i, j, k) == solution_raw[counter + offset]);
+                    REQUIRE(solution_var_array(i, j, k) == solution_raw[counter + offset]);
                     REQUIRE(&solution_var_array(i, j, k) == &solution_raw[counter + offset]);
-                    CHECK(solution_var_array(i, j, k) == new_solution_var_array(i, j, k));
+                    REQUIRE(solution_var_array(i, j, k) == new_solution_var_array(i, j, k));
                     REQUIRE(&solution_var_array(i, j, k) == &new_solution_var_array(i, j, k));
 
                     counter++;
@@ -111,9 +112,9 @@ void verifySetPressureRHS(int ni,
         {
             for (int i = 0; i < ni; i++)
             {
-                CHECK_THAT(actual_pressure(i, j, k), Catch::Matchers::WithinRel(expected_pressure[counter], tolerance));
-                CHECK(&actual_pressure(i, j, k) == &dp_rhs_raw[counter]);
-                CHECK_THAT(actual_energy(i, j, k), Catch::Matchers::WithinRel(expected_energy[counter], tolerance));
+                REQUIRE_THAT(actual_pressure(i, j, k), Catch::Matchers::WithinRel(expected_pressure[counter], tolerance));
+                REQUIRE(&actual_pressure(i, j, k) == &dp_rhs_raw[counter]);
+                REQUIRE_THAT(actual_energy(i, j, k), Catch::Matchers::WithinRel(expected_energy[counter], tolerance));
                 REQUIRE(&actual_energy(i, j, k) == &dp_rhs_raw[counter + size]);
                 counter++;
             }
@@ -127,21 +128,20 @@ TEST_CASE("PhysicsBasedPreconditioner::setPressureRHS prec_nvar updates energy",
     const int n             = 3;
     const int size          = n * n * n;
 
-    double delta_prim_raw[size * num_variables] = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18,
-                                                   19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36,
-                                                   37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54};
+    std::vector<double> delta_prim_raw(size * num_variables);
+    delta_prim_raw = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
+                      28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54};
+    std::vector<double> solution_raw(size * num_variables);
+    solution_raw = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
+    std::vector<double> expected_pressure(size);
+    expected_pressure = {-86,  -91,  -96,  -101, -106, -111, -116, -121, -126, -131, -136, -141, -146, -151,
+                         -156, -161, -166, -171, -176, -181, -186, -191, -196, -201, -206, -211, -216};
+    std::vector<double> dp_rhs_raw(size * num_variables);
 
-    double solution_raw[size * num_variables] = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                                                 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
-
-    double expected_pressure[size] = {-86,  -91,  -96,  -101, -106, -111, -116, -121, -126, -131, -136, -141, -146, -151,
-                                      -156, -161, -166, -171, -176, -181, -186, -191, -196, -201, -206, -211, -216};
-
-    double dp_rhs_raw[size * num_variables] = {};
-
-    PackedVariables delta_prim_view(delta_prim_raw, n, n, n, num_variables);
-    PackedVariables dp_rhs_view(dp_rhs_raw, n, n, n, num_variables);
-    PackedVariables solution(solution_raw, n, n, n, num_variables);
+    PackedVariables delta_prim_view(&delta_prim_raw[0], n, n, n, num_variables);
+    PackedVariables dp_rhs_view(&dp_rhs_raw[0], n, n, n, num_variables);
+    PackedVariables solution(&solution_raw[0], n, n, n, num_variables);
 
     int n_rho      = 0;
     int n_e        = 1;
@@ -161,9 +161,9 @@ TEST_CASE("PhysicsBasedPreconditioner::setPressureRHS prec_nvar updates energy",
                              delta_prim_view,
                              dp_rhs_view,
                              solution,
-                             dp_rhs_raw,
-                             expected_pressure,
-                             expected_energy,
+                             &dp_rhs_raw[0],
+                             &expected_pressure[0],
+                             &expected_energy[0],
                              1,
                              n_rho,
                              n_e,
@@ -183,9 +183,9 @@ TEST_CASE("PhysicsBasedPreconditioner::setPressureRHS prec_nvar updates energy",
                              delta_prim_view,
                              dp_rhs_view,
                              solution,
-                             dp_rhs_raw,
-                             expected_pressure,
-                             expected_energy,
+                             &dp_rhs_raw[0],
+                             &expected_pressure[0],
+                             &expected_energy[0],
                              2,
                              n_rho,
                              n_e,
@@ -204,19 +204,17 @@ TEST_CASE("PhysicsBasedPreconditioner::setPressureRHS roberts dynamo problem", "
     const int nk            = 64;
     const int size          = ni * nj * nk;
 
-    double delta_prim_raw[size * num_variables] = {};
-
-    double solution_raw[size * num_variables] = {};
-
-    double expected_pressure[size] = {};
+    std::vector<double> delta_prim_raw(size * num_variables);
+    std::vector<double> solution_raw(size * num_variables);
+    std::vector<double> expected_pressure(size);
 
     // Energy will remain unchanged in this example as we are using `prec_nvar == 1`
     // but we set to zeros to help catch if we break something in the future.
-    double expected_energy[size] = {};
-    for (int i = 0; i < 27; i++)
+    std::vector<double> expected_energy(size);
+    for (int i = 0; i < size; i++)
         expected_energy[i] = 0;
 
-    double dp_rhs_raw[size * num_variables] = {};
+    std::vector<double> dp_rhs_raw(size * num_variables);
 
     int n_rho      = 0;
     int n_e        = 1;
@@ -249,9 +247,9 @@ TEST_CASE("PhysicsBasedPreconditioner::setPressureRHS roberts dynamo problem", "
     }
     fclose(outputs_file);
 
-    PackedVariables delta_prim_view(delta_prim_raw, ni, nj, nk, num_variables);
-    PackedVariables dp_rhs_view(dp_rhs_raw, ni, nj, nk, num_variables);
-    PackedVariables solution(solution_raw, ni, nj, nk, num_variables);
+    PackedVariables delta_prim_view(&delta_prim_raw[0], ni, nj, nk, num_variables);
+    PackedVariables dp_rhs_view(&dp_rhs_raw[0], ni, nj, nk, num_variables);
+    PackedVariables solution(&solution_raw[0], ni, nj, nk, num_variables);
 
     verifySetPressureRHS(ni,
                          nj,
@@ -259,9 +257,9 @@ TEST_CASE("PhysicsBasedPreconditioner::setPressureRHS roberts dynamo problem", "
                          delta_prim_view,
                          dp_rhs_view,
                          solution,
-                         dp_rhs_raw,
-                         expected_pressure,
-                         expected_energy,
+                         &dp_rhs_raw[0],
+                         &expected_pressure[0],
+                         &expected_energy[0],
                          1,
                          n_rho,
                          n_e,
