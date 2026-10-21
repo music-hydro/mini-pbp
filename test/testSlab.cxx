@@ -8,7 +8,7 @@ TEST_CASE("Slab is read only after construction")
     for (int i = 0; i < 3; i++)
     {
         int expected = i + 1;
-        CHECK(slab.start(i) == expected);
+        REQUIRE(slab.start(i) == expected);
         REQUIRE(slab.end(i) == expected * 2);
     }
 }

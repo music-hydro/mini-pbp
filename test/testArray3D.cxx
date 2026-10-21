@@ -12,14 +12,14 @@ TEST_CASE("Array3D(i,j,k) accesses contiguously")
     int size           = ni_full * nj_full * nk_full;
 
     // Allocate a 1D array equal to the size of a 3D array
-    double* input_1d_pointer = new double[size];
+    std::vector<double> input_1d_pointer(size);
 
     // Populate the 1D array with an incrementing contiguous counter
     for (int i = 0; i < size; i++)
         input_1d_pointer[i] = (double)i;
 
     // Create an Array3D instance wrapping the 1D array
-    Array3D<double> my_array(input_1d_pointer + starting_index, ni_view, nj_view, nk_view);
+    Array3D<double> my_array(&input_1d_pointer[0] + starting_index, ni_view, nj_view, nk_view);
 
     // Verify that looping through row-major i,j,k remains contiguous.
     for (int k = 0; k < nk_view; k++)
@@ -28,7 +28,7 @@ TEST_CASE("Array3D(i,j,k) accesses contiguously")
         {
             for (int i = 0; i < ni_view; i++)
             {
-                CHECK(my_array(i, j, k) == input_1d_pointer[starting_index]);
+                REQUIRE(my_array(i, j, k) == input_1d_pointer[starting_index]);
                 REQUIRE(&my_array(i, j, k) == &input_1d_pointer[starting_index]);
                 starting_index++;
             }
@@ -44,7 +44,7 @@ TEST_CASE("Array3D.cellSlab() returns correct range")
     int size      = n_full[0] * n_full[1] * n_full[2];
 
     // Allocate a 1D array equal to the size of a 3D array
-    double* input_1d_pointer = new double[size];
+    std::vector<double> input_1d_pointer(size);
 
     // Populate the 1D array with an incrementing contiguous counter
     for (int i = 0; i < size; i++)
@@ -52,13 +52,13 @@ TEST_CASE("Array3D.cellSlab() returns correct range")
 
     // Create an Array3D instance wrapping the 1D array
     int starting_index = 2;
-    Array3D<double> my_array(input_1d_pointer + starting_index, n_view[0], n_view[1], n_view[2]);
+    Array3D<double> my_array(&input_1d_pointer[0] + starting_index, n_view[0], n_view[1], n_view[2]);
 
     Slab my_slab = my_array.cellSlab();
 
     for (int i = 0; i < 3; i++)
     {
-        CHECK(my_slab.start(i) == 0);
+        REQUIRE(my_slab.start(i) == 0);
         REQUIRE(my_slab.end(i) == n_view[i]);
     }
 }
