@@ -32,16 +32,31 @@ void PhysicsBasedPreconditioner::setPressureRHS(const PackedVariables delta_prim
     const Array3D<double> solution_dPdrho = m_solution.singleVariableView(m_n_dPdrho);
     const Array3D<double> solution_dPde   = m_solution.singleVariableView(m_n_dPde);
 
+    // Arrays are column major, so loop with i innermost for unit stride access
     Slab rhs_pressure_slab = dp_rhs_press.cellSlab();
-    for (int i = rhs_pressure_slab.start(0); i < rhs_pressure_slab.end(0); i++)
+    for (int k = rhs_pressure_slab.start(2); k < rhs_pressure_slab.end(2); k++)
     {
         for (int j = rhs_pressure_slab.start(1); j < rhs_pressure_slab.end(1); j++)
         {
-            for (int k = rhs_pressure_slab.start(2); k < rhs_pressure_slab.end(2); k++)
+            for (int i = rhs_pressure_slab.start(0); i < rhs_pressure_slab.end(0); i++)
             {
                 dp_rhs_press(i, j, k) =
                     -(solution_dPdrho(i, j, k) * delta_rho(i, j, k) + solution_dPde(i, j, k) * delta_e(i, j, k));
-                if (m_prec_nvar == 2) dp_rhs_view.singleVariableView(m_n_energy)(i, j, k) = -delta_e(i, j, k);
+            }
+        }
+    }
+
+    if (m_prec_nvar == 2)
+    {
+        Array3D<double> dp_rhs_energy = dp_rhs_view.singleVariableView(m_n_energy);
+        for (int k = rhs_pressure_slab.start(2); k < rhs_pressure_slab.end(2); k++)
+        {
+            for (int j = rhs_pressure_slab.start(1); j < rhs_pressure_slab.end(1); j++)
+            {
+                for (int i = rhs_pressure_slab.start(0); i < rhs_pressure_slab.end(0); i++)
+                {
+                    dp_rhs_energy(i, j, k) = -delta_e(i, j, k);
+                }
             }
         }
     }
