@@ -26,7 +26,7 @@ class PhysicsBasedPreconditioner
      *
      * @param[in]  delta_rho - 3D view of the density delta.
      * @param[in]  delta_energy - 3D view of the energy delta.
-     * @param[out] rhs_pressure - 3D view of the RHS pressure delta.
+     * @param[out] rhs_pressure - 3D view of the RHS pressure delta to be set.
      * @param[out] rhs_energy - 3D view of the RHS energy delta to be set. Only set uf prec_nvar is 2.
      */
     void setPressureRHS(const Array3D<double> delta_rho,
@@ -34,29 +34,40 @@ class PhysicsBasedPreconditioner
                         Array3D<double> rhs_pressure,
                         Array3D<double> rhs_energy);
 
-    /** @brief getter for density index */
+    /**
+     * @brief getter for density index
+     */
     int n_rho() const
     { return m_n_rho; }
 
-    /** @brief getter for pressure index */
+    /**
+     * @brief getter for pressure index
+     */
     int n_pressure() const
     { return m_n_pressure; }
 
-    /** @brief getter for energy index */
+    /**
+     * @brief getter for energy index
+     */
     int n_energy() const
     { return m_n_energy; }
 
-    /** @brief getter for density gradient index */
+    /**
+     * @brief getter for density gradient index
+     */
     int n_dPdrho() const
     { return m_n_dPdrho; }
 
-    /** @brief getter for energy gradient index */
+    /**
+     * @brief getter for energy gradient index
+     */
     int n_dPdenergy() const
     { return m_n_dPdenergy; }
 
   private:
-    /// Store of the solution and solution gradients
+    /// @brief Store of the solution
     PackedVariables m_solution;
+    /// @brief Store of the solution gradients
     PackedVariables m_solution_dPd;
     /// Indices for each variable
     int m_n_rho;
