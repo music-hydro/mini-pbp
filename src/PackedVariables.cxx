@@ -3,17 +3,18 @@
 #include <stdexcept>
 #include <string>
 
-PackedVariables::PackedVariables(double* const packed_array_pointer,
-                                 const int ni,
-                                 const int nj,
-                                 const int nk,
-                                 const int num_variables) :
-    m_packed_array(packed_array_pointer),
+PackedVariables::PackedVariables(std::vector<double>& packed_array_pointer, const int ni, const int nj, const int nk) :
+    m_packed_array(&packed_array_pointer[0]),
     m_ni(ni),
     m_nj(nj),
     m_nk(nk),
-    m_num_variables(num_variables)
+    m_num_variables(packed_array_pointer.size() / (ni * nj * nk))
 {
+    // Verify the size of solutions
+    if (packed_array_pointer.size() % (ni * nj * nk) != 0)
+    {
+        throw std::invalid_argument("Size of packed_array_pointer is not a multiple of (ni * nj * nk)");
+    }
 }
 
 Array3D<double> PackedVariables::singleVariableView(const int variable_index) const

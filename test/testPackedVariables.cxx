@@ -1,5 +1,6 @@
 #include "PackedVariables.h"
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 
 TEST_CASE("PackedVariables::singleVariableView stores contiguously without copies")
 {
@@ -22,7 +23,7 @@ TEST_CASE("PackedVariables::singleVariableView stores contiguously without copie
     }
 
     // Create a PackedVariables instance wrapping the 1D array
-    PackedVariables packed_variables(&input_1d_pointer[0], ni, nj, nk, num_variables);
+    PackedVariables packed_variables(input_1d_pointer, ni, nj, nk);
 
     for (int variable_index = 0; variable_index < num_variables; variable_index++)
     {
@@ -47,6 +48,14 @@ TEST_CASE("PackedVariables::singleVariableView stores contiguously without copie
     }
 }
 
+TEST_CASE("PackedVariables::PackedVariables fails for incorrect array size")
+{
+    int n = 2;
+    std::vector<double> input_1d_pointer(2);
+    REQUIRE_THROWS_WITH(PackedVariables(input_1d_pointer, n, n, n),
+                        Catch::Matchers::ContainsSubstring("Size of packed_array_pointer is not a multiple of (ni * nj * nk)"));
+}
+
 TEST_CASE("PackedVariables::singleVariableView fails for invalid variable_index")
 {
     // Define the problem
@@ -60,7 +69,8 @@ TEST_CASE("PackedVariables::singleVariableView fails for invalid variable_index"
     std::vector<double> input_1d_pointer(size * num_variables);
 
     // Create a PackedVariables instance wrapping the 1D array
-    PackedVariables packed_variables(&input_1d_pointer[0], ni, nj, nk, num_variables);
+    PackedVariables packed_variables(input_1d_pointer, ni, nj, nk);
 
-    REQUIRE_THROWS_AS(packed_variables.singleVariableView(12), std::invalid_argument);
+    REQUIRE_THROWS_WITH(packed_variables.singleVariableView(12),
+                        Catch::Matchers::ContainsSubstring("Provided variable index not found:"));
 }
