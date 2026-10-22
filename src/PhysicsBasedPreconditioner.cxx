@@ -2,60 +2,67 @@
 
 #include "Array3D.h"
 #include "Slab.h"
+#include <stdexcept>
+#include <string>
 
 PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(PackedVariables solution,
-                                                       const int n_rho,
-                                                       const int n_e,
-                                                       const int n_dPdrho,
-                                                       const int n_dPde,
-                                                       const int n_pressure,
-                                                       const int n_energy,
+                                                       PackedVariables solution_dPd,
                                                        const int prec_nvar) :
     m_solution(solution),
-    m_n_rho(n_rho),
-    m_n_e(n_e),
-    m_n_dPdrho(n_dPdrho),
-    m_n_dPde(n_dPde),
-    m_n_pressure(n_pressure),
-    m_n_energy(n_energy),
-    m_prec_nvar(prec_nvar)
+    m_solution_dPd(solution_dPd),
+    m_prec_nvar(prec_nvar),
+    m_n_rho(0),
+    m_n_pressure(1),
+    m_n_energy(2),
+    m_n_dPdrho(0),
+    m_n_dPdenergy(1)
 {
+    // Verify the size of solutions
+    int num_solution_variables = m_solution.numVariables();
+    if (num_solution_variables != 3)
+    {
+        throw std::invalid_argument("Solution should contain exactly 3 variables, found " +
+                                    std::to_string(num_solution_variables));
+    }
+    int num_solution_dPd_variables = m_solution_dPd.numVariables();
+    if (num_solution_dPd_variables != 2)
+    {
+        throw std::invalid_argument("Solution gradients should contain exactly 2 variables, found " +
+                                    std::to_string(num_solution_dPd_variables));
+    }
 }
 
-void PhysicsBasedPreconditioner::setPressureRHS(const PackedVariables delta_prim_view, PackedVariables dp_rhs_view)
+void PhysicsBasedPreconditioner::setPressureRHS(const Array3D<double> delta_rho,
+                                                const Array3D<double> delta_energy,
+                                                Array3D<double> rhs_pressure,
+                                                Array3D<double> rhs_energy)
 {
-    const Array3D<double> delta_rho = delta_prim_view.singleVariableView(m_n_rho);
-    const Array3D<double> delta_e   = delta_prim_view.singleVariableView(m_n_e);
-
-    Array3D<double> dp_rhs_press = dp_rhs_view.singleVariableView(m_n_pressure);
-
-    const Array3D<double> solution_dPdrho = m_solution.singleVariableView(m_n_dPdrho);
-    const Array3D<double> solution_dPde   = m_solution.singleVariableView(m_n_dPde);
+    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(m_n_dPdrho);
+    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(m_n_dPdenergy);
 
     // Arrays are column major, so loop with i innermost for unit stride access
-    Slab rhs_pressure_slab = dp_rhs_press.cellSlab();
+    Slab rhs_pressure_slab = rhs_pressure.cellSlab();
     for (int k = rhs_pressure_slab.start(2); k < rhs_pressure_slab.end(2); k++)
     {
         for (int j = rhs_pressure_slab.start(1); j < rhs_pressure_slab.end(1); j++)
         {
             for (int i = rhs_pressure_slab.start(0); i < rhs_pressure_slab.end(0); i++)
             {
-                dp_rhs_press(i, j, k) =
-                    -(solution_dPdrho(i, j, k) * delta_rho(i, j, k) + solution_dPde(i, j, k) * delta_e(i, j, k));
+                rhs_pressure(i, j, k) =
+                    -(solution_dPdrho(i, j, k) * delta_rho(i, j, k) + solution_dPdenergy(i, j, k) * delta_energy(i, j, k));
             }
         }
     }
 
     if (m_prec_nvar == 2)
     {
-        Array3D<double> dp_rhs_energy = dp_rhs_view.singleVariableView(m_n_energy);
         for (int k = rhs_pressure_slab.start(2); k < rhs_pressure_slab.end(2); k++)
         {
             for (int j = rhs_pressure_slab.start(1); j < rhs_pressure_slab.end(1); j++)
             {
                 for (int i = rhs_pressure_slab.start(0); i < rhs_pressure_slab.end(0); i++)
                 {
-                    dp_rhs_energy(i, j, k) = -delta_e(i, j, k);
+                    rhs_energy(i, j, k) = -delta_energy(i, j, k);
                 }
             }
         }
