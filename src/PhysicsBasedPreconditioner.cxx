@@ -68,3 +68,43 @@ void PhysicsBasedPreconditioner::setPressureRHS(const Array3D<double> delta_rho,
         }
     }
 }
+
+void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double> preconditioned_delta_pressure,
+                                                      const Array3D<double> preconditioned_delta_energy,
+                                                      const Array3D<double> dp_rhs_press,
+                                                      Array3D<double> delta_energy)
+{
+    const Array3D<double> solution_pressure = m_solution.singleVariableView(m_n_pressure);
+    const Array3D<double> solution_rho      = m_solution.singleVariableView(m_n_rho);
+
+    Slab delta_e_slab = delta_energy.cellSlab();
+    if (m_prec_nvar == 1)
+    {
+        for (int k = delta_e_slab.start(2); k < delta_e_slab.end(2); k++)
+        {
+            for (int j = delta_e_slab.start(1); j < delta_e_slab.end(1); j++)
+            {
+                for (int i = delta_e_slab.start(0); i < delta_e_slab.end(0); i++)
+                {
+                    double dt_LdP =
+                        (preconditioned_delta_pressure(i, j, k) / m_dt - dp_rhs_press(i, j, k)) / m_squared_sound_speed;
+                    double rho = solution_rho(i, j, k);
+                    delta_energy(i, j, k) += +m_dt * (solution_pressure(i, j, k) / (rho * rho)) * dt_LdP;
+                }
+            }
+        }
+    }
+    else
+    {
+        for (int k = delta_e_slab.start(2); k < delta_e_slab.end(2); k++)
+        {
+            for (int j = delta_e_slab.start(1); j < delta_e_slab.end(1); j++)
+            {
+                for (int i = delta_e_slab.start(0); i < delta_e_slab.end(0); i++)
+                {
+                    delta_energy(i, j, k) = preconditioned_delta_energy(i, j, k);
+                }
+            }
+        }
+    }
+}

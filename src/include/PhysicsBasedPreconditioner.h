@@ -34,6 +34,24 @@ class PhysicsBasedPreconditioner
                         Array3D<double> rhs_pressure,
                         Array3D<double> rhs_energy);
 
+
+    /**
+     * @brief Calculate the change in energy for the timestep next timestep.
+     *
+     * @details Energy equation, we do not consider heat conduction here
+     *            A_ee = 1/dt and A_pe = -dt*p/rho^2*L(dp)
+     *            bis: A_dd = 1/dt and A_pd = -dt*L(dp)
+     *
+     * @param[in]  preconditioned_delta_pressure - 3D view of pressure delta calculated in the preconditioner pressure solve.
+     * @param[in]  preconditioned_delta_energy - 3D view of energy delta calculated in the preconditioner pressure solve.
+     * @param[in]  dp_rhs_press - 3D view of the pressure array set by setPressureRHS.
+     * @param[out] delta_energy - 3D View of the energy delta to be calculated.
+     */
+    void calculateEnergyDelta(const Array3D<double> preconditioned_delta_pressure,
+                              const Array3D<double> preconditioned_delta_energy,
+                              const Array3D<double> dp_rhs_press,
+                              Array3D<double> delta_energy);
+
     /**
      * @brief getter for density index
      */
@@ -64,6 +82,9 @@ class PhysicsBasedPreconditioner
     unsigned int n_dPdenergy() const
     { return m_n_dPdenergy; }
 
+    PackedVariables solution() const
+    { return m_solution; }
+
   private:
     /// @brief Store of the solution
     PackedVariables m_solution;
@@ -77,6 +98,10 @@ class PhysicsBasedPreconditioner
     unsigned int m_n_dPdenergy;
     /// Flag to indicate whether to precondition the pressure equation only (`prec_nvar=1`), or both pressure and energy equations (`prec_nvar=2`)
     unsigned int m_prec_nvar;
+    // This is a temporary solution. These values have been taken from a run of music and should be calculated instead.
+    double m_squared_sound_speed =
+        2.5266187266788758E007; /** Squared sound speed, set as constant for now. Will need to be calculated at cell centers during pre-solve. */
+    double m_dt = 1.0917241379310345E-004; /** timestep */
 };
 
 #endif  // PhysicsBasedPreconditioner_H
