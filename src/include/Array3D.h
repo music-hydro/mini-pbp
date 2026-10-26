@@ -21,7 +21,7 @@ class Array3D
      * @param nj - The number of elements to be extracted in the second direction.
      * @param nk - The number of elements to be extracted in the third direction.
      */
-    Array3D(T* const data_1D, const int ni, const int nj, const int nk) :
+    Array3D(T* const data_1D, const unsigned int ni, const unsigned int nj, const unsigned int nk) :
         m_data_origin(data_1D),
         m_ni(ni),
         m_nj(nj),
@@ -44,12 +44,12 @@ class Array3D
      * @param[in] stride_k Stride along the third direction.
      */
     Array3D(T* const data_1D,
-            const int ni,
-            const int nj,
-            const int nk,
-            const int stride_i,
-            const int stride_j,
-            const int stride_k) :
+            const unsigned int ni,
+            const unsigned int nj,
+            const unsigned int nk,
+            const unsigned int stride_i,
+            const unsigned int stride_j,
+            const unsigned int stride_k) :
         m_data_origin(data_1D),
         m_ni(ni),
         m_nj(nj),
@@ -69,9 +69,9 @@ class Array3D
      *
      * @return Reference to the element at the requested 3D coordinates
      */
-    T& operator ()(int i, int j, int k) const
+    T& operator ()(unsigned int i, unsigned int j, unsigned int k) const
     {
-        int offset = (i * m_stride_i) + (j * m_stride_j) + (k * m_stride_k);
+        const unsigned int offset = (i * m_stride_i) + (j * m_stride_j) + (k * m_stride_k);
         return m_data_origin[offset];
     }
 
@@ -85,13 +85,13 @@ class Array3D
     }
 
   private:
-    T* const m_data_origin; /**< @brief Pointer to array memory origin */
-    const int m_ni;         /**< @brief Dimension length the first dimension */
-    const int m_nj;         /**< @brief Dimension length the second dimension */
-    const int m_nk;         /**< @brief Dimension length the third dimension */
-    const int m_stride_i;   /**< @brief Index stride along the first dimension */
-    const int m_stride_j;   /**< @brief Index stride along the second dimension */
-    const int m_stride_k;   /**< @brief Index stride along the third dimension */
+    T* const m_data_origin;        /**< @brief Pointer to array memory origin */
+    const unsigned int m_ni;       /**< @brief Dimension length the first dimension */
+    const unsigned int m_nj;       /**< @brief Dimension length the second dimension */
+    const unsigned int m_nk;       /**< @brief Dimension length the third dimension */
+    const unsigned int m_stride_i; /**< @brief Index stride along the first dimension */
+    const unsigned int m_stride_j; /**< @brief Index stride along the second dimension */
+    const unsigned int m_stride_k; /**< @brief Index stride along the third dimension */
 };
 
 #endif  // Array3D_H

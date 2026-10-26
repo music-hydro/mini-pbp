@@ -19,7 +19,10 @@ class PackedVariables
      * @param nj - The number of physical cells in the second direction.
      * @param nk - The number of physical cells in the third direction.
      */
-    PackedVariables(std::vector<double>& packed_array_pointer, const int ni, const int nj, const int nk);
+    PackedVariables(std::vector<double>& packed_array_pointer,
+                    const unsigned int ni,
+                    const unsigned int nj,
+                    const unsigned int nk);
 
     /**
      * @brief Return the full 3D array view for a chosen variable
@@ -28,7 +31,7 @@ class PackedVariables
      *
      * @return An Array3D instance providing a 3D view of the requested variable's 1D array
      */
-    Array3D<double> singleVariableView(const int variable_index) const;
+    Array3D<double> singleVariableView(const unsigned int variable_index) const;
 
     /**
      * @brief Return the number of variables

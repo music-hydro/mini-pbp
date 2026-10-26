@@ -3,7 +3,10 @@
 #include <stdexcept>
 #include <string>
 
-PackedVariables::PackedVariables(std::vector<double>& packed_array_pointer, const int ni, const int nj, const int nk) :
+PackedVariables::PackedVariables(std::vector<double>& packed_array_pointer,
+                                 const unsigned int ni,
+                                 const unsigned int nj,
+                                 const unsigned int nk) :
     m_packed_array(&packed_array_pointer[0]),
     m_ni(ni),
     m_nj(nj),
@@ -17,7 +20,7 @@ PackedVariables::PackedVariables(std::vector<double>& packed_array_pointer, cons
     }
 }
 
-Array3D<double> PackedVariables::singleVariableView(const int variable_index) const
+Array3D<double> PackedVariables::singleVariableView(const unsigned int variable_index) const
 {
     // Validate requested variable index against what is assumed
     if (variable_index < 0 || variable_index >= m_num_variables)
@@ -25,7 +28,7 @@ Array3D<double> PackedVariables::singleVariableView(const int variable_index) co
         throw std::invalid_argument("Provided variable index not found: " + std::to_string(variable_index));
     }
 
-    int offset = m_ni * m_nj * m_nk * variable_index;
+    unsigned int offset = m_ni * m_nj * m_nk * variable_index;
     Array3D<double> variable_view(m_packed_array + offset, m_ni, m_nj, m_nk);
     return variable_view;
 }

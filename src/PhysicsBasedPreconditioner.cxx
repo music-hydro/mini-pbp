@@ -7,7 +7,7 @@
 
 PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(PackedVariables solution,
                                                        PackedVariables solution_dPd,
-                                                       const int prec_nvar) :
+                                                       const unsigned int prec_nvar) :
     m_solution(solution),
     m_solution_dPd(solution_dPd),
     m_prec_nvar(prec_nvar),

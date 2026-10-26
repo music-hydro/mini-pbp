@@ -19,7 +19,7 @@ class PhysicsBasedPreconditioner
      * @param[in] solution_dPd - The solution gradients containing 2 packed variables (dPd_rho and then dPd_energy)
      * @param[in] prec_nvar - The number of variables to precondition (1: just pressure, 2: pressure and energy)
      */
-    PhysicsBasedPreconditioner(PackedVariables solution, PackedVariables solution_dPd, const int prec_nvar = 1);
+    PhysicsBasedPreconditioner(PackedVariables solution, PackedVariables solution_dPd, const unsigned int prec_nvar = 1);
 
     /**
      * @brief Set the RHS pressure
@@ -37,31 +37,31 @@ class PhysicsBasedPreconditioner
     /**
      * @brief getter for density index
      */
-    int n_rho() const
+    unsigned int n_rho() const
     { return m_n_rho; }
 
     /**
      * @brief getter for pressure index
      */
-    int n_pressure() const
+    unsigned int n_pressure() const
     { return m_n_pressure; }
 
     /**
      * @brief getter for energy index
      */
-    int n_energy() const
+    unsigned int n_energy() const
     { return m_n_energy; }
 
     /**
      * @brief getter for density gradient index
      */
-    int n_dPdrho() const
+    unsigned int n_dPdrho() const
     { return m_n_dPdrho; }
 
     /**
      * @brief getter for energy gradient index
      */
-    int n_dPdenergy() const
+    unsigned int n_dPdenergy() const
     { return m_n_dPdenergy; }
 
   private:
@@ -70,13 +70,13 @@ class PhysicsBasedPreconditioner
     /// @brief Store of the solution gradients
     PackedVariables m_solution_dPd;
     /// Indices for each variable
-    int m_n_rho;
-    int m_n_pressure;
-    int m_n_energy;
-    int m_n_dPdrho;
-    int m_n_dPdenergy;
+    unsigned int m_n_rho;
+    unsigned int m_n_pressure;
+    unsigned int m_n_energy;
+    unsigned int m_n_dPdrho;
+    unsigned int m_n_dPdenergy;
     /// Flag to indicate whether to precondition the pressure equation only (`prec_nvar=1`), or both pressure and energy equations (`prec_nvar=2`)
-    int m_prec_nvar;
+    unsigned int m_prec_nvar;
 };
 
 #endif  // PhysicsBasedPreconditioner_H
