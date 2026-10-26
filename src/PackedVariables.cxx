@@ -10,14 +10,15 @@ PackedVariables::PackedVariables(std::vector<double>& packed_array_pointer,
     m_packed_array(&packed_array_pointer[0]),
     m_ni(ni),
     m_nj(nj),
-    m_nk(nk),
-    m_num_variables(packed_array_pointer.size() / (ni * nj * nk))
+    m_nk(nk)
 {
     // Verify the size of solutions
-    if (packed_array_pointer.size() % (ni * nj * nk) != 0)
+    unsigned long long domain_size = ni * nj * nk;
+    if (packed_array_pointer.size() % domain_size != 0)
     {
         throw std::invalid_argument("Size of packed_array_pointer is not a multiple of (ni * nj * nk)");
     }
+    m_num_variables = (packed_array_pointer.size() / domain_size)
 }
 
 Array3D<double> PackedVariables::singleVariableView(const unsigned int variable_index) const

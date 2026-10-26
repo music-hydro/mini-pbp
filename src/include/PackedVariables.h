@@ -44,11 +44,11 @@ class PackedVariables
     /// Pointer to origin of the 3D view in the larger 1D array
     double* const m_packed_array;
     /// The lengths of the physical cell dimensions
-    const int m_ni;
-    const int m_nj;
-    const int m_nk;
+    const unsigned int m_ni;
+    const unsigned int m_nj;
+    const unsigned int m_nk;
     /// The number of variables stored in the packed array
-    const int m_num_variables;
+    unsigned int m_num_variables;
 };
 
 #endif  // PackedVariables_H
