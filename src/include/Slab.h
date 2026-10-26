@@ -15,7 +15,7 @@ class Slab
     /**
      * @brief Constructor
      */
-    Slab(const std::array<int, 3> start, const std::array<int, 3> end) :
+    Slab(const std::array<unsigned int, 3> start, const std::array<unsigned int, 3> end) :
         m_start(start),
         m_end(end)
     {
@@ -28,7 +28,7 @@ class Slab
      *
      * @return The index begining the range for the given `dimension`
      */
-    const int start(const int dimension) const
+    const int start(const unsigned int dimension) const
     { return m_start[dimension]; }
 
     /**
@@ -38,13 +38,13 @@ class Slab
      *
      * @return The index begining the range for the given `dimension`
      */
-    const int end(const int dimension) const
+    const int end(const unsigned int dimension) const
     { return m_end[dimension]; }
 
   private:
     /// The ranges over which this slab defines
-    const std::array<int, 3> m_start;
-    const std::array<int, 3> m_end;
+    const std::array<unsigned int, 3> m_start;
+    const std::array<unsigned int, 3> m_end;
 };
 
 #endif  // Slab_H

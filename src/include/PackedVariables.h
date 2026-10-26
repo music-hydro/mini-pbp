@@ -6,6 +6,7 @@
 #define PackedVariables_H
 
 #include "Array3D.h"
+#include <vector>
 
 class PackedVariables
 {
@@ -17,9 +18,11 @@ class PackedVariables
      * @param ni - The number of physical cells in the first direction.
      * @param nj - The number of physical cells in the second direction.
      * @param nk - The number of physical cells in the third direction.
-     * @param num_variables - The number of variables stored in the packed array
      */
-    PackedVariables(double* const packed_array_pointer, const int ni, const int nj, const int nk, const int num_variables);
+    PackedVariables(std::vector<double>& packed_array_pointer,
+                    const unsigned int ni,
+                    const unsigned int nj,
+                    const unsigned int nk);
 
     /**
      * @brief Return the full 3D array view for a chosen variable
@@ -28,17 +31,24 @@ class PackedVariables
      *
      * @return An Array3D instance providing a 3D view of the requested variable's 1D array
      */
-    Array3D<double> singleVariableView(const int variable_index) const;
+    Array3D<double> singleVariableView(const unsigned int variable_index) const;
+
+    /**
+     * @brief Return the number of variables
+     */
+    int numVariables()
+    { return m_num_variables; }
+
 
   private:
     /// Pointer to origin of the 3D view in the larger 1D array
     double* const m_packed_array;
     /// The lengths of the physical cell dimensions
-    const int m_ni;
-    const int m_nj;
-    const int m_nk;
+    const unsigned int m_ni;
+    const unsigned int m_nj;
+    const unsigned int m_nk;
     /// The number of variables stored in the packed array
-    const int m_num_variables;
+    unsigned int m_num_variables;
 };
 
 #endif  // PackedVariables_H
