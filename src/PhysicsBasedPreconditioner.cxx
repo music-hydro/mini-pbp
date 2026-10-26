@@ -107,5 +107,26 @@ void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double>& pre
     }
 }
 
+void PhysicsBasedPreconditioner::reconstructDensityDelta(const Array3D<double>& delta_pressure,
+                                                         const Array3D<double>& delta_energy,
+                                                         Array3D<double>& delta_rho)
+{
+    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(m_n_dPdrho);
+    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(m_n_dPdenergy);
+
+    Slab delta_rho_slab = delta_rho.cellSlab();
+    for (int k = delta_rho_slab.start(2); k < delta_rho_slab.end(2); k++)
+    {
+        for (int j = delta_rho_slab.start(1); j < delta_rho_slab.end(1); j++)
+        {
+            for (int i = delta_rho_slab.start(0); i < delta_rho_slab.end(0); i++)
+            {
+                delta_rho(i, j, k) =
+                    (delta_pressure(i, j, k) - solution_dPdenergy(i, j, k) * delta_energy(i, j, k)) / solution_dPdrho(i, j, k);
+            }
+        }
+    }
+}
+
 void PhysicsBasedPreconditioner::calculateSquaredSoundSpeed()
 { m_squared_sound_speed.fill(2.5266187266788758E007); }

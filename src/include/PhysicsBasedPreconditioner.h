@@ -51,6 +51,18 @@ class PhysicsBasedPreconditioner
                                 const Array3D<double>& dp_rhs_press,
                                 Array3D<double>& delta_energy);
 
+
+    /**
+     * @brief Reconstruct the density delta for the next timestep after preconditioning.
+     *
+     * @param[in] delta_pressure - 3D View of the pressure delta.
+     * @param[in] delta_energy - 3D View of the energy delta.
+     * @param[out] delta_rho - 3D view of the density delta to be calculated.
+     */
+    void reconstructDensityDelta(const Array3D<double>& delta_pressure,
+                                 const Array3D<double>& delta_energy,
+                                 Array3D<double>& delta_rho);
+
     /**
      * @brief getter for density index
      */

@@ -221,7 +221,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::re
     }
     fclose(outputs_file);
 
-    // Create Packed variable arrays
+    // Create variable arrays
     Array3D<double> preconditioned_delta_pressure(&preconditioned_delta_pressure_raw[0], ni, nj, nk);
     Array3D<double> preconditioned_delta_energy(&preconditioned_delta_energy_raw[0], ni, nj, nk);
     Array3D<double> dp_rhs_press(&dp_rhs_press_raw[0], ni, nj, nk);
