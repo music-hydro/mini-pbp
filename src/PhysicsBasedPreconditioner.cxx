@@ -43,10 +43,10 @@ PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(PackedVariables& solution
     calculateSquaredSoundSpeed();
 }
 
-void PhysicsBasedPreconditioner::setPressureRHS(const Array3D<double> delta_rho,
-                                                const Array3D<double> delta_energy,
-                                                Array3D<double> rhs_pressure,
-                                                Array3D<double> rhs_energy)
+void PhysicsBasedPreconditioner::setPressureRHS(const Array3D<double>& delta_rho,
+                                                const Array3D<double>& delta_energy,
+                                                Array3D<double>& rhs_pressure,
+                                                Array3D<double>& rhs_energy)
 {
     const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(m_n_dPdrho);
     const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(m_n_dPdenergy);
@@ -80,10 +80,10 @@ void PhysicsBasedPreconditioner::setPressureRHS(const Array3D<double> delta_rho,
     }
 }
 
-void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double> preconditioned_delta_pressure,
-                                                      const Array3D<double> preconditioned_delta_energy,
-                                                      const Array3D<double> dp_rhs_press,
-                                                      Array3D<double> delta_energy)
+void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double>& preconditioned_delta_pressure,
+                                                      const Array3D<double>& preconditioned_delta_energy,
+                                                      const Array3D<double>& dp_rhs_press,
+                                                      Array3D<double>& delta_energy)
 {
     const Array3D<double> solution_pressure = m_solution.singleVariableView(m_n_pressure);
     const Array3D<double> solution_rho      = m_solution.singleVariableView(m_n_rho);

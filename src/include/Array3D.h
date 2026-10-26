@@ -21,7 +21,7 @@ class Array3D
      * @param nj - The number of elements to be extracted in the second direction.
      * @param nk - The number of elements to be extracted in the third direction.
      */
-    Array3D(T* const data_1D, const unsigned int ni, const unsigned int nj, const unsigned int nk) :
+    Array3D(T* const& data_1D, const unsigned int ni, const unsigned int nj, const unsigned int nk) :
         m_data_origin(data_1D),
         m_ni(ni),
         m_nj(nj),
@@ -43,7 +43,7 @@ class Array3D
      * @param[in] stride_j Stride along the second direction.
      * @param[in] stride_k Stride along the third direction.
      */
-    Array3D(T* const data_1D,
+    Array3D(T* const& data_1D,
             const unsigned int ni,
             const unsigned int nj,
             const unsigned int nk,

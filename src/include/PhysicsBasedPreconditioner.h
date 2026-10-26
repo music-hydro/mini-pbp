@@ -33,10 +33,10 @@ class PhysicsBasedPreconditioner
      * @param[out] rhs_pressure - 3D view of the RHS pressure delta to be set.
      * @param[out] rhs_energy - 3D view of the RHS energy delta to be set. Only set uf prec_nvar is 2.
      */
-    void setPressureRHS(const Array3D<double> delta_rho,
-                        const Array3D<double> delta_energy,
-                        Array3D<double> rhs_pressure,
-                        Array3D<double> rhs_energy);
+    void setPressureRHS(const Array3D<double>& delta_rho,
+                        const Array3D<double>& delta_energy,
+                        Array3D<double>& rhs_pressure,
+                        Array3D<double>& rhs_energy);
 
 
     /**
@@ -51,10 +51,10 @@ class PhysicsBasedPreconditioner
      * @param[in]  dp_rhs_press - 3D view of the pressure array set by setPressureRHS.
      * @param[out] delta_energy - 3D View of the energy delta to be calculated.
      */
-    void calculateEnergyDelta(const Array3D<double> preconditioned_delta_pressure,
-                              const Array3D<double> preconditioned_delta_energy,
-                              const Array3D<double> dp_rhs_press,
-                              Array3D<double> delta_energy);
+    void calculateEnergyDelta(const Array3D<double>& preconditioned_delta_pressure,
+                              const Array3D<double>& preconditioned_delta_energy,
+                              const Array3D<double>& dp_rhs_press,
+                              Array3D<double>& delta_energy);
 
     /**
      * @brief getter for density index
