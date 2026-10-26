@@ -17,9 +17,13 @@ class PhysicsBasedPreconditioner
      *
      * @param[in] solution - The solution containing 3 packed variables (rho, then pressure and then energy)
      * @param[in] solution_dPd - The solution gradients containing 2 packed variables (dPd_rho and then dPd_energy)
+     * @param[in] squared_sound_speed - 3D view of the squared sound speed within each each cell.
      * @param[in] prec_nvar - The number of variables to precondition (1: just pressure, 2: pressure and energy)
      */
-    PhysicsBasedPreconditioner(PackedVariables solution, PackedVariables solution_dPd, const unsigned int prec_nvar = 1);
+    PhysicsBasedPreconditioner(PackedVariables& solution,
+                               PackedVariables& solution_dPd,
+                               Array3D<double>& squared_sound_speed,
+                               const unsigned int prec_nvar = 1);
 
     /**
      * @brief Set the RHS pressure
@@ -86,6 +90,13 @@ class PhysicsBasedPreconditioner
     { return m_solution; }
 
   private:
+    /**
+     * @brief Compute squared sound speed from the solution variables.
+     *
+     * @details For now this is set using some data from MUSIC (should be calculated instead)
+     */
+    void calculateSquaredSoundSpeed();
+
     /// @brief Store of the solution
     PackedVariables m_solution;
     /// @brief Store of the solution gradients
@@ -98,9 +109,8 @@ class PhysicsBasedPreconditioner
     unsigned int m_n_dPdenergy;
     /// Flag to indicate whether to precondition the pressure equation only (`prec_nvar=1`), or both pressure and energy equations (`prec_nvar=2`)
     unsigned int m_prec_nvar;
-    // This is a temporary solution. These values have been taken from a run of music and should be calculated instead.
-    double m_squared_sound_speed =
-        2.5266187266788758E007; /** Squared sound speed, set as constant for now. Will need to be calculated at cell centers during pre-solve. */
+    Array3D<double> m_squared_sound_speed; /** Squared sound speed */
+    // This is a temporary solution. The value has been taken from a run of music and should be calculated instead.
     double m_dt = 1.0917241379310345E-004; /** timestep */
 };
 

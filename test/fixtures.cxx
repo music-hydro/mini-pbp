@@ -14,8 +14,10 @@ class PhysicsBasedPreconditionerTest
   protected:
     std::shared_ptr<std::vector<double>> solution_raw;
     std::shared_ptr<std::vector<double>> solution_dPd_raw;
+    std::shared_ptr<std::vector<double>> squared_sound_speed_raw;
     std::shared_ptr<PackedVariables> solution;
     std::shared_ptr<PackedVariables> solution_dPd;
+    std::shared_ptr<Array3D<double>> squared_sound_speed;
 
     /**
      * @brief Allocation the raw solution vectors with spacial indices `ni`, `nj` and `nk`.
@@ -28,11 +30,13 @@ class PhysicsBasedPreconditionerTest
     {
         int size = ni * nj * nk;
 
-        solution_raw     = std::make_shared<std::vector<double>>(size * 3);
-        solution_dPd_raw = std::make_shared<std::vector<double>>(size * 2);
+        solution_raw            = std::make_shared<std::vector<double>>(size * 3);
+        solution_dPd_raw        = std::make_shared<std::vector<double>>(size * 2);
+        squared_sound_speed_raw = std::make_shared<std::vector<double>>(size);
 
         for (int i = 0; i < size; i++)
         {
+            (*squared_sound_speed_raw)[i] = 0;
             for (int var = 0; var < 3; var++)
             {
                 (*solution_raw)[i + size * var] = 0;
@@ -43,7 +47,8 @@ class PhysicsBasedPreconditionerTest
             }
         }
 
-        solution     = std::make_shared<PackedVariables>(*solution_raw, ni, nj, nk);
-        solution_dPd = std::make_shared<PackedVariables>(*solution_dPd_raw, ni, nj, nk);
+        solution            = std::make_shared<PackedVariables>(*solution_raw, ni, nj, nk);
+        solution_dPd        = std::make_shared<PackedVariables>(*solution_dPd_raw, ni, nj, nk);
+        squared_sound_speed = std::make_shared<Array3D<double>>(&((*squared_sound_speed_raw)[0]), ni, nj, nk);
     }
 };

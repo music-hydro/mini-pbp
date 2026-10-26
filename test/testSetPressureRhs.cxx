@@ -36,7 +36,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
     Array3D<double> rhs_pressure(&rhs_pressure_raw[0], n, n, n);
     Array3D<double> rhs_energy(&rhs_energy_raw[0], n, n, n);
 
-    PhysicsBasedPreconditioner pbp(*solution, *solution_dPd);
+    PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed);
 
     REQUIRE_NOTHROW(pbp.setPressureRHS(delta_rho, delta_energy, rhs_pressure, rhs_energy));
 
@@ -91,7 +91,7 @@ void verifySetPressureRHS(int ni,
                           Array3D<double> rhs_energy,
                           double* expected_pressure,
                           double* expected_energy,
-                          PhysicsBasedPreconditioner pbp)
+                          PhysicsBasedPreconditioner& pbp)
 {
     REQUIRE_NOTHROW(pbp.setPressureRHS(delta_rho, delta_energy, rhs_pressure, rhs_energy));
 
@@ -156,7 +156,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
                            -42, -43, -44, -45, -46, -47, -48, -49, -50, -51, -52, -53, -54};
     }
 
-    PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, prec_nvar);
+    PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
     verifySetPressureRHS(
         n, n, n, delta_rho, delta_energy, rhs_pressure, rhs_energy, &expected_pressure[0], &expected_energy[0], pbp);
@@ -190,7 +190,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::se
     Array3D<double> rhs_energy(&rhs_energy_raw[0], ni, nj, nk);
 
     int prec_nvar = 1;
-    PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, prec_nvar);
+    PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
     int n_dPdrho    = pbp.n_dPdrho();
     int n_dPdenergy = pbp.n_dPdenergy();

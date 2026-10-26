@@ -5,11 +5,13 @@
 #include <stdexcept>
 #include <string>
 
-PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(PackedVariables solution,
-                                                       PackedVariables solution_dPd,
+PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(PackedVariables& solution,
+                                                       PackedVariables& solution_dPd,
+                                                       Array3D<double>& squared_sound_speed,
                                                        const unsigned int prec_nvar) :
     m_solution(solution),
     m_solution_dPd(solution_dPd),
+    m_squared_sound_speed(squared_sound_speed),
     m_prec_nvar(prec_nvar),
     m_n_rho(0),
     m_n_pressure(1),
@@ -30,6 +32,15 @@ PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(PackedVariables solution,
         throw std::invalid_argument("Solution gradients should contain exactly 2 variables, found " +
                                     std::to_string(num_solution_dPd_variables));
     }
+
+    unsigned int ni = solution.ni();
+    unsigned int nj = solution.nj();
+    unsigned int nk = solution.nk();
+    if (ni != solution_dPd.ni() || nj != solution_dPd.nj() || nk != solution_dPd.nk())
+    {
+        throw std::invalid_argument("Solution and solution gradients must have the same domain dimensions");
+    }
+    calculateSquaredSoundSpeed();
 }
 
 void PhysicsBasedPreconditioner::setPressureRHS(const Array3D<double> delta_rho,
@@ -87,7 +98,7 @@ void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double> prec
                 for (int i = delta_e_slab.start(0); i < delta_e_slab.end(0); i++)
                 {
                     double dt_LdP =
-                        (preconditioned_delta_pressure(i, j, k) / m_dt - dp_rhs_press(i, j, k)) / m_squared_sound_speed;
+                        (preconditioned_delta_pressure(i, j, k) / m_dt - dp_rhs_press(i, j, k)) / m_squared_sound_speed(i, j, k);
                     double rho = solution_rho(i, j, k);
                     delta_energy(i, j, k) += +m_dt * (solution_pressure(i, j, k) / (rho * rho)) * dt_LdP;
                 }
@@ -104,6 +115,21 @@ void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double> prec
                 {
                     delta_energy(i, j, k) = preconditioned_delta_energy(i, j, k);
                 }
+            }
+        }
+    }
+}
+
+void PhysicsBasedPreconditioner::calculateSquaredSoundSpeed()
+{
+    Slab slab = m_squared_sound_speed.cellSlab();
+    for (int k = slab.start(2); k < slab.end(2); k++)
+    {
+        for (int j = slab.start(1); j < slab.end(1); j++)
+        {
+            for (int i = slab.start(0); i < slab.end(0); i++)
+            {
+                m_squared_sound_speed(i, j, k) = 2.5266187266788758E007;
             }
         }
     }

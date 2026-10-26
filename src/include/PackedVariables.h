@@ -36,9 +36,26 @@ class PackedVariables
     /**
      * @brief Return the number of variables
      */
-    int numVariables()
+    unsigned int numVariables()
     { return m_num_variables; }
 
+    /**
+     * @brief Get the domain size in the ith direction.
+     */
+    unsigned int ni()
+    { return m_ni; }
+
+    /**
+     * @brief Get the domain size in the jth direction.
+     */
+    unsigned int nj()
+    { return m_nj; }
+
+    /**
+     * @brief Get the domain size in the kth direction.
+     */
+    unsigned int nk()
+    { return m_nk; }
 
   private:
     /// Pointer to origin of the 3D view in the larger 1D array

@@ -55,16 +55,15 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
 
     REQUIRE(prec_nvar != 0);
 
-    int n_rho      = 0;
-    int n_pressure = 0;
-    int n_energy   = 1;
-
-    PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, prec_nvar);
+    PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
     REQUIRE_NOTHROW(
         pbp.calculateEnergyDelta(preconditioned_delta_pressure, preconditioned_delta_energy, dp_rhs_press, delta_energy));
 
     PackedVariables new_solution = pbp.solution();
+
+    int n_rho      = pbp.n_rho();
+    int n_pressure = pbp.n_pressure();
 
     Array3D<double> solution_press     = (*solution).singleVariableView(n_pressure);
     Array3D<double> solution_rho       = (*solution).singleVariableView(n_rho);
@@ -127,7 +126,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::ca
     alloc_solution(ni, nj, nk);
 
     int prec_nvar = 1;
-    PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, prec_nvar);
+    PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
     int n_rho      = pbp.n_rho();
     int n_pressure = pbp.n_pressure();
@@ -174,7 +173,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::ca
         {
             for (int i = 0; i < ni; i++)
             {
-                CHECK_THAT(delta_energy(i, j, k), Catch::Matchers::WithinRel(expected_energy[counter], 1e-14));
+                REQUIRE_THAT(delta_energy(i, j, k), Catch::Matchers::WithinRel(expected_energy[counter], 1e-14));
                 REQUIRE(&delta_energy(i, j, k) == &delta_energy_raw[counter]);
                 counter++;
             }
