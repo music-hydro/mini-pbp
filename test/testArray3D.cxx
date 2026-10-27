@@ -97,3 +97,12 @@ TEST_CASE("Array3D.deepCopy() Makes a copy without reallocating")
         }
     }
 }
+
+TEST_CASE("Array3D::start returns the origin of the 1D data it wraps")
+{
+    unsigned int n          = 3;
+    unsigned long long size = n * n * n;
+    std::vector<double> x_raw(size);
+    Array3D<double> x(&x_raw[0], n, n, n);
+    REQUIRE(x.start() == &x_raw[0]);
+}

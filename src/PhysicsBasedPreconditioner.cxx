@@ -52,15 +52,12 @@ void PhysicsBasedPreconditioner::setPressureRHS(const Array3D<double>& delta_rho
     const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(m_n_dPdenergy);
 
     Slab rhs_pressure_slab = rhs_pressure.cellSlab();
-    unsigned int i0        = rhs_pressure_slab.start(0);
-    unsigned int j0        = rhs_pressure_slab.start(1);
-    unsigned int k0        = rhs_pressure_slab.start(2);
-    setPressureRHSKernel(&solution_dPdrho(i0, j0, k0),
-                         &solution_dPdenergy(i0, j0, k0),
-                         &delta_rho(j0, j0, k0),
-                         &delta_energy(j0, j0, k0),
+    setPressureRHSKernel(solution_dPdrho.start(),
+                         solution_dPdenergy.start(),
+                         delta_rho.start(),
+                         delta_energy.start(),
                          rhs_pressure_slab.volume(),
-                         &rhs_pressure(j0, j0, k0));
+                         rhs_pressure.start());
 
     if (m_prec_nvar == 2) { delta_energy.deepCopy(rhs_energy, -1.0); }
 }
@@ -89,16 +86,13 @@ void PhysicsBasedPreconditioner::reconstructEnergyDelta(const Array3D<double>& p
         const Array3D<double> solution_rho      = m_solution.singleVariableView(m_n_rho);
 
         Slab delta_energy_slab = delta_energy.cellSlab();
-        unsigned int i0        = delta_energy_slab.start(0);
-        unsigned int j0        = delta_energy_slab.start(1);
-        unsigned int k0        = delta_energy_slab.start(2);
-        calculateEnergyDeltaKernel(&solution_pressure(i0, j0, k0),
-                                   &solution_rho(i0, j0, k0),
-                                   &preconditioned_delta_pressure(i0, j0, k0),
-                                   &rhs_pressure(i0, j0, k0),
-                                   &m_squared_sound_speed(i0, j0, k0),
+        calculateEnergyDeltaKernel(solution_pressure.start(),
+                                   solution_rho.start(),
+                                   preconditioned_delta_pressure.start(),
+                                   rhs_pressure.start(),
+                                   m_squared_sound_speed.start(),
                                    delta_energy_slab.volume(),
-                                   &delta_energy(i0, j0, k0));
+                                   delta_energy.start());
     }
     else
     {

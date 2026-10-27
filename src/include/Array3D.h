@@ -128,6 +128,12 @@ class Array3D
         }
     }
 
+    /**
+     * @brief Get origin of the 1D data wrapped by this 3D array.
+     */
+    T* start() const
+    { return m_data_origin; }
+
   private:
     T* const m_data_origin;        /**< @brief Pointer to array memory origin */
     const unsigned int m_ni;       /**< @brief Dimension length the first dimension */
