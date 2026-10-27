@@ -41,6 +41,12 @@ class Slab
     const int end(const unsigned int dimension) const
     { return m_end[dimension]; }
 
+    /**
+     * @brief Get the total number of cells defined within a slab
+     */
+    unsigned long long volume() const
+    { return (m_end[0] - m_start[0]) * (m_end[1] - m_start[1]) * (m_end[2] - m_start[2]); }
+
   private:
     /// The ranges over which this slab defines
     const std::array<unsigned int, 3> m_start;
