@@ -32,3 +32,14 @@ uv venv
 uv pip install prek
 uv run prek run --all-files --color always --verbose
 ```
+
+## Benchmarks
+
+Throughout the test suite we have written benchmarks for performance relevant
+functions. These can identified as the tests containing a `BENCHMARK` macro.
+
+### Fixtures
+
+To reduce duplication and separate setup from the code to be benchmarked, we
+have defined fixture classes. These classes are stored in
+[fixtures](./test/fixtures/) dir.
