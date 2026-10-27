@@ -62,3 +62,38 @@ TEST_CASE("Array3D.cellSlab() returns correct range")
         REQUIRE(my_slab.end(i) == n_view[i]);
     }
 }
+
+TEST_CASE("Array3D.deepCopy() Makes a copy without reallocating")
+{
+    unsigned int n          = 3;
+    unsigned long long size = n * n * n;
+
+    std::vector<double> x_raw(size);
+    std::vector<double> y_raw(size);
+
+    Array3D<double> x(&x_raw[0], n, n, n);
+    Array3D<double> y(&y_raw[0], n, n, n);
+
+    for (int i = 0; i < size; i++)
+    {
+        x_raw[i] = 1;
+        y_raw[i] = 2;
+    }
+
+    x.deepCopy(y);
+
+    int counter = 0;
+    for (int k = 0; k < n; k++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                REQUIRE(y(i, j, k) == x(i, j, k));
+                REQUIRE(&y(i, j, k) == &y_raw[counter]);
+                REQUIRE(&y(i, j, k) != &x_raw[counter]);
+                counter++;
+            }
+        }
+    }
+}

@@ -78,10 +78,54 @@ class Array3D
     /**
      * @brief Getter for the slab this array represents
      */
-    Slab cellSlab()
+    Slab cellSlab() const
     {
         Slab slab({0, 0, 0}, {m_ni, m_nj, m_nk});
         return slab;
+    }
+
+    /**
+     * @brief Deep copy this array into the target array
+     *
+     * @details This function will not allocate any memory. This must be done
+     *          prior to this call.
+     *
+     * @param[out] targetArray - The array into which the copy should be made.
+     * @param[in] factor - Factor by which to multiply each array value when copying.
+     */
+    void deepCopy(Array3D<T>& targetArray, const T& factor = 1) const
+    {
+        Slab slab = cellSlab();
+        for (int k = slab.start(2); k < slab.end(2); k++)
+        {
+            for (int j = slab.start(1); j < slab.end(1); j++)
+            {
+                for (int i = slab.start(0); i < slab.end(0); i++)
+                {
+                    targetArray(i, j, k) = operator ()(i, j, k) * factor;
+                }
+            }
+        }
+    }
+
+    /**
+     * @brief Fill this array with a scalar value
+     *
+     * @param val - Scalar value to fill the array with.
+     */
+    void fill(const T& val) const
+    {
+        Slab slab = cellSlab();
+        for (int k = slab.start(2); k < slab.end(2); k++)
+        {
+            for (int j = slab.start(1); j < slab.end(1); j++)
+            {
+                for (int i = slab.start(0); i < slab.end(0); i++)
+                {
+                    operator ()(i, j, k) = val;
+                }
+            }
+        }
     }
 
   private:
