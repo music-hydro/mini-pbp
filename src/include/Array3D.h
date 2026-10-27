@@ -95,16 +95,11 @@ class Array3D
      */
     void deepCopy(Array3D<T>& targetArray, const T& factor = 1) const
     {
-        Slab slab = cellSlab();
-        for (int k = slab.start(2); k < slab.end(2); k++)
+        Slab slab            = cellSlab();
+        double* target_start = targetArray.start();
+        for (int idx = 0; idx < slab.volume(); idx++)
         {
-            for (int j = slab.start(1); j < slab.end(1); j++)
-            {
-                for (int i = slab.start(0); i < slab.end(0); i++)
-                {
-                    targetArray(i, j, k) = operator ()(i, j, k) * factor;
-                }
-            }
+            target_start[idx] = m_data_origin[idx] * factor;
         }
     }
 
@@ -116,15 +111,9 @@ class Array3D
     void fill(const T& val) const
     {
         Slab slab = cellSlab();
-        for (int k = slab.start(2); k < slab.end(2); k++)
+        for (double* cell = m_data_origin; cell < m_data_origin + slab.volume(); cell++)
         {
-            for (int j = slab.start(1); j < slab.end(1); j++)
-            {
-                for (int i = slab.start(0); i < slab.end(0); i++)
-                {
-                    operator ()(i, j, k) = val;
-                }
-            }
+            cell[0] = val;
         }
     }
 
