@@ -43,7 +43,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
 
     Array3D<double> preconditioned_delta_pressure(&preconditioned_delta_pressure_raw[0], n, n, n);
     Array3D<double> preconditioned_delta_energy(&preconditioned_delta_energy_raw[0], n, n, n);
-    Array3D<double> dp_rhs_press(&dp_rhs_press_raw[0], n, n, n);
+    Array3D<double> rhs_pressure(&dp_rhs_press_raw[0], n, n, n);
     Array3D<double> delta_energy(&delta_energy_raw[0], n, n, n);
 
     int prec_nvar = 0;
@@ -57,7 +57,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
     PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
     REQUIRE_NOTHROW(
-        pbp.reconstructEnergyDelta(preconditioned_delta_pressure, preconditioned_delta_energy, dp_rhs_press, delta_energy));
+        pbp.reconstructEnergyDelta(preconditioned_delta_pressure, preconditioned_delta_energy, rhs_pressure, delta_energy));
 
     PackedVariables new_solution = pbp.solution();
 
@@ -94,8 +94,8 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
                 REQUIRE(&new_solution_rho(i, j, k) == &(*solution_raw)[counter + size * n_rho]);
 
                 // dp_rhs
-                REQUIRE(dp_rhs_press(i, j, k) == dp_rhs_press_raw[counter]);
-                REQUIRE(&dp_rhs_press(i, j, k) == &dp_rhs_press_raw[counter]);
+                REQUIRE(rhs_pressure(i, j, k) == dp_rhs_press_raw[counter]);
+                REQUIRE(&rhs_pressure(i, j, k) == &dp_rhs_press_raw[counter]);
 
                 // delta_vars
                 REQUIRE(delta_energy(i, j, k) == delta_energy_raw[counter]);
@@ -125,7 +125,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
 
     Array3D<double> preconditioned_delta_pressure(&preconditioned_delta_pressure_raw[0], n, n, n);
     Array3D<double> preconditioned_delta_energy(&preconditioned_delta_energy_raw[0], n, n, n);
-    Array3D<double> dp_rhs_press(&dp_rhs_press_raw[0], n, n, n);
+    Array3D<double> rhs_pressure(&dp_rhs_press_raw[0], n, n, n);
     Array3D<double> delta_energy(&delta_energy_raw[0], n, n, n);
 
     // Initialise arrays
@@ -142,7 +142,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
     PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
     REQUIRE_NOTHROW(
-        pbp.reconstructEnergyDelta(preconditioned_delta_pressure, preconditioned_delta_energy, dp_rhs_press, delta_energy));
+        pbp.reconstructEnergyDelta(preconditioned_delta_pressure, preconditioned_delta_energy, rhs_pressure, delta_energy));
 
     // Verify that looping through row-major i,j,k remains contiguous.
     int counter = 0;
@@ -159,8 +159,8 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
                 REQUIRE(&preconditioned_delta_energy(i, j, k) == &preconditioned_delta_energy_raw[counter]);
 
                 // dp_rhs
-                REQUIRE(dp_rhs_press(i, j, k) == dp_rhs_press_raw[counter]);
-                REQUIRE(&dp_rhs_press(i, j, k) == &dp_rhs_press_raw[counter]);
+                REQUIRE(rhs_pressure(i, j, k) == dp_rhs_press_raw[counter]);
+                REQUIRE(&rhs_pressure(i, j, k) == &dp_rhs_press_raw[counter]);
 
                 // delta_vars
                 REQUIRE(delta_energy(i, j, k) == delta_energy_raw[counter]);
@@ -224,11 +224,11 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::re
     // Create variable arrays
     Array3D<double> preconditioned_delta_pressure(&preconditioned_delta_pressure_raw[0], ni, nj, nk);
     Array3D<double> preconditioned_delta_energy(&preconditioned_delta_energy_raw[0], ni, nj, nk);
-    Array3D<double> dp_rhs_press(&dp_rhs_press_raw[0], ni, nj, nk);
+    Array3D<double> rhs_pressure(&dp_rhs_press_raw[0], ni, nj, nk);
     Array3D<double> delta_energy(&delta_energy_raw[0], ni, nj, nk);
 
     REQUIRE_NOTHROW(
-        pbp.reconstructEnergyDelta(preconditioned_delta_pressure, preconditioned_delta_energy, dp_rhs_press, delta_energy));
+        pbp.reconstructEnergyDelta(preconditioned_delta_pressure, preconditioned_delta_energy, rhs_pressure, delta_energy));
 
     // Verify that looping through row-major i,j,k remains contiguous and results are accurate.
     int counter = 0;

@@ -70,36 +70,45 @@ void PhysicsBasedPreconditioner::setPressureRHS(const Array3D<double>& delta_rho
 
 void PhysicsBasedPreconditioner::reconstructEnergyDelta(const Array3D<double>& preconditioned_delta_pressure,
                                                         const Array3D<double>& preconditioned_delta_energy,
-                                                        const Array3D<double>& dp_rhs_press,
+                                                        const Array3D<double>& rhs_pressure,
                                                         Array3D<double>& delta_energy)
 {
-    if (m_prec_nvar == 1) { calculateEnergyDelta(preconditioned_delta_pressure, dp_rhs_press, delta_energy); }
+    if (m_prec_nvar == 1)
+    {
+        const Array3D<double> solution_pressure = m_solution.singleVariableView(m_n_pressure);
+        const Array3D<double> solution_rho      = m_solution.singleVariableView(m_n_rho);
+
+        Slab delta_energy_slab = delta_energy.cellSlab();
+        unsigned int i0        = delta_energy_slab.start(0);
+        unsigned int j0        = delta_energy_slab.start(1);
+        unsigned int k0        = delta_energy_slab.start(2);
+        calculateEnergyDeltaKernel(&solution_pressure(i0, j0, k0),
+                                   &solution_rho(i0, j0, k0),
+                                   &preconditioned_delta_pressure(i0, j0, k0),
+                                   &rhs_pressure(i0, j0, k0),
+                                   &m_squared_sound_speed(i0, j0, k0),
+                                   delta_energy_slab.volume(),
+                                   &delta_energy(i0, j0, k0));
+    }
     else
     {
         preconditioned_delta_energy.deepCopy(delta_energy);
     }
 }
 
-void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double>& preconditioned_delta_pressure,
-                                                      const Array3D<double>& dp_rhs_press,
-                                                      Array3D<double>& delta_energy)
+void PhysicsBasedPreconditioner::calculateEnergyDeltaKernel(const double* solution_pressure,
+                                                            const double* solution_rho,
+                                                            const double* preconditioned_delta_pressure,
+                                                            const double* rhs_pressure,
+                                                            const double* squared_sound_speed,
+                                                            const unsigned int& total_cells,
+                                                            double* delta_energy)
 {
-    const Array3D<double> solution_pressure = m_solution.singleVariableView(m_n_pressure);
-    const Array3D<double> solution_rho      = m_solution.singleVariableView(m_n_rho);
-
-    Slab delta_e_slab = delta_energy.cellSlab();
-    for (int k = delta_e_slab.start(2); k < delta_e_slab.end(2); k++)
+    for (unsigned int idx = 0; idx < total_cells; idx++)
     {
-        for (int j = delta_e_slab.start(1); j < delta_e_slab.end(1); j++)
-        {
-            for (int i = delta_e_slab.start(0); i < delta_e_slab.end(0); i++)
-            {
-                double dt_LdP =
-                    (preconditioned_delta_pressure(i, j, k) / m_dt - dp_rhs_press(i, j, k)) / m_squared_sound_speed(i, j, k);
-                double rho = solution_rho(i, j, k);
-                delta_energy(i, j, k) += +m_dt * (solution_pressure(i, j, k) / (rho * rho)) * dt_LdP;
-            }
-        }
+        double dt_LdP = (preconditioned_delta_pressure[idx] / m_dt - rhs_pressure[idx]) / squared_sound_speed[idx];
+        double rho    = solution_rho[idx];
+        delta_energy[idx] += m_dt * (solution_pressure[idx] / (rho * rho)) * dt_LdP;
     }
 }
 

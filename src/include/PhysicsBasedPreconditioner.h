@@ -43,12 +43,12 @@ class PhysicsBasedPreconditioner
      *
      * @param[in]  preconditioned_delta_pressure - 3D view of pressure delta calculated in the preconditioner pressure solve.
      * @param[in]  preconditioned_delta_energy - 3D view of energy delta calculated in the preconditioner pressure solve.
-     * @param[in]  dp_rhs_press - 3D view of the pressure array set by setPressureRHS.
+     * @param[in]  rhs_pressure - 3D view of the pressure array set by setPressureRHS.
      * @param[out] delta_energy - 3D View of the energy delta to be calculated.
      */
     void reconstructEnergyDelta(const Array3D<double>& preconditioned_delta_pressure,
                                 const Array3D<double>& preconditioned_delta_energy,
-                                const Array3D<double>& dp_rhs_press,
+                                const Array3D<double>& rhs_pressure,
                                 Array3D<double>& delta_energy);
 
 
@@ -111,13 +111,21 @@ class PhysicsBasedPreconditioner
      *            A_ee = 1/dt and A_pe = -dt*p/rho^2*L(dp)
      *            bis: A_dd = 1/dt and A_pd = -dt*L(dp)
      *
-     * @param[in]  preconditioned_delta_pressure - 3D view of pressure delta calculated in the preconditioner pressure solve.
-     * @param[in]  dp_rhs_press - 3D view of the pressure array set by setPressureRHS.
-     * @param[out] delta_energy - 3D View of the energy delta to be calculated.
+     * @param[in]  solution_pressure - The solution pressure for the current cell range.
+     * @param[in]  solution_rho - The solution density for the current cell range.
+     * @param[in]  preconditioned_delta_pressure - Pressure delta for the current cell range calculated in the preconditioner pressure solve.
+     * @param[in]  rhs_pressure - The pressure array for the current cell range set by setPressureRHS.
+     * @param[in]  squared_sound_speed - The squared sound speeds for the current cell range.
+     * @param[in]  total_cells - The total number of cells to be calculated.
+     * @param[out] delta_energy - The energy delta to be calculated for the current cell range.
      */
-    void calculateEnergyDelta(const Array3D<double>& preconditioned_delta_pressure,
-                              const Array3D<double>& dp_rhs_press,
-                              Array3D<double>& delta_energy);
+    void calculateEnergyDeltaKernel(const double* solution_pressure,
+                                    const double* solution_rho,
+                                    const double* preconditioned_delta_pressure,
+                                    const double* rhs_pressure,
+                                    const double* squared_sound_speed,
+                                    const unsigned int& total_cells,
+                                    double* delta_energy);
 
     /// @brief Store of the solution
     PackedVariables m_solution;
