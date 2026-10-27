@@ -127,6 +127,23 @@ class PhysicsBasedPreconditioner
                                     const unsigned int& total_cells,
                                     double* delta_energy);
 
+    /**
+     * @brief Kernel for setting the RHS pressure
+     *
+     * @param[in]  solution_dPdrho - The solution density gradient for the current cell range.
+     * @param[in]  solution_dPdenergy - The solution energy gradient for the current cell range.
+     * @param[in]  delta_rho - The density delta for the current cell range.
+     * @param[in]  delta_energy - The energy delta for the current cell range.
+     * @param[in]  total_cells - The total number of cells to be calculated.
+     * @param[out] rhs_pressure - The RHS pressure delta to be set for the current cell range.
+     */
+    void setPressureRHSKernel(const double* solution_dPdrho,
+                              const double* solution_dPdenergy,
+                              const double* delta_rho,
+                              const double* delta_energy,
+                              const unsigned int& total_cells,
+                              double* rhs_pressure);
+
     /// @brief Store of the solution
     PackedVariables m_solution;
     /// @brief Store of the solution gradients

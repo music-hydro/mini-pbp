@@ -51,21 +51,31 @@ void PhysicsBasedPreconditioner::setPressureRHS(const Array3D<double>& delta_rho
     const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(m_n_dPdrho);
     const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(m_n_dPdenergy);
 
-    // Arrays are column major, so loop with i innermost for unit stride access
     Slab rhs_pressure_slab = rhs_pressure.cellSlab();
-    for (int k = rhs_pressure_slab.start(2); k < rhs_pressure_slab.end(2); k++)
-    {
-        for (int j = rhs_pressure_slab.start(1); j < rhs_pressure_slab.end(1); j++)
-        {
-            for (int i = rhs_pressure_slab.start(0); i < rhs_pressure_slab.end(0); i++)
-            {
-                rhs_pressure(i, j, k) =
-                    -(solution_dPdrho(i, j, k) * delta_rho(i, j, k) + solution_dPdenergy(i, j, k) * delta_energy(i, j, k));
-            }
-        }
-    }
+    unsigned int i0        = rhs_pressure_slab.start(0);
+    unsigned int j0        = rhs_pressure_slab.start(1);
+    unsigned int k0        = rhs_pressure_slab.start(2);
+    setPressureRHSKernel(&solution_dPdrho(i0, j0, k0),
+                         &solution_dPdenergy(i0, j0, k0),
+                         &delta_rho(j0, j0, k0),
+                         &delta_energy(j0, j0, k0),
+                         rhs_pressure_slab.volume(),
+                         &rhs_pressure(j0, j0, k0));
 
     if (m_prec_nvar == 2) { delta_energy.deepCopy(rhs_energy, -1.0); }
+}
+
+void PhysicsBasedPreconditioner::setPressureRHSKernel(const double* solution_dPdrho,
+                                                      const double* solution_dPdenergy,
+                                                      const double* delta_rho,
+                                                      const double* delta_energy,
+                                                      const unsigned int& total_cells,
+                                                      double* rhs_pressure)
+{
+    for (unsigned int idx = 0; idx < total_cells; idx++)
+    {
+        rhs_pressure[idx] = -(solution_dPdrho[idx] * delta_rho[idx] + solution_dPdenergy[idx] * delta_energy[idx]);
+    }
 }
 
 void PhysicsBasedPreconditioner::reconstructEnergyDelta(const Array3D<double>& preconditioned_delta_pressure,
