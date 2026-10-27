@@ -50,4 +50,11 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerBenchmark, "PhysicsBasedPreconditione
         // clang-format off
     };
     // clang-format on
+
+    BENCHMARK("setPressureRHS")
+    {
+        return pbp->setPressureRHS(*delta_rho, *delta_energy, *rhs_pressure, *rhs_energy);
+        // clang-format off
+    };
+    // clang-format on
 }
