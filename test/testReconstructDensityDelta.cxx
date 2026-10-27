@@ -1,8 +1,5 @@
-#include "fixtures/PhysicsBasedPreconditionerBenchmark.cxx"
 #include "fixtures/PhysicsBasedPreconditionerTest.cxx"
 #include "PhysicsBasedPreconditioner.h"
-#include <catch2/benchmark/catch_benchmark.hpp>
-#include <catch2/benchmark/catch_chronometer.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <iostream>
@@ -137,14 +134,4 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::re
             }
         }
     }
-}
-
-TEST_CASE_METHOD(PhysicsBasedPreconditionerBenchmark, "PhysicsBasedPreconditioner::reconstructDensityDelta")
-{
-    BENCHMARK("simple")
-    {
-        return pbp->reconstructDensityDelta(*delta_pressure, *delta_energy, *delta_rho);
-        // clang-format off
-    };
-    // clang-format on
 }
