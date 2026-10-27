@@ -144,6 +144,23 @@ class PhysicsBasedPreconditioner
                               const unsigned int& total_cells,
                               double* rhs_pressure);
 
+    /**
+     * @brief Kernel for reconstructing the density delta for the next timestep after preconditioning.
+     *
+     * @param[in]  solution_dPdrho - The solution density gradient for the current cell range.
+     * @param[in]  solution_dPdenergy - The solution energy gradient for the current cell range.
+     * @param[in]  delta_pressure - The pressure delta for the current cell range.
+     * @param[in]  delta_energy - The energy delta for the current cell range.
+     * @param[in]  total_cells - The total number of cells to be calculated.
+     * @param[out] delta_rho - The density delta to be set for the current cell range.
+     */
+    void reconstructDensityDeltaKernel(const double* solution_dPdrho,
+                                       const double* solution_dPdenergy,
+                                       const double* delta_pressure,
+                                       const double* delta_energy,
+                                       const unsigned int& total_cells,
+                                       double* delta_rho);
+
     /// @brief Store of the solution
     PackedVariables m_solution;
     /// @brief Store of the solution gradients

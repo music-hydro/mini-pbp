@@ -124,16 +124,24 @@ void PhysicsBasedPreconditioner::reconstructDensityDelta(const Array3D<double>& 
     const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(m_n_dPdenergy);
 
     Slab delta_rho_slab = delta_rho.cellSlab();
-    for (int k = delta_rho_slab.start(2); k < delta_rho_slab.end(2); k++)
+    reconstructDensityDeltaKernel(solution_dPdrho.start(),
+                                  solution_dPdenergy.start(),
+                                  delta_pressure.start(),
+                                  delta_energy.start(),
+                                  delta_rho_slab.volume(),
+                                  delta_rho.start());
+}
+
+void PhysicsBasedPreconditioner::reconstructDensityDeltaKernel(const double* solution_dPdrho,
+                                                               const double* solution_dPdenergy,
+                                                               const double* delta_pressure,
+                                                               const double* delta_energy,
+                                                               const unsigned int& total_cells,
+                                                               double* delta_rho)
+{
+    for (unsigned int idx = 0; idx < total_cells; idx++)
     {
-        for (int j = delta_rho_slab.start(1); j < delta_rho_slab.end(1); j++)
-        {
-            for (int i = delta_rho_slab.start(0); i < delta_rho_slab.end(0); i++)
-            {
-                delta_rho(i, j, k) =
-                    (delta_pressure(i, j, k) - solution_dPdenergy(i, j, k) * delta_energy(i, j, k)) / solution_dPdrho(i, j, k);
-            }
-        }
+        delta_rho[idx] = (delta_pressure[idx] - solution_dPdenergy[idx] * delta_energy[idx]) / solution_dPdrho[idx];
     }
 }
 
