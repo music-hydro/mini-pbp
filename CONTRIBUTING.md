@@ -35,8 +35,17 @@ uv run prek run --all-files --color always --verbose
 
 ## Benchmarks
 
-Throughout the test suite we have written benchmarks for performance relevant
-functions. These can identified as the tests containing a `BENCHMARK` macro.
+We have written benchmarks for performance relevant functions. These can be
+found alongside the tests in files prefixed with `benchmark`. To compile and
+run the benchmarks, use the following command:
+
+```sh
+cmake -B build
+cmake --build build
+./build/test/mini_pbp_benchmarks
+```
+
+You can also set a different number of samples via `--benchmark-samples`
 
 ### Fixtures
 
