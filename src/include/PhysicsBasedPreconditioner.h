@@ -38,23 +38,18 @@ class PhysicsBasedPreconditioner
                         Array3D<double>& rhs_pressure,
                         Array3D<double>& rhs_energy);
 
-
     /**
-     * @brief Calculate the change in energy for the timestep next timestep.
-     *
-     * @details Energy equation, we do not consider heat conduction here
-     *            A_ee = 1/dt and A_pe = -dt*p/rho^2*L(dp)
-     *            bis: A_dd = 1/dt and A_pd = -dt*L(dp)
+     * @brief Reconstruct the energy delta for the next timestep after preconditioning.
      *
      * @param[in]  preconditioned_delta_pressure - 3D view of pressure delta calculated in the preconditioner pressure solve.
      * @param[in]  preconditioned_delta_energy - 3D view of energy delta calculated in the preconditioner pressure solve.
      * @param[in]  dp_rhs_press - 3D view of the pressure array set by setPressureRHS.
      * @param[out] delta_energy - 3D View of the energy delta to be calculated.
      */
-    void calculateEnergyDelta(const Array3D<double>& preconditioned_delta_pressure,
-                              const Array3D<double>& preconditioned_delta_energy,
-                              const Array3D<double>& dp_rhs_press,
-                              Array3D<double>& delta_energy);
+    void reconstructEnergyDelta(const Array3D<double>& preconditioned_delta_pressure,
+                                const Array3D<double>& preconditioned_delta_energy,
+                                const Array3D<double>& dp_rhs_press,
+                                Array3D<double>& delta_energy);
 
     /**
      * @brief getter for density index
@@ -96,6 +91,23 @@ class PhysicsBasedPreconditioner
      * @details For now this is set using some data from MUSIC (should be calculated instead)
      */
     void calculateSquaredSoundSpeed();
+
+    /**
+     * @brief Calculate the change in energy for the timestep next timestep.
+     *
+     * @details Energy equation, we do not consider heat conduction here
+     *            A_ee = 1/dt and A_pe = -dt*p/rho^2*L(dp)
+     *            bis: A_dd = 1/dt and A_pd = -dt*L(dp)
+     *
+     * @param[in]  preconditioned_delta_pressure - 3D view of pressure delta calculated in the preconditioner pressure solve.
+     * @param[in]  preconditioned_delta_energy - 3D view of energy delta calculated in the preconditioner pressure solve.
+     * @param[in]  dp_rhs_press - 3D view of the pressure array set by setPressureRHS.
+     * @param[out] delta_energy - 3D View of the energy delta to be calculated.
+     */
+    void calculateEnergyDelta(const Array3D<double>& preconditioned_delta_pressure,
+                              const Array3D<double>& preconditioned_delta_energy,
+                              const Array3D<double>& dp_rhs_press,
+                              Array3D<double>& delta_energy);
 
     /// @brief Store of the solution
     PackedVariables m_solution;
