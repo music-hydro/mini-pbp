@@ -91,7 +91,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::re
     int n_dPdrho    = pbp.n_dPdrho();
 
     // Read input data from file
-    FILE* inputs_file = fopen(TEST_DATA_DIR "/calculate_density_delta_roberts_dynamo_inputs.dat", "r");
+    FILE* inputs_file = fopen(TEST_DATA_DIR "/reconstruct_density_delta_roberts_dynamo_inputs.dat", "r");
     REQUIRE(inputs_file != nullptr);
     for (int i = 0; i < size; i++)
     {
@@ -106,7 +106,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::re
     fclose(inputs_file);
 
     // Read expected output from file
-    FILE* outputs_file = fopen(TEST_DATA_DIR "/calculate_density_delta_roberts_dynamo_expected_outputs.dat", "r");
+    FILE* outputs_file = fopen(TEST_DATA_DIR "/reconstruct_density_delta_roberts_dynamo_expected_outputs.dat", "r");
     REQUIRE(outputs_file != nullptr);
     for (int i = 0; i < size; i++)
     {
