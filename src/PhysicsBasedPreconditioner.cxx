@@ -73,10 +73,7 @@ void PhysicsBasedPreconditioner::reconstructEnergyDelta(const Array3D<double>& p
                                                         const Array3D<double>& dp_rhs_press,
                                                         Array3D<double>& delta_energy)
 {
-    if (m_prec_nvar == 1)
-    {
-        calculateEnergyDelta(preconditioned_delta_pressure, preconditioned_delta_energy, dp_rhs_press, delta_energy);
-    }
+    if (m_prec_nvar == 1) { calculateEnergyDelta(preconditioned_delta_pressure, dp_rhs_press, delta_energy); }
     else
     {
         preconditioned_delta_energy.deepCopy(delta_energy);
@@ -84,7 +81,6 @@ void PhysicsBasedPreconditioner::reconstructEnergyDelta(const Array3D<double>& p
 }
 
 void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double>& preconditioned_delta_pressure,
-                                                      const Array3D<double>& preconditioned_delta_energy,
                                                       const Array3D<double>& dp_rhs_press,
                                                       Array3D<double>& delta_energy)
 {
