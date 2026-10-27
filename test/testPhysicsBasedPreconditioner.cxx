@@ -6,12 +6,14 @@ TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner throws if solu
 {
     int n    = 2;
     int size = n * n * n;
-    std::vector<double> solution_raw(size);          // invalid
-    std::vector<double> solution_dPd_raw(size * 2);  // valid
+    std::vector<double> solution_raw(size);             // invalid
+    std::vector<double> solution_dPd_raw(size * 2);     // valid
+    std::vector<double> squared_sound_speed_raw(size);  // valid
     PackedVariables solution(solution_raw, n, n, n);
     PackedVariables solution_dPd(solution_dPd_raw, n, n, n);
+    Array3D<double> squared_sound_speed(&squared_sound_speed_raw[0], n, n, n);
 
-    REQUIRE_THROWS_WITH(PhysicsBasedPreconditioner(solution, solution_dPd),
+    REQUIRE_THROWS_WITH(PhysicsBasedPreconditioner(solution, solution_dPd, squared_sound_speed),
                         Catch::Matchers::ContainsSubstring("Solution should contain exactly 3 variables"));
 }
 
@@ -19,11 +21,13 @@ TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner throws if solu
 {
     int n    = 2;
     int size = n * n * n;
-    std::vector<double> solution_raw(size * 3);  // valid
-    std::vector<double> solution_dPd_raw(size);  // invalid
+    std::vector<double> solution_raw(size * 3);         // valid
+    std::vector<double> solution_dPd_raw(size);         // invalid
+    std::vector<double> squared_sound_speed_raw(size);  // valid
     PackedVariables solution(solution_raw, n, n, n);
     PackedVariables solution_dPd(solution_dPd_raw, n, n, n);
+    Array3D<double> squared_sound_speed(&squared_sound_speed_raw[0], n, n, n);
 
-    REQUIRE_THROWS_WITH(PhysicsBasedPreconditioner(solution, solution_dPd),
+    REQUIRE_THROWS_WITH(PhysicsBasedPreconditioner(solution, solution_dPd, squared_sound_speed),
                         Catch::Matchers::ContainsSubstring("Solution gradients should contain exactly 2 variables"));
 }
