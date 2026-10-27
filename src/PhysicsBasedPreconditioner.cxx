@@ -73,10 +73,7 @@ void PhysicsBasedPreconditioner::reconstructEnergyDelta(const Array3D<double>& p
                                                         const Array3D<double>& dp_rhs_press,
                                                         Array3D<double>& delta_energy)
 {
-    if (m_prec_nvar == 1)
-    {
-        calculateEnergyDelta(preconditioned_delta_pressure, preconditioned_delta_energy, dp_rhs_press, delta_energy);
-    }
+    if (m_prec_nvar == 1) { calculateEnergyDelta(preconditioned_delta_pressure, dp_rhs_press, delta_energy); }
     else
     {
         preconditioned_delta_energy.deepCopy(delta_energy);
@@ -84,7 +81,6 @@ void PhysicsBasedPreconditioner::reconstructEnergyDelta(const Array3D<double>& p
 }
 
 void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double>& preconditioned_delta_pressure,
-                                                      const Array3D<double>& preconditioned_delta_energy,
                                                       const Array3D<double>& dp_rhs_press,
                                                       Array3D<double>& delta_energy)
 {
@@ -102,6 +98,27 @@ void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double>& pre
                     (preconditioned_delta_pressure(i, j, k) / m_dt - dp_rhs_press(i, j, k)) / m_squared_sound_speed(i, j, k);
                 double rho = solution_rho(i, j, k);
                 delta_energy(i, j, k) += +m_dt * (solution_pressure(i, j, k) / (rho * rho)) * dt_LdP;
+            }
+        }
+    }
+}
+
+void PhysicsBasedPreconditioner::reconstructDensityDelta(const Array3D<double>& delta_pressure,
+                                                         const Array3D<double>& delta_energy,
+                                                         Array3D<double>& delta_rho)
+{
+    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(m_n_dPdrho);
+    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(m_n_dPdenergy);
+
+    Slab delta_rho_slab = delta_rho.cellSlab();
+    for (int k = delta_rho_slab.start(2); k < delta_rho_slab.end(2); k++)
+    {
+        for (int j = delta_rho_slab.start(1); j < delta_rho_slab.end(1); j++)
+        {
+            for (int i = delta_rho_slab.start(0); i < delta_rho_slab.end(0); i++)
+            {
+                delta_rho(i, j, k) =
+                    (delta_pressure(i, j, k) - solution_dPdenergy(i, j, k) * delta_energy(i, j, k)) / solution_dPdrho(i, j, k);
             }
         }
     }
