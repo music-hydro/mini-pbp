@@ -45,7 +45,11 @@ cmake --build build
 ./build/test/mini_pbp_benchmarks
 ```
 
-You can also set a different number of samples via `--benchmark-samples`
+You can also set a different number of samples via `--benchmark-samples` which
+should, in theory, lead to a more accurate performance measurement but will
+increase the execution time of the benchmarks. To understand more about
+benchmarking with Catch2, read
+[their documentation on authoring benchmarks](https://catch2-temp.readthedocs.io/en/latest/benchmarks.html).
 
 ### Test fixtures
 
