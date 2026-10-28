@@ -47,8 +47,12 @@ cmake --build build
 
 You can also set a different number of samples via `--benchmark-samples`
 
-### Fixtures
+### Test fixtures
 
-To reduce duplication and separate setup from the code to be benchmarked, we
-have defined fixture classes. These classes are stored in
-[fixtures](./test/fixtures/) dir.
+Test fixtures allow logic for setting up state within tests to be defined once
+and reused by multiple tests. For more information read the
+[Catch2 documentation on test fixtures](https://catch2-temp.readthedocs.io/en/latest/test-fixtures.html)
+
+Therefore, to reduce duplication and separate setup from the logic to be
+benchmarked, we have defined several fixture classes. These classes are stored
+in the `fixtures` dir.
