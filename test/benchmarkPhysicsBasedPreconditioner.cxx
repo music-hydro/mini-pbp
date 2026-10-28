@@ -8,22 +8,25 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerBenchmark, "PhysicsBasedPreconditione
 {
     BENCHMARK("reconstructDensityDelta")
     {
-        return pbp->reconstructDensityDelta(*delta_pressure, *delta_energy, *delta_rho);
+        REQUIRE_NOTHROW(pbp->reconstructDensityDelta(*delta_pressure, *delta_energy, *delta_rho));
+        return *delta_rho;
         // clang-format off
     };
     // clang-format on
 
     BENCHMARK("reconstructEnergyDelta")
     {
-        return pbp->reconstructEnergyDelta(
-            *preconditioned_delta_pressure, *preconditioned_delta_energy, *rhs_pressure, *delta_energy);
+        REQUIRE_NOTHROW(pbp->reconstructEnergyDelta(
+            *preconditioned_delta_pressure, *preconditioned_delta_energy, *rhs_pressure, *delta_energy));
+        return *delta_energy;
         // clang-format off
     };
     // clang-format on
 
     BENCHMARK("setPressureRHS")
     {
-        return pbp->setPressureRHS(*delta_rho, *delta_energy, *rhs_pressure, *rhs_energy);
+        REQUIRE_NOTHROW(pbp->setPressureRHS(*delta_rho, *delta_energy, *rhs_pressure, *rhs_energy));
+        return *rhs_energy;
         // clang-format off
     };
     // clang-format on
