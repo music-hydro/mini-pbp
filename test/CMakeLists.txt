@@ -37,4 +37,3 @@ add_test(NAME mini_pbp_unit_tests COMMAND mini_pbp_unit_tests)
 
 add_executable(mini_pbp_benchmarks ${BENCHMARK_FILES} ${HEADER_FILES} ${IMPLEMENTATION_FILES})
 target_link_libraries(mini_pbp_benchmarks PRIVATE Catch2::Catch2WithMain)
-add_test(NAME mini_pbp_benchmarks COMMAND mini_pbp_benchmarks)
