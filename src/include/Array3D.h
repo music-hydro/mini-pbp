@@ -76,6 +76,16 @@ class Array3D
     }
 
     /**
+     * @brief access operator to return a reference to the given element.
+     *
+     * @param idx - The index of the element to return in the 1D contiguous array.
+     *
+     * @return Reference to the element at the requested index
+     */
+    T& operator [](unsigned int idx) const
+    { return m_data_origin[idx]; }
+
+    /**
      * @brief Getter for the slab this array represents
      */
     Slab cellSlab() const

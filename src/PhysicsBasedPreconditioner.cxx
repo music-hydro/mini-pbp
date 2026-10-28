@@ -52,27 +52,11 @@ void PhysicsBasedPreconditioner::setPressureRHS(const Array3D<double>& delta_rho
     const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(m_n_dPdenergy);
 
     Slab rhs_pressure_slab = rhs_pressure.cellSlab();
-    setPressureRHSKernel(solution_dPdrho.start(),
-                         solution_dPdenergy.start(),
-                         delta_rho.start(),
-                         delta_energy.start(),
-                         rhs_pressure_slab.volume(),
-                         rhs_pressure.start());
-
-    if (m_prec_nvar == 2) { delta_energy.deepCopy(rhs_energy, -1.0); }
-}
-
-void PhysicsBasedPreconditioner::setPressureRHSKernel(const double* solution_dPdrho,
-                                                      const double* solution_dPdenergy,
-                                                      const double* delta_rho,
-                                                      const double* delta_energy,
-                                                      const unsigned int& total_cells,
-                                                      double* rhs_pressure)
-{
-    for (unsigned int idx = 0; idx < total_cells; idx++)
+    for (unsigned int idx = 0; idx < rhs_pressure_slab.volume(); idx++)
     {
         rhs_pressure[idx] = -(solution_dPdrho[idx] * delta_rho[idx] + solution_dPdenergy[idx] * delta_energy[idx]);
     }
+    if (m_prec_nvar == 2) { delta_energy.deepCopy(rhs_energy, -1.0); }
 }
 
 void PhysicsBasedPreconditioner::reconstructEnergyDelta(const Array3D<double>& preconditioned_delta_pressure,
