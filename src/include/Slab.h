@@ -33,8 +33,20 @@ class Slab
      *
      * @return The index begining the range for the given `dimension`
      */
-    const int start(const unsigned int dimension) const
+    int start(const unsigned int dimension) const
     { return m_start[dimension]; }
+
+    /**
+     * @brief Get the full start array for this slab.
+     */
+    std::array<int, 3> start() const
+    { return m_start; }
+
+    /**
+     * @brief Get the full end array for this slab.
+     */
+    std::array<int, 3> end() const
+    { return m_end; }
 
     /**
      * @brief Read only access to the end of the slabs range
@@ -43,7 +55,7 @@ class Slab
      *
      * @return The index begining the range for the given `dimension`
      */
-    const int end(const unsigned int dimension) const
+    int end(const unsigned int dimension) const
     { return m_end[dimension]; }
 
   private:

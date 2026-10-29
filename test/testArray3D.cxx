@@ -10,13 +10,71 @@ TEST_CASE("Array3D constructor errors for incorrectly sized inputs")
                         Catch::Matchers::ContainsSubstring("Size of data_1D is not equal to (ni * nj * nk)"));
 }
 
+TEST_CASE("Array3D::subArray errors for an invalid sub slab")
+{
+    unsigned int n = 3;
+    size_t size    = n * n * n;
+    std::vector<double> x_raw(size);
+    Array3D<double> x(n, n, n, x_raw);
+
+    Slab sub_slab({1, 1, 1}, {10, 10, 10});
+
+    REQUIRE_THROWS_WITH(x.subArray(sub_slab),
+                        Catch::Matchers::ContainsSubstring("The requested sub slab is not within the currently defined slab."));
+}
+
+TEST_CASE("Array3D::subArray preserves memory locations")
+{
+    unsigned int n = 5;
+    size_t size    = n * n * n;
+    std::vector<double> x_raw(size);
+    Array3D<double> x(n, n, n, x_raw);
+
+    Slab sub_slab({1, 1, 1}, {3, 3, 3});
+    Array3D<double> y = x.subArray(sub_slab);
+
+    for (int k = sub_slab.start(2); k < sub_slab.end(2); k++)
+    {
+        for (int j = sub_slab.start(1); j < sub_slab.end(1); j++)
+        {
+            for (int i = sub_slab.start(0); i < sub_slab.end(0); i++)
+            {
+                REQUIRE(y(i, j, k) == x(i, j, k));
+                REQUIRE(&y(i, j, k) == &x(i, j, k));
+            }
+        }
+    }
+}
+
+TEST_CASE("Array3D copy constructor preserves memory locations")
+{
+    unsigned int n = 3;
+    size_t size    = n * n * n;
+    std::vector<double> x_raw(size);
+    Array3D<double> x(n, n, n, x_raw);
+
+    Array3D<double> y(x);
+
+    for (unsigned int k = 0; k < n; k++)
+    {
+        for (unsigned int j = 0; j < n; j++)
+        {
+            for (unsigned int i = 0; i < n; i++)
+            {
+                REQUIRE(y(i, j, k) == x(i, j, k));
+                REQUIRE(&y(i, j, k) == &x(i, j, k));
+            }
+        }
+    }
+}
+
 TEST_CASE("Array3D(i,j,k) accesses contiguously")
 {
 
     // Define the problem starting from an arbitrary point along the array
-    int ni_full = 3, ni_view = 2;
-    int nj_full = 4, nj_view = 2;
-    int nk_full = 3, nk_view = 3;
+    int ni_full = 30, ni_view = 20;
+    int nj_full = 40, nj_view = 20;
+    int nk_full = 30, nk_view = 30;
     int starting_index = 2;
     int size           = ni_full * nj_full * nk_full;
 
@@ -83,7 +141,7 @@ TEST_CASE("Array3D.deepCopy() Makes a copy without reallocating")
     Array3D<double> x(n, n, n, &x_raw[0]);
     Array3D<double> y(n, n, n, &y_raw[0]);
 
-    for (int i = 0; i < size; i++)
+    for (unsigned int i = 0; i < size; i++)
     {
         x_raw[i] = 1;
         y_raw[i] = 2;
@@ -92,11 +150,11 @@ TEST_CASE("Array3D.deepCopy() Makes a copy without reallocating")
     x.deepCopy(y);
 
     int counter = 0;
-    for (int k = 0; k < n; k++)
+    for (unsigned int k = 0; k < n; k++)
     {
-        for (int j = 0; j < n; j++)
+        for (unsigned int j = 0; j < n; j++)
         {
-            for (int i = 0; i < n; i++)
+            for (unsigned int i = 0; i < n; i++)
             {
                 REQUIRE(y(i, j, k) == x(i, j, k));
                 REQUIRE(&y(i, j, k) == &y_raw[counter]);
