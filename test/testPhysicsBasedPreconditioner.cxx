@@ -13,7 +13,7 @@ TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner throws if solu
     std::vector<double> squared_sound_speed_raw(size);  // valid
     PackedVariables solution(solution_raw, n, n, n);
     PackedVariables solution_dPd(solution_dPd_raw, n, n, n);
-    Array3D<double> squared_sound_speed(&squared_sound_speed_raw[0], n, n, n);
+    Array3D<double> squared_sound_speed(n, n, n, squared_sound_speed_raw);
 
     REQUIRE_THROWS_WITH(PhysicsBasedPreconditioner(solution, solution_dPd, squared_sound_speed),
                         Catch::Matchers::ContainsSubstring("Solution should contain exactly 3 variables"));
@@ -28,7 +28,7 @@ TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner throws if solu
     std::vector<double> squared_sound_speed_raw(size);  // valid
     PackedVariables solution(solution_raw, n, n, n);
     PackedVariables solution_dPd(solution_dPd_raw, n, n, n);
-    Array3D<double> squared_sound_speed(&squared_sound_speed_raw[0], n, n, n);
+    Array3D<double> squared_sound_speed(n, n, n, squared_sound_speed_raw);
 
     REQUIRE_THROWS_WITH(PhysicsBasedPreconditioner(solution, solution_dPd, squared_sound_speed),
                         Catch::Matchers::ContainsSubstring("Solution gradients should contain exactly 2 variables"));

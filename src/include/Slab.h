@@ -14,8 +14,13 @@ class Slab
   public:
     /**
      * @brief Constructor
+     *
+     * @details start and end are signed ints to allow for custom bounds.
+     *
+     * @param start - Array of the starting indices for each axis
+     * @param end - Array of the starting indices for each axis
      */
-    Slab(const std::array<unsigned int, 3> start, const std::array<unsigned int, 3> end) :
+    Slab(const std::array<int, 3> start, const std::array<int, 3> end) :
         m_start(start),
         m_end(end)
     {
@@ -43,8 +48,8 @@ class Slab
 
   private:
     /// The ranges over which this slab defines
-    const std::array<unsigned int, 3> m_start;
-    const std::array<unsigned int, 3> m_end;
+    const std::array<int, 3> m_start;
+    const std::array<int, 3> m_end;
 };
 
 #endif  // Slab_H

@@ -1,5 +1,14 @@
 #include "Array3D.h"
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
+
+TEST_CASE("Array3D constructor errors for incorrectly sized inputs")
+{
+    unsigned int n = 3;
+    std::vector<double> x(3);
+    REQUIRE_THROWS_WITH(Array3D(n, n, n, x),
+                        Catch::Matchers::ContainsSubstring("Size of data_1D is not equal to (ni * nj * nk)"));
+}
 
 TEST_CASE("Array3D(i,j,k) accesses contiguously")
 {
@@ -19,7 +28,7 @@ TEST_CASE("Array3D(i,j,k) accesses contiguously")
         input_1d_pointer[i] = (double)i;
 
     // Create an Array3D instance wrapping the 1D array
-    Array3D<double> my_array(&input_1d_pointer[0] + starting_index, ni_view, nj_view, nk_view);
+    Array3D<double> my_array(ni_view, nj_view, nk_view, &input_1d_pointer[0] + starting_index);
 
     // Verify that looping through row-major i,j,k remains contiguous.
     for (int k = 0; k < nk_view; k++)
@@ -52,7 +61,7 @@ TEST_CASE("Array3D.cellSlab() returns correct range")
 
     // Create an Array3D instance wrapping the 1D array
     int starting_index = 2;
-    Array3D<double> my_array(&input_1d_pointer[0] + starting_index, n_view[0], n_view[1], n_view[2]);
+    Array3D<double> my_array(n_view[0], n_view[1], n_view[2], &input_1d_pointer[0] + starting_index);
 
     Slab my_slab = my_array.cellSlab();
 
@@ -71,8 +80,8 @@ TEST_CASE("Array3D.deepCopy() Makes a copy without reallocating")
     std::vector<double> x_raw(size);
     std::vector<double> y_raw(size);
 
-    Array3D<double> x(&x_raw[0], n, n, n);
-    Array3D<double> y(&y_raw[0], n, n, n);
+    Array3D<double> x(n, n, n, &x_raw[0]);
+    Array3D<double> y(n, n, n, &y_raw[0]);
 
     for (int i = 0; i < size; i++)
     {

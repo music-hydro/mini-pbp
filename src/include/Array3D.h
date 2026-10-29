@@ -8,20 +8,43 @@
 #define Array3D_H
 
 #include "Slab.h"
+#include <memory>
+#include <stdexcept>
+#include <vector>
 
 template<typename T>
 class Array3D
 {
   public:
     /**
-     * @brief Constructs an Array3D from a pointer to a 1D array
+     * @brief Constructs an Array3D from array bounds alone.
      *
-     * @param data_1D - Pointer to the input 1D array.
-     * @param ni - The number of elements to be extracted in the first direction.
-     * @param nj - The number of elements to be extracted in the second direction.
-     * @param nk - The number of elements to be extracted in the third direction.
+     * @details the wrapped 1D data will be allocated by the constructor.
+     *
+     * @param[in] ni - The number of elements in the first direction.
+     * @param[in] nj - The number of elements in the second direction.
+     * @param[in] nk - The number of elements in the third direction.
      */
-    Array3D(T* const& data_1D, const unsigned int ni, const unsigned int nj, const unsigned int nk) :
+    Array3D(const unsigned int ni, const unsigned int nj, const unsigned int nk) :
+        m_data_origin(static_cast<T*>(std::malloc(sizeof(T) * static_cast<size_t>(ni) * nj * nk))),
+        m_ni(ni),
+        m_nj(nj),
+        m_nk(nk),
+        m_stride_i(1),
+        m_stride_j(ni),
+        m_stride_k(ni * nj)
+    {
+    }
+
+    /**
+     * @brief Constructs an Array3D from a pointer to a 1D array.
+     *
+     * @param[in] ni - The number of elements in the first direction.
+     * @param[in] nj - The number of elements in the second direction.
+     * @param[in] nk - The number of elements in the third direction.
+     * @param[in] data_1D - Pointer to the input 1D array.
+     */
+    Array3D(const unsigned int ni, const unsigned int nj, const unsigned int nk, double* const data_1D) :
         m_data_origin(data_1D),
         m_ni(ni),
         m_nj(nj),
@@ -30,6 +53,29 @@ class Array3D
         m_stride_j(ni),
         m_stride_k(ni * nj)
     {
+    }
+
+    /**
+     * @brief Constructs an Array3D from a 1D vector.
+     *
+     * @details The use of vector allows explicit bounds checking.
+     *
+     * @param[in] ni - The number of elements in the first direction.
+     * @param[in] nj - The number of elements in the second direction.
+     * @param[in] nk - The number of elements in the third direction.
+     * @param[in] data_1D - The 1D array vector to wrap.
+     */
+    Array3D(const unsigned int ni, const unsigned int nj, const unsigned int nk, std::vector<T>& data_1D) :
+        m_data_origin(&data_1D[0]),
+        m_ni(ni),
+        m_nj(nj),
+        m_nk(nk),
+        m_stride_i(1),
+        m_stride_j(ni),
+        m_stride_k(ni * nj)
+    {
+        size_t domain_size = ni * nj * nk;
+        if (data_1D.size() != domain_size) { throw std::invalid_argument("Size of data_1D is not equal to (ni * nj * nk)"); }
     }
 
     /**
@@ -69,7 +115,7 @@ class Array3D
      *
      * @return Reference to the element at the requested 3D coordinates
      */
-    T& operator ()(unsigned int i, unsigned int j, unsigned int k) const
+    virtual T& operator ()(unsigned int i, unsigned int j, unsigned int k) const
     {
         const unsigned int offset = (i * m_stride_i) + (j * m_stride_j) + (k * m_stride_k);
         return m_data_origin[offset];
@@ -78,9 +124,9 @@ class Array3D
     /**
      * @brief Getter for the slab this array represents
      */
-    Slab cellSlab() const
+    virtual Slab cellSlab() const
     {
-        Slab slab({0, 0, 0}, {m_ni, m_nj, m_nk});
+        Slab slab({0, 0, 0}, {(int)m_ni, (int)m_nj, (int)m_nk});
         return slab;
     }
 
@@ -128,7 +174,7 @@ class Array3D
         }
     }
 
-  private:
+  protected:
     T* const m_data_origin;        /**< @brief Pointer to array memory origin */
     const unsigned int m_ni;       /**< @brief Dimension length the first dimension */
     const unsigned int m_nj;       /**< @brief Dimension length the second dimension */

@@ -30,6 +30,6 @@ Array3D<double> PackedVariables::singleVariableView(const unsigned int variable_
     }
 
     unsigned int offset = m_ni * m_nj * m_nk * variable_index;
-    Array3D<double> variable_view(m_packed_array + offset, m_ni, m_nj, m_nk);
+    Array3D<double> variable_view(m_ni, m_nj, m_nk, m_packed_array + offset);
     return variable_view;
 }
