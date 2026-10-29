@@ -28,11 +28,11 @@ TEST_CASE("Array3DWithGhosts(i,j,k) accesses contiguously")
     int in    = slab.end(0);
     int jn    = slab.end(1);
     int kn    = slab.end(2);
-    for (unsigned int k = k0 + 1; k < kn - 1; k++)
+    for (unsigned int k = k0 + 2; k < kn - 2; k++)
     {
-        for (unsigned int j = j0 + 1; j < jn - 1; j++)
+        for (unsigned int j = j0 + 2; j < jn - 2; j++)
         {
-            for (unsigned int i = i0 + 1; i < in - 1; i++)
+            for (unsigned int i = i0 + 2; i < in - 2; i++)
             {
                 REQUIRE(my_array(i, j, k) == input_1d_pointer[starting_index]);
                 REQUIRE(&my_array(i, j, k) == &input_1d_pointer[starting_index]);
@@ -41,44 +41,53 @@ TEST_CASE("Array3DWithGhosts(i,j,k) accesses contiguously")
         }
     }
 
-    // Verify that ghost cells are contiguous across each plane
+    // Verify that ghost and edge cells are contiguous across each plane
     // axis i
-    double* current_left  = &my_array(i0, j0 + 1, k0 + 1);
-    double* current_right = &my_array(in, j0 + 1, k0 + 1);
-    for (unsigned int k = k0 + 1; k < kn - 1; k++)
+    double* current_left  = &my_array(i0, j0 + 2, k0 + 2);
+    double* current_right = &my_array(in, j0 + 2, k0 + 2);
+    for (int i_offset = 0; i_offset < 2; i_offset++)
     {
-        for (unsigned int j = j0 + 1; j < jn - 1; j++)
+        for (int k = k0 + 2; k < kn - 2; k++)
         {
-            REQUIRE(&my_array(i0, j, k) == current_left);
-            REQUIRE(&my_array(in, j, k) == current_right);
-            current_left++;
-            current_right++;
+            for (int j = j0 + 2; j < jn - 2; j++)
+            {
+                REQUIRE(&my_array(i0 + i_offset, j, k) == current_left);
+                REQUIRE(&my_array(in - i_offset, j, k) == current_right);
+                current_left++;
+                current_right++;
+            }
         }
     }
     // axis j
-    current_left  = &my_array(i0 + 1, j0, k0 + 1);
-    current_right = &my_array(i0 + 1, jn, k0 + 1);
-    for (unsigned int k = k0 + 1; k < kn - 1; k++)
+    current_left  = &my_array(i0 + 2, j0, k0 + 2);
+    current_right = &my_array(i0 + 2, jn, k0 + 2);
+    for (int j_offset = 0; j_offset < 2; j_offset++)
     {
-        for (unsigned int i = i0 + 1; i < in - 1; i++)
+        for (unsigned int k = k0 + 2; k < kn - 2; k++)
         {
-            REQUIRE(&my_array(i, j0, k) == current_left);
-            REQUIRE(&my_array(i, jn, k) == current_right);
-            current_left++;
-            current_right++;
+            for (unsigned int i = i0 + 2; i < in - 2; i++)
+            {
+                REQUIRE(&my_array(i, j0 + j_offset, k) == current_left);
+                REQUIRE(&my_array(i, jn - j_offset, k) == current_right);
+                current_left++;
+                current_right++;
+            }
         }
     }
     // axis k
-    current_left  = &my_array(i0 + 1, j0 + 1, k0);
-    current_right = &my_array(i0 + 1, j0 + 1, kn);
-    for (unsigned int j = j0 + 1; j < jn - 1; j++)
+    current_left  = &my_array(i0 + 2, j0 + 2, k0);
+    current_right = &my_array(i0 + 2, j0 + 2, kn);
+    for (int k_offset = 0; k_offset < 2; k_offset++)
     {
-        for (unsigned int i = i0 + 1; i < in - 1; i++)
+        for (unsigned int j = j0 + 2; j < jn - 2; j++)
         {
-            REQUIRE(&my_array(i, j, k0) == current_left);
-            REQUIRE(&my_array(i, j, kn) == current_right);
-            current_left++;
-            current_right++;
+            for (unsigned int i = i0 + 2; i < in - 2; i++)
+            {
+                REQUIRE(&my_array(i, j, k0 + k_offset) == current_left);
+                REQUIRE(&my_array(i, j, kn - k_offset) == current_right);
+                current_left++;
+                current_right++;
+            }
         }
     }
 }

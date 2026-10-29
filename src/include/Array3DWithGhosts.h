@@ -11,10 +11,12 @@
 #include <array>
 #include <memory>
 
-enum Side
+enum GhostPlane
 {
-    LEFT,
-    RIGHT
+    LEFT_GHOST,
+    LEFT_SLAB,
+    RIGHT_GHOST,
+    RIGHT_SLAB
 };
 
 template<typename T>
@@ -34,9 +36,16 @@ class Array3DWithGhosts : public Array3D<T>
     Array3DWithGhosts(const unsigned int ni, const unsigned int nj, const unsigned int nk, T* const& data_1D) :
         Array3D<T>(ni, nj, nk, data_1D)
     {
-        m_ghosts[0] = std::make_unique<Array3D<T>>(nj, nk, 2);
-        m_ghosts[1] = std::make_unique<Array3D<T>>(ni, nk, 2);
-        m_ghosts[2] = std::make_unique<Array3D<T>>(ni, nj, 2);
+        for (int axis = 0; axis < 3; axis++)
+        {
+            switch (axis)
+            {
+                case 0: m_ghosts[axis] = std::make_unique<Array3D<T>>(nj, nk, 4);
+                case 1: m_ghosts[axis] = std::make_unique<Array3D<T>>(ni, nk, 4);
+                case 2: m_ghosts[axis] = std::make_unique<Array3D<T>>(ni, nj, 4);
+            }
+            m_ghosts[axis]->fill(0);
+        }
     }
 
     // See parent class for docstring
@@ -48,19 +57,23 @@ class Array3DWithGhosts : public Array3D<T>
 
         for (unsigned int axis = 0; axis < 3; ++axis)
         {
-            Side side;
+            GhostPlane plane;
             if (indices[axis] == slab.start(axis))
-                side = LEFT;
-            else if (indices[axis] == slab.end(axis))
-                side = RIGHT;
+                plane = LEFT_GHOST;
+            else if (indices[axis] == slab.start(axis) + 1)
+                plane = LEFT_SLAB;
+            else if (indices[axis] >= slab.end(axis))
+                plane = RIGHT_GHOST;
+            else if (indices[axis] >= slab.end(axis) - 1)
+                plane = RIGHT_SLAB;
             else
                 continue;
 
             switch (axis)
             {
-                case 0: return (*m_ghosts[0])(j, k, side);
-                case 1: return (*m_ghosts[1])(i, k, side);
-                case 2: return (*m_ghosts[2])(i, j, side);
+                case 0: return (*m_ghosts[0])(j, k, plane);
+                case 1: return (*m_ghosts[1])(i, k, plane);
+                case 2: return (*m_ghosts[2])(i, j, plane);
             }
         }
 
@@ -85,7 +98,7 @@ class Array3DWithGhosts : public Array3D<T>
     { new_ghost_values.deepCopy((*m_ghosts)[axis]); }
 
   private:
-    /** @brief The ghost cells  */
+    /** @brief The ghost cells, including the cells on the edge of the domain owned by this array  */
     std::array<std::unique_ptr<Array3D<T>>, 3> m_ghosts;
 };
 
