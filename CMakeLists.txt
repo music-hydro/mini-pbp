@@ -16,6 +16,7 @@ set(HEADER_FILES
     "${INCLUDE_DIRS}/Array3D.h"
     "${INCLUDE_DIRS}/Array2D.h"
     "${INCLUDE_DIRS}/Array3DWithGhosts.h"
+    "${INCLUDE_DIRS}/GhostExchangePlan.h"
     "${INCLUDE_DIRS}/PackedVariables.h"
     "${INCLUDE_DIRS}/Slab.h"
     "${INCLUDE_DIRS}/PhysicsBasedPreconditioner.h"
