@@ -40,35 +40,39 @@ class Array3DWithGhostsTest
         my_array_with_ghosts = std::make_shared<Array3DWithGhosts<double>>(ni, nj, nk, *my_array);
         for (int axis = 0; axis < 3; axis++)
         {
-            std::shared_ptr<Array3D<double>> new_edge  = nullptr;
-            std::shared_ptr<Array3D<double>> new_ghost = nullptr;
-            switch (axis)
+            for (int side = Side::LEFT; side < Side::RIGHT; side++)
             {
-                case 0:
-                {
-                    new_ghost = std::make_shared<Array3D<double>>(nj, nk, 2);
-                    new_edge  = std::make_shared<Array3D<double>>(nj, nk, 2);
-                    break;
-                }
-                case 1:
-                {
-                    new_ghost = std::make_shared<Array3D<double>>(ni - 1, nk, 2);
-                    new_edge  = std::make_shared<Array3D<double>>(ni - 1, nk, 2);
-                    break;
-                }
-                case 2:
-                {
-                    new_ghost = std::make_shared<Array3D<double>>(nj - 1, nk - 1, 2);
-                    new_edge  = std::make_shared<Array3D<double>>(nj - 1, nk - 1, 2);
-                    break;
-                }
-            }
 
-            // Fill with -1.0 to help highlight unset values in tests.
-            new_ghost->fill(-1.0);
-            new_edge->fill(-1.0);
-            my_array_with_ghosts->setGhostCells(axis, *new_ghost);
-            my_array_with_ghosts->setEdgeCells(axis, *new_edge);
+                std::shared_ptr<Array2D<double>> new_ghost = nullptr;
+                std::shared_ptr<Array2D<double>> new_edge  = nullptr;
+                switch (axis)
+                {
+                    case 0:
+                    {
+                        new_ghost = std::make_shared<Array2D<double>>(nj, nk);
+                        new_edge  = std::make_shared<Array2D<double>>(nj, nk);
+                        break;
+                    }
+                    case 1:
+                    {
+                        new_ghost = std::make_shared<Array2D<double>>(ni - 1, nk);
+                        new_edge  = std::make_shared<Array2D<double>>(ni - 1, nk);
+                        break;
+                    }
+                    case 2:
+                    {
+                        new_ghost = std::make_shared<Array2D<double>>(nj - 1, nk - 1);
+                        new_edge  = std::make_shared<Array2D<double>>(nj - 1, nk - 1);
+                        break;
+                    }
+                }
+
+                // Fill with -1.0 to help highlight unset values in tests.
+                new_ghost->fill(-1.0);
+                new_edge->fill(-1.0);
+                my_array_with_ghosts->setGhostCells(axis, (Side)side, *new_ghost);
+                my_array_with_ghosts->setEdgeCells(axis, (Side)side, *new_edge);
+            }
         }
     }
 };
