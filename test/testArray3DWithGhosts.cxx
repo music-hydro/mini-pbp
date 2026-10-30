@@ -1,27 +1,11 @@
 #include "Array3DWithGhosts.h"
+#include "fixtures/Array3DWithGhostsTest.cxx"
 #include <catch2/catch_test_macros.hpp>
 
-TEST_CASE("Array3DWithGhosts(i,j,k) accesses contiguously")
+TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts(i,j,k) accesses contiguously")
 {
-    // Define the problem starting from an arbitrary point along the array
-    unsigned int ni_full = 3, ni_view = 2;
-    unsigned int nj_full = 4, nj_view = 2;
-    unsigned int nk_full = 3, nk_view = 3;
-    unsigned int starting_index = 2;
-    size_t size                 = ni_full * nj_full * nk_full;
-
-    // Allocate a 1D array equal to the size of a 3D array
-    std::vector<double> input_1d_pointer(size);
-
-    // Populate the 1D array with an incrementing contiguous counter
-    for (int i = 0; i < size; i++)
-        input_1d_pointer[i] = (double)i;
-
-    // Create an Array3D instance wrapping the 1D array
-    Array3DWithGhosts<double> my_array(ni_view, nj_view, nk_view, &input_1d_pointer[0] + starting_index);
-
-    // Verify that looping through row-major i,j,k remains contiguous for inner cells
-    Slab slab = my_array.cellSlab();
+    // Verify that the inner cells match the values from the input Array3D
+    Slab slab = this->my_array_with_ghosts->cellSlab();
     int i0    = slab.start(0);
     int j0    = slab.start(1);
     int k0    = slab.start(2);
@@ -34,60 +18,144 @@ TEST_CASE("Array3DWithGhosts(i,j,k) accesses contiguously")
         {
             for (unsigned int i = i0 + 2; i < in - 2; i++)
             {
-                REQUIRE(my_array(i, j, k) == input_1d_pointer[starting_index]);
-                REQUIRE(&my_array(i, j, k) == &input_1d_pointer[starting_index]);
-                starting_index++;
+                REQUIRE((*my_array_with_ghosts)(i, j, k) == (*my_array)(i, j, k));
+                REQUIRE(&(*my_array_with_ghosts)(i, j, k) == &(*my_array)(i, j, k));
             }
         }
     }
 
     // Verify that ghost and edge cells are contiguous across each plane
     // axis i
-    double* current_left  = &my_array(i0, j0 + 2, k0 + 2);
-    double* current_right = &my_array(in, j0 + 2, k0 + 2);
-    for (int i_offset = 0; i_offset < 2; i_offset++)
+    double* current_ghost_left  = &(*my_array_with_ghosts)(i0 - 1, j0, k0);
+    double* current_ghost_right = &(*my_array_with_ghosts)(in + 1, j0, k0);
+    double* current_edge_left   = &(*my_array_with_ghosts)(i0, j0, k0);
+    double* current_edge_right  = &(*my_array_with_ghosts)(in, j0, k0);
+    for (int k = k0; k < kn; k++)
     {
-        for (int k = k0 + 2; k < kn - 2; k++)
+        for (int j = j0; j < jn; j++)
         {
-            for (int j = j0 + 2; j < jn - 2; j++)
-            {
-                REQUIRE(&my_array(i0 + i_offset, j, k) == current_left);
-                REQUIRE(&my_array(in - i_offset, j, k) == current_right);
-                current_left++;
-                current_right++;
-            }
+            REQUIRE(&(*my_array_with_ghosts)(i0 - 1, j, k) == current_ghost_left);
+            REQUIRE(&(*my_array_with_ghosts)(in + 1, j, k) == current_ghost_right);
+            REQUIRE(&(*my_array_with_ghosts)(i0, j, k) == current_edge_left);
+            REQUIRE(&(*my_array_with_ghosts)(in, j, k) == current_edge_right);
+
+            current_ghost_left++;
+            current_ghost_right++;
+            current_edge_left++;
+            current_edge_right++;
         }
     }
     // axis j
-    current_left  = &my_array(i0 + 2, j0, k0 + 2);
-    current_right = &my_array(i0 + 2, jn, k0 + 2);
-    for (int j_offset = 0; j_offset < 2; j_offset++)
+    for (unsigned int k = k0; k < kn; k++)
     {
-        for (unsigned int k = k0 + 2; k < kn - 2; k++)
+        current_ghost_left  = &(*my_array_with_ghosts)(i0 + 1, j0 - 1, k);
+        current_ghost_right = &(*my_array_with_ghosts)(i0 + 1, jn + 1, k);
+        current_edge_left   = &(*my_array_with_ghosts)(i0 + 1, j0, k);
+        current_edge_right  = &(*my_array_with_ghosts)(i0 + 1, jn, k);
+
+        for (unsigned int i = i0 + 1; i < in; i++)
         {
-            for (unsigned int i = i0 + 2; i < in - 2; i++)
-            {
-                REQUIRE(&my_array(i, j0 + j_offset, k) == current_left);
-                REQUIRE(&my_array(i, jn - j_offset, k) == current_right);
-                current_left++;
-                current_right++;
-            }
+            REQUIRE(&(*my_array_with_ghosts)(i, j0 - 1, k) == current_ghost_left);
+            REQUIRE(&(*my_array_with_ghosts)(i, jn + 1, k) == current_ghost_right);
+            REQUIRE(&(*my_array_with_ghosts)(i, j0, k) == current_edge_left);
+            REQUIRE(&(*my_array_with_ghosts)(i, jn, k) == current_edge_right);
+
+            current_ghost_left++;
+            current_ghost_right++;
+            current_edge_left++;
+            current_edge_right++;
         }
     }
     // axis k
-    current_left  = &my_array(i0 + 2, j0 + 2, k0);
-    current_right = &my_array(i0 + 2, j0 + 2, kn);
-    for (int k_offset = 0; k_offset < 2; k_offset++)
+    current_ghost_left  = &(*my_array_with_ghosts)(i0, j0, k0 - 1);
+    current_ghost_right = &(*my_array_with_ghosts)(i0, j0, kn + 1);
+    current_edge_left   = &(*my_array_with_ghosts)(i0, j0, k0);
+    current_edge_right  = &(*my_array_with_ghosts)(i0, j0, kn);
+    for (unsigned int j = j0 + 1; j < jn; j++)
     {
-        for (unsigned int j = j0 + 2; j < jn - 2; j++)
+        current_ghost_left  = &(*my_array_with_ghosts)(i0 + 1, j, k0 - 1);
+        current_ghost_right = &(*my_array_with_ghosts)(i0 + 1, j, kn + 1);
+        current_edge_left   = &(*my_array_with_ghosts)(i0 + 1, j, k0);
+        current_edge_right  = &(*my_array_with_ghosts)(i0 + 1, j, kn);
+
+        for (unsigned int i = i0 + 1; i < in; i++)
         {
-            for (unsigned int i = i0 + 2; i < in - 2; i++)
-            {
-                REQUIRE(&my_array(i, j, k0 + k_offset) == current_left);
-                REQUIRE(&my_array(i, j, kn - k_offset) == current_right);
-                current_left++;
-                current_right++;
-            }
+            REQUIRE(&(*my_array_with_ghosts)(i, j, k0 - 1) == current_ghost_left);
+            REQUIRE(&(*my_array_with_ghosts)(i, j, kn + 1) == current_ghost_right);
+            REQUIRE(&(*my_array_with_ghosts)(i, j, k0) == current_edge_left);
+            REQUIRE(&(*my_array_with_ghosts)(i, j, kn) == current_edge_right);
+
+            current_ghost_left++;
+            current_ghost_right++;
+            current_edge_left++;
+            current_edge_right++;
+        }
+    }
+}
+
+TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::updateEdges populates edges correctly")
+{
+    // Verify edges do not contain the expected values
+    // axis i
+    Slab slab = my_array_with_ghosts->cellSlab();
+    int i0 = slab.start(0), j0 = slab.start(1), k0 = slab.start(2);
+    int in = slab.end(0), jn = slab.end(1), kn = slab.end(2);
+    for (unsigned int k = k0; k < kn; k++)
+    {
+        for (unsigned int j = j0; j < jn; j++)
+        {
+            REQUIRE((*my_array_with_ghosts)(i0, j, k) != (*my_array)(i0, j, k));
+            REQUIRE((*my_array_with_ghosts)(in, j, k) != (*my_array)(in - 1, j, k));
+        }
+    }
+    // axis j
+    for (unsigned int k = k0; k < kn; k++)
+    {
+        for (unsigned int i = i0; i < in; i++)
+        {
+            REQUIRE((*my_array_with_ghosts)(i, j0, k) != (*my_array)(i, j0, k));
+            REQUIRE((*my_array_with_ghosts)(i, jn, k) != (*my_array)(i, jn - 1, k));
+        }
+    }
+    // axis k
+    for (unsigned int j = j0; j < jn; j++)
+    {
+        for (unsigned int i = i0; i < in; i++)
+        {
+            REQUIRE((*my_array_with_ghosts)(i, j, k0) != (*my_array)(i, j, k0));
+            REQUIRE((*my_array_with_ghosts)(i, j, kn) != (*my_array)(i, j, kn - 1));
+        }
+    }
+
+    // Update edges
+    my_array_with_ghosts->updateEdges();
+
+    // Verify edges contain the expected values
+    // axis i
+    for (unsigned int k = k0; k < kn; k++)
+    {
+        for (unsigned int j = j0; j < jn; j++)
+        {
+            REQUIRE((*my_array_with_ghosts)(i0, j, k) == (*my_array)(i0, j, k));
+            REQUIRE((*my_array_with_ghosts)(in - 1, j, k) == (*my_array)(in - 1, j, k));
+        }
+    }
+    // axis j
+    for (unsigned int k = k0; k < kn; k++)
+    {
+        for (unsigned int i = i0; i < in; i++)
+        {
+            REQUIRE((*my_array_with_ghosts)(i, j0, k) == (*my_array)(i, j0, k));
+            REQUIRE((*my_array_with_ghosts)(i, jn - 1, k) == (*my_array)(i, jn - 1, k));
+        }
+    }
+    // axis k
+    for (unsigned int j = j0; j < jn; j++)
+    {
+        for (unsigned int i = i0; i < in; i++)
+        {
+            REQUIRE((*my_array_with_ghosts)(i, j, k0) == (*my_array)(i, j, k0));
+            REQUIRE((*my_array_with_ghosts)(i, j, kn - 1) == (*my_array)(i, j, kn - 1));
         }
     }
 }

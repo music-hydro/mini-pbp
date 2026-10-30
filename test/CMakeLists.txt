@@ -13,6 +13,7 @@ set(PROJ_TEST_DIR "${PROJECT_SOURCE_DIR}/test")
 
 set(TEST_FILES
     "${PROJ_TEST_DIR}/fixtures/PhysicsBasedPreconditionerTest.cxx"
+    "${PROJ_TEST_DIR}/fixtures/Array3DWithGhostsTest.cxx"
     "${PROJ_TEST_DIR}/testArray3D.cxx"
     "${PROJ_TEST_DIR}/testArray3DWithGhosts.cxx"
     "${PROJ_TEST_DIR}/testPackedVariables.cxx"
