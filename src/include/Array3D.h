@@ -73,32 +73,6 @@ class Array3D
     }
 
     /**
-     * @brief Constructs an Array3D from a pointer to a 1D array
-     *
-     * @param data_1D - Pointer to the input 1D array.
-     * @param ni - The number of elements to be extracted in the first direction.
-     * @param nj - The number of elements to be extracted in the second direction.
-     * @param nk - The number of elements to be extracted in the third direction.
-     * @param[in] stride_i Stride along the first direction.
-     * @param[in] stride_j Stride along the second direction.
-     * @param[in] stride_k Stride along the third direction.
-     */
-    Array3D(T* const& data_1D,
-            const unsigned int ni,
-            const unsigned int nj,
-            const unsigned int nk,
-            const unsigned int stride_i,
-            const unsigned int stride_j,
-            const unsigned int stride_k) :
-        m_data_origin(data_1D),
-        m_stride_i(stride_i),
-        m_stride_j(stride_j),
-        m_stride_k(stride_k),
-        m_slab({0, 0, 0}, {(int)ni, (int)nj, (int)nk})
-    {
-    }
-
-    /**
      * @brief Sub slab constructor
      *
      * @details Returns a copy of a sub slab of the parent's slab. This is a
