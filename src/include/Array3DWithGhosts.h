@@ -9,6 +9,7 @@
 
 #include "Array2D.h"
 #include "Array3D.h"
+#include "GhostExchangePlan.h"
 #include <array>
 
 enum Side
@@ -24,29 +25,31 @@ class Array3DWithGhosts : public Array3D<T>
 
   public:
     /**
-     * @brief Constructs an Array3DWithGhosts from a parent Array3D.
+     * @brief Constructs an Array3DWithGhosts from a GhostExchangePlan.
      *
-     * @details Pre-allocates ghost cell arrays bases on the given bounds.
+     * @details Pre-allocates ghost cell arrays bases on the bounds set within
+     *          the plan.
      *
-     * @param ni - The number of elements to be extracted in the first direction.
-     * @param nj - The number of elements to be extracted in the second direction.
-     * @param nk - The number of elements to be extracted in the third direction.
-     * @param parent - The parent Array3D without ghosts.
+     * @param plan - The plan defining how ghost cells should be exchanged.
      */
-    Array3DWithGhosts(const int& ni, const int& nj, const int& nk, Array3D<T>& parent) :
-        Array3D<T>(parent),
-        m_ghosts({Array2D<T>(nj, nk),
-                  Array2D<T>(nj, nk),
-                  Array2D<T>(ni, nk),
-                  Array2D<T>(ni, nk),
-                  Array2D<T>(ni, nj),
-                  Array2D<T>(ni, nj)}),
-        m_edges({Array2D<T>(nj, nk),
-                 Array2D<T>(nj, nk),
-                 Array2D<T>(ni, nk),
-                 Array2D<T>(ni, nk),
-                 Array2D<T>(ni, nj),
-                 Array2D<T>(ni, nj)})
+    Array3DWithGhosts(GhostExchangePlan<T>& plan) :
+        Array3D<T>(plan.array()),
+        m_plan(plan),
+        m_ni(this->m_slab.extent(0)),
+        m_nj(this->m_slab.extent(1)),
+        m_nk(this->m_slab.extent(2)),
+        m_ghosts({Array2D<T>(m_nj, m_nk),
+                  Array2D<T>(m_nj, m_nk),
+                  Array2D<T>(m_ni, m_nk),
+                  Array2D<T>(m_ni, m_nk),
+                  Array2D<T>(m_ni, m_nj),
+                  Array2D<T>(m_ni, m_nj)}),
+        m_edges({Array2D<T>(m_nj, m_nk),
+                 Array2D<T>(m_nj, m_nk),
+                 Array2D<T>(m_ni, m_nk),
+                 Array2D<T>(m_ni, m_nk),
+                 Array2D<T>(m_ni, m_nj),
+                 Array2D<T>(m_ni, m_nj)})
     {
     }
 
@@ -157,6 +160,10 @@ class Array3DWithGhosts : public Array3D<T>
     void setEdgeCells(unsigned int const axis, Side side, Array2D<T> new_edge_values)
     { new_edge_values.deepCopy(m_edges[axis * 2 + side]); }
 
+    GhostExchangePlan<T> m_plan;
+    unsigned int m_ni;
+    unsigned int m_nj;
+    unsigned int m_nk;
     /// @brief The ghost cells and cells on the edge of the domain owned by this array.
     std::array<Array2D<T>, 6> m_ghosts;
     /// @brief The cells on the edge of the domain owned by this array.

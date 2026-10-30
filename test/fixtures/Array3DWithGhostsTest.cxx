@@ -8,6 +8,7 @@
 #include "Array3D.h"
 
 #include "Array3DWithGhosts.h"
+#include "GhostExchangePlan.h"
 #include <memory>
 #include <vector>
 
@@ -16,6 +17,7 @@ class Array3DWithGhostsTest
   protected:
     std::shared_ptr<std::vector<double>> input_1d;
     std::shared_ptr<Array3D<double>> my_array;
+    std::shared_ptr<GhostExchangePlan<double>> my_plan;
     std::shared_ptr<Array3DWithGhosts<double>> my_array_with_ghosts;
 
     /// @brief Default constructor
@@ -35,9 +37,12 @@ class Array3DWithGhostsTest
             (*input_1d)[i] = (double)i;
 
         my_array = std::make_shared<Array3D<double>>(ni, nj, nk, *input_1d);
+        std::array<BoundaryConditions, 6> bcs;
+        std::array<unsigned int, 6> neighbours;
+        my_plan = std::make_shared<GhostExchangePlan<double>>(*my_array, bcs, neighbours);
 
         // Create an Array3DWithGhosts instance wrapping the Array3D
-        my_array_with_ghosts = std::make_shared<Array3DWithGhosts<double>>(ni, nj, nk, *my_array);
+        my_array_with_ghosts = std::make_shared<Array3DWithGhosts<double>>(*my_plan);
         for (int axis = 0; axis < 3; axis++)
         {
             for (int side = Side::LEFT; side < Side::RIGHT; side++)
