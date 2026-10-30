@@ -53,7 +53,7 @@ class PhysicsBasedPreconditionerBenchmark : protected PhysicsBasedPreconditioner
 
         alloc_solution(ni, nj, nk);
 
-        for (int idx = 0; idx < size; idx++)
+        for (int idx = 0; idx < (int)size; idx++)
         {
             (*delta_pressure_raw)[idx]                = 0;
             (*delta_energy_raw)[idx]                  = 0;

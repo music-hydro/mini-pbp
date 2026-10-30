@@ -24,7 +24,7 @@ PackedVariables::PackedVariables(std::vector<double>& packed_array_pointer,
 Array3D<double> PackedVariables::singleVariableView(const unsigned int variable_index) const
 {
     // Validate requested variable index against what is assumed
-    if (variable_index < 0 || variable_index >= m_num_variables)
+    if (variable_index >= m_num_variables)
     {
         throw std::invalid_argument("Provided variable index not found: " + std::to_string(variable_index));
     }

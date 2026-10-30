@@ -12,11 +12,11 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts(i,j,k) accesses conti
     int in    = slab.end(0);
     int jn    = slab.end(1);
     int kn    = slab.end(2);
-    for (unsigned int k = k0 + 1; k < kn - 1; k++)
+    for (int k = k0 + 1; k < kn - 1; k++)
     {
-        for (unsigned int j = j0 + 1; j < jn - 1; j++)
+        for (int j = j0 + 1; j < jn - 1; j++)
         {
-            for (unsigned int i = i0 + 1; i < in - 1; i++)
+            for (int i = i0 + 1; i < in - 1; i++)
             {
                 REQUIRE((*my_array_with_ghosts)(i, j, k) == (*my_array)(i, j, k));
                 REQUIRE(&(*my_array_with_ghosts)(i, j, k) == &(*my_array)(i, j, k));
@@ -39,11 +39,11 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts(i,j,k) accesses conti
         }
     }
     // axis j
-    for (unsigned int k = k0; k < kn; k++)
+    for (int k = k0; k < kn; k++)
     {
         current_ghost_left  = &(*my_array_with_ghosts)(i0 + 1, j0 - 1, k);
         current_ghost_right = &(*my_array_with_ghosts)(i0 + 1, jn, k);
-        for (unsigned int i = i0 + 1; i < in; i++)
+        for (int i = i0 + 1; i < in; i++)
         {
             REQUIRE(&(*my_array_with_ghosts)(i, j0 - 1, k) == current_ghost_left);
             REQUIRE(&(*my_array_with_ghosts)(i, jn, k) == current_ghost_right);
@@ -54,11 +54,11 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts(i,j,k) accesses conti
     // axis k
     current_ghost_left  = &(*my_array_with_ghosts)(i0, j0, k0 - 1);
     current_ghost_right = &(*my_array_with_ghosts)(i0, j0, kn);
-    for (unsigned int j = j0 + 1; j < jn; j++)
+    for (int j = j0 + 1; j < jn; j++)
     {
         current_ghost_left  = &(*my_array_with_ghosts)(i0 + 1, j, k0 - 1);
         current_ghost_right = &(*my_array_with_ghosts)(i0 + 1, j, kn);
-        for (unsigned int i = i0 + 1; i < in; i++)
+        for (int i = i0 + 1; i < in; i++)
         {
             REQUIRE(&(*my_array_with_ghosts)(i, j, k0 - 1) == current_ghost_left);
             REQUIRE(&(*my_array_with_ghosts)(i, j, kn) == current_ghost_right);

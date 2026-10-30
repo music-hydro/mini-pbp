@@ -150,6 +150,9 @@ class Array3D
     /**
      * @brief access operator to return a reference to the given element.
      *
+     * @details Indices are signed ints to allow for custom bounds in
+     *          overriding methods.
+     *
      * @param i - The index in the first dimension.
      * @param j - The index in the second dimension.
      * @param k - The index in the third dimension.
@@ -215,8 +218,15 @@ class Array3D
     /**
      * @brief Get a pointer to the origin of the Arrays cell slab.
      */
-    double* start() const
-    { return &(*this)(m_slab.start(0), m_slab.start(1), m_slab.start(2)); }
+    T* start() const
+    {
+        const int i0              = m_slab.start(0);
+        const int j0              = m_slab.start(1);
+        const int k0              = m_slab.start(2);
+        const unsigned int offset = (static_cast<unsigned int>(i0) * m_stride_i) + (static_cast<unsigned int>(j0) * m_stride_j) +
+                                    (static_cast<unsigned int>(k0) * m_stride_k);
+        return m_data_origin + offset;
+    }
 
   protected:
     T* const m_data_origin;        /**< @brief Pointer to array memory origin */

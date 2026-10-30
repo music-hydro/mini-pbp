@@ -123,15 +123,16 @@ class PhysicsBasedPreconditioner
     PackedVariables m_solution;
     /// @brief Store of the solution gradients
     PackedVariables m_solution_dPd;
+    /// @brief Squared sound speed
+    Array3D<double> m_squared_sound_speed;
+    /// @brief Flag to indicate whether to precondition the pressure equation only (`prec_nvar=1`), or both pressure and energy equations (`prec_nvar=2`)
+    unsigned int m_prec_nvar;
     /// Indices for each variable
     unsigned int m_n_rho;
     unsigned int m_n_pressure;
     unsigned int m_n_energy;
     unsigned int m_n_dPdrho;
     unsigned int m_n_dPdenergy;
-    /// Flag to indicate whether to precondition the pressure equation only (`prec_nvar=1`), or both pressure and energy equations (`prec_nvar=2`)
-    unsigned int m_prec_nvar;
-    Array3D<double> m_squared_sound_speed; /** Squared sound speed */
     // This is a temporary solution. The value has been taken from a run of music and should be calculated instead.
     double m_dt = 1.0917241379310345E-004; /** timestep */
 };

@@ -8,8 +8,8 @@
 TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
                  "PhysicsBasedPreconditioner::reconstructDensityDelta trivial ones to check pointers remain unchanged")
 {
-    unsigned int n    = 3;
-    unsigned int size = n * n * n;
+    const int n    = 3;
+    const int size = n * n * n;
 
     std::vector<double> delta_pressure_raw(size);
     std::vector<double> delta_energy_raw(size);

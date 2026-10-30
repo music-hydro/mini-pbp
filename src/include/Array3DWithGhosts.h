@@ -10,6 +10,7 @@
 #include "Array2D.h"
 #include "Array3D.h"
 #include <array>
+#include <stdexcept>
 
 enum Side
 {
@@ -112,11 +113,11 @@ class Array3DWithGhosts : public Array3D<T>
         std::array<int, 3> indices = {i, j, k};
         for (unsigned int axis = 0; axis < 3; ++axis)
         {
-            Side side;
+            Side side = Side::RIGHT;
             if (indices[axis] == this->m_slab.start(axis) - 1)
-                side = LEFT;
+                side = Side::LEFT;
             else if (indices[axis] == this->m_slab.end(axis))
-                side = RIGHT;
+                side = Side::RIGHT;
             else
                 continue;
 

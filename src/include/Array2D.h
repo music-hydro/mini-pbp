@@ -42,6 +42,8 @@ class Array2D : public Array3D<T>
      *
      * @return Reference to the element at the requested 2D coordinates
      */
+    using Array3D<T>::operator ();
+
     T& operator ()(int idx1, int idx2) const
     { return this->Array3D<T>::operator ()(idx1, idx2, 0); }
 };
