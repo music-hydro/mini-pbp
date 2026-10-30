@@ -53,7 +53,7 @@ class PhysicsBasedPreconditionerBenchmark : protected PhysicsBasedPreconditioner
 
         alloc_solution(ni, nj, nk);
 
-        for (int idx = 0; idx < size; idx++)
+        for (int idx = 0; idx < (int)size; idx++)
         {
             (*delta_pressure_raw)[idx]                = 0;
             (*delta_energy_raw)[idx]                  = 0;
@@ -64,13 +64,13 @@ class PhysicsBasedPreconditionerBenchmark : protected PhysicsBasedPreconditioner
             (*rhs_energy_raw)[idx]                    = 0;
         }
 
-        delta_pressure                = std::make_unique<Array3D<double>>(&(*delta_pressure_raw)[0], ni, nj, nk);
-        delta_energy                  = std::make_unique<Array3D<double>>(&(*delta_energy_raw)[0], ni, nj, nk);
-        delta_rho                     = std::make_unique<Array3D<double>>(&(*delta_rho_raw)[0], ni, nj, nk);
-        preconditioned_delta_pressure = std::make_unique<Array3D<double>>(&(*preconditioned_delta_pressure_raw)[0], ni, nj, nk);
-        preconditioned_delta_energy   = std::make_unique<Array3D<double>>(&(*preconditioned_delta_energy_raw)[0], ni, nj, nk);
-        rhs_pressure                  = std::make_unique<Array3D<double>>(&(*rhs_pressure_raw)[0], ni, nj, nk);
-        rhs_energy                    = std::make_unique<Array3D<double>>(&(*rhs_energy_raw)[0], ni, nj, nk);
+        delta_pressure                = std::make_unique<Array3D<double>>(ni, nj, nk, *delta_pressure_raw);
+        delta_energy                  = std::make_unique<Array3D<double>>(ni, nj, nk, *delta_energy_raw);
+        delta_rho                     = std::make_unique<Array3D<double>>(ni, nj, nk, *delta_rho_raw);
+        preconditioned_delta_pressure = std::make_unique<Array3D<double>>(ni, nj, nk, *preconditioned_delta_pressure_raw);
+        preconditioned_delta_energy   = std::make_unique<Array3D<double>>(ni, nj, nk, *preconditioned_delta_energy_raw);
+        rhs_pressure                  = std::make_unique<Array3D<double>>(ni, nj, nk, *rhs_pressure_raw);
+        rhs_energy                    = std::make_unique<Array3D<double>>(ni, nj, nk, *rhs_energy_raw);
 
         prec_nvar = 1;
         pbp       = std::make_unique<PhysicsBasedPreconditioner>(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);

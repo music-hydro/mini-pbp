@@ -8,8 +8,8 @@
 TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
                  "PhysicsBasedPreconditioner::reconstructDensityDelta trivial ones to check pointers remain unchanged")
 {
-    unsigned int n    = 3;
-    unsigned int size = n * n * n;
+    const int n    = 3;
+    const int size = n * n * n;
 
     std::vector<double> delta_pressure_raw(size);
     std::vector<double> delta_energy_raw(size);
@@ -29,9 +29,9 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
         }
     }
 
-    Array3D<double> delta_pressure(&delta_pressure_raw[0], n, n, n);
-    Array3D<double> delta_energy(&delta_energy_raw[0], n, n, n);
-    Array3D<double> delta_rho(&delta_rho_raw[0], n, n, n);
+    Array3D<double> delta_pressure(n, n, n, delta_pressure_raw);
+    Array3D<double> delta_energy(n, n, n, delta_energy_raw);
+    Array3D<double> delta_rho(n, n, n, delta_rho_raw);
 
     int prec_nvar = 1;
     PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);
@@ -114,9 +114,9 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::re
     }
     fclose(outputs_file);
 
-    Array3D<double> delta_pressure(&delta_pressure_raw[0], ni, nj, nk);
-    Array3D<double> delta_energy(&delta_energy_raw[0], ni, nj, nk);
-    Array3D<double> delta_rho(&delta_rho_raw[0], ni, nj, nk);
+    Array3D<double> delta_pressure(ni, nj, nk, delta_pressure_raw);
+    Array3D<double> delta_energy(ni, nj, nk, delta_energy_raw);
+    Array3D<double> delta_rho(ni, nj, nk, delta_rho_raw);
 
     REQUIRE_NOTHROW(pbp.reconstructDensityDelta(delta_pressure, delta_energy, delta_rho));
 

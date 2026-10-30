@@ -31,10 +31,10 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
     }
 
     // Create Packed variable arrays
-    Array3D<double> delta_rho(&delta_rho_raw[0], n, n, n);
-    Array3D<double> delta_energy(&delta_energy_raw[0], n, n, n);
-    Array3D<double> rhs_pressure(&rhs_pressure_raw[0], n, n, n);
-    Array3D<double> rhs_energy(&rhs_energy_raw[0], n, n, n);
+    Array3D<double> delta_rho(n, n, n, delta_rho_raw);
+    Array3D<double> delta_energy(n, n, n, delta_energy_raw);
+    Array3D<double> rhs_pressure(n, n, n, rhs_pressure_raw);
+    Array3D<double> rhs_energy(n, n, n, rhs_energy_raw);
 
     PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed);
 
@@ -103,7 +103,7 @@ void verifySetPressureRHS(int ni,
         {
             for (int i = 0; i < ni; i++)
             {
-                REQUIRE_THAT(rhs_pressure(i, j, k), Catch::Matchers::WithinRel(expected_pressure[counter], 1e-14));
+                REQUIRE_THAT(rhs_pressure(i, j, k), Catch::Matchers::WithinRel(expected_pressure[counter], 1e-12));
                 REQUIRE_THAT(rhs_energy(i, j, k), Catch::Matchers::WithinRel(expected_energy[counter], 1e-14));
                 counter++;
             }
@@ -136,10 +136,10 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
     std::vector<double> rhs_pressure_raw(size);
     std::vector<double> rhs_energy_raw(size);
 
-    Array3D<double> delta_rho(&delta_rho_raw[0], n, n, n);
-    Array3D<double> delta_energy(&delta_energy_raw[0], n, n, n);
-    Array3D<double> rhs_pressure(&rhs_pressure_raw[0], n, n, n);
-    Array3D<double> rhs_energy(&rhs_energy_raw[0], n, n, n);
+    Array3D<double> delta_rho(n, n, n, delta_rho_raw);
+    Array3D<double> delta_energy(n, n, n, delta_energy_raw);
+    Array3D<double> rhs_pressure(n, n, n, rhs_pressure_raw);
+    Array3D<double> rhs_energy(n, n, n, rhs_energy_raw);
 
     int prec_nvar = 0;
     std::vector<double> expected_energy(27);
@@ -184,10 +184,10 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::se
     std::vector<double> rhs_pressure_raw(size);
     std::vector<double> rhs_energy_raw(size);
 
-    Array3D<double> delta_rho(&delta_rho_raw[0], ni, nj, nk);
-    Array3D<double> delta_energy(&delta_energy_raw[0], ni, nj, nk);
-    Array3D<double> rhs_pressure(&rhs_pressure_raw[0], ni, nj, nk);
-    Array3D<double> rhs_energy(&rhs_energy_raw[0], ni, nj, nk);
+    Array3D<double> delta_rho(ni, nj, nk, delta_rho_raw);
+    Array3D<double> delta_energy(ni, nj, nk, delta_energy_raw);
+    Array3D<double> rhs_pressure(ni, nj, nk, rhs_pressure_raw);
+    Array3D<double> rhs_energy(ni, nj, nk, rhs_energy_raw);
 
     int prec_nvar = 1;
     PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);

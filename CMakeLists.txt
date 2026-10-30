@@ -14,6 +14,8 @@ include_directories(${INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_
 # Define src files
 set(HEADER_FILES
     "${INCLUDE_DIRS}/Array3D.h"
+    "${INCLUDE_DIRS}/Array2D.h"
+    "${INCLUDE_DIRS}/Array3DWithGhosts.h"
     "${INCLUDE_DIRS}/PackedVariables.h"
     "${INCLUDE_DIRS}/Slab.h"
     "${INCLUDE_DIRS}/PhysicsBasedPreconditioner.h"

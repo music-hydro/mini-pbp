@@ -41,10 +41,10 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
         }
     }
 
-    Array3D<double> preconditioned_delta_pressure(&preconditioned_delta_pressure_raw[0], n, n, n);
-    Array3D<double> preconditioned_delta_energy(&preconditioned_delta_energy_raw[0], n, n, n);
-    Array3D<double> dp_rhs_press(&dp_rhs_press_raw[0], n, n, n);
-    Array3D<double> delta_energy(&delta_energy_raw[0], n, n, n);
+    Array3D<double> preconditioned_delta_pressure(n, n, n, preconditioned_delta_pressure_raw);
+    Array3D<double> preconditioned_delta_energy(n, n, n, preconditioned_delta_energy_raw);
+    Array3D<double> dp_rhs_press(n, n, n, dp_rhs_press_raw);
+    Array3D<double> delta_energy(n, n, n, delta_energy_raw);
 
     int prec_nvar = 0;
     SECTION("prec_nvar == 1")
@@ -123,10 +123,10 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
 
     alloc_solution(n, n, n);
 
-    Array3D<double> preconditioned_delta_pressure(&preconditioned_delta_pressure_raw[0], n, n, n);
-    Array3D<double> preconditioned_delta_energy(&preconditioned_delta_energy_raw[0], n, n, n);
-    Array3D<double> dp_rhs_press(&dp_rhs_press_raw[0], n, n, n);
-    Array3D<double> delta_energy(&delta_energy_raw[0], n, n, n);
+    Array3D<double> preconditioned_delta_pressure(n, n, n, preconditioned_delta_pressure_raw);
+    Array3D<double> preconditioned_delta_energy(n, n, n, preconditioned_delta_energy_raw);
+    Array3D<double> dp_rhs_press(n, n, n, dp_rhs_press_raw);
+    Array3D<double> delta_energy(n, n, n, delta_energy_raw);
 
     // Initialise arrays
     for (int i = 0; i < size; i++)
@@ -222,10 +222,10 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::re
     fclose(outputs_file);
 
     // Create variable arrays
-    Array3D<double> preconditioned_delta_pressure(&preconditioned_delta_pressure_raw[0], ni, nj, nk);
-    Array3D<double> preconditioned_delta_energy(&preconditioned_delta_energy_raw[0], ni, nj, nk);
-    Array3D<double> dp_rhs_press(&dp_rhs_press_raw[0], ni, nj, nk);
-    Array3D<double> delta_energy(&delta_energy_raw[0], ni, nj, nk);
+    Array3D<double> preconditioned_delta_pressure(ni, nj, nk, preconditioned_delta_pressure_raw);
+    Array3D<double> preconditioned_delta_energy(ni, nj, nk, preconditioned_delta_energy_raw);
+    Array3D<double> dp_rhs_press(ni, nj, nk, dp_rhs_press_raw);
+    Array3D<double> delta_energy(ni, nj, nk, delta_energy_raw);
 
     REQUIRE_NOTHROW(
         pbp.reconstructEnergyDelta(preconditioned_delta_pressure, preconditioned_delta_energy, dp_rhs_press, delta_energy));
