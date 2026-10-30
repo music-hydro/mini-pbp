@@ -101,8 +101,12 @@ class Array3D
     /**
      * @brief Copy constructor.
      */
-    Array3D(Array3D<T>& parent) :
-        Array3D<T>(parent, parent.cellSlab())
+    Array3D(const Array3D<T>& parent) :
+        m_data_origin(parent.m_data_origin),
+        m_stride_i(parent.m_stride_i),
+        m_stride_j(parent.m_stride_j),
+        m_stride_k(parent.m_stride_k),
+        m_slab(parent.m_slab)
     {
     }
 
