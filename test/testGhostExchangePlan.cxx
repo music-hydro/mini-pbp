@@ -20,15 +20,19 @@ TEST_CASE("GhostExchangePlan Constructor does not make copies of data")
 
     Array3D<double> array_from_plan = plan.array();
 
-    Slab slab = x.cellSlab();
+    Slab slab           = x.cellSlab();
+    double* current_ptr = x_raw.data();
     for (int k = slab.start(2); k < slab.end(2); k++)
     {
         for (int j = slab.start(1); j < slab.end(1); j++)
         {
             for (int i = slab.start(0); i < slab.end(0); i++)
             {
-                REQUIRE(array_from_plan(i, j, k) == x(i, j, k));
-                REQUIRE(&array_from_plan(i, j, k) == &x(i, j, k));
+                double* x_array_ptr = &x(i, j, k);
+                REQUIRE(array_from_plan(i, j, k) == *x_array_ptr);
+                REQUIRE(&array_from_plan(i, j, k) == x_array_ptr);
+                REQUIRE(x_array_ptr == current_ptr);
+                current_ptr++;
             }
         }
     }
