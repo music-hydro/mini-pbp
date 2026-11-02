@@ -10,7 +10,6 @@
 #include "Array2D.h"
 #include "Array3D.h"
 #include <array>
-#include <stdexcept>
 
 enum Side
 {
@@ -68,9 +67,9 @@ class Array3DWithGhosts : public Array3D<T>
         {
             for (int j = j0; j < jn; j++)
             {
-                unsigned int jk_idx            = (j * this->m_stride_j) + (k * this->m_stride_k);
-                m_edges[0 + Side::LEFT](j, k)  = this->m_data_origin[jk_idx + (i0 * this->m_stride_i)];
-                m_edges[0 + Side::RIGHT](j, k) = this->m_data_origin[jk_idx + ((in - 1) * this->m_stride_i)];
+                unsigned int jk_idx             = (j * this->m_stride_j) + (k * this->m_stride_k);
+                m_edges[0U + Side::LEFT](j, k)  = this->m_data_origin[jk_idx + (i0 * this->m_stride_i)];
+                m_edges[0U + Side::RIGHT](j, k) = this->m_data_origin[jk_idx + ((in - 1) * this->m_stride_i)];
             }
         }
         // axis j
@@ -78,9 +77,9 @@ class Array3DWithGhosts : public Array3D<T>
         {
             for (int i = i0; i < in; i++)
             {
-                unsigned int ik_idx            = (i * this->m_stride_i) + (k * this->m_stride_k);
-                m_edges[2 + Side::LEFT](i, k)  = this->m_data_origin[ik_idx + (j0 * this->m_stride_j)];
-                m_edges[2 + Side::RIGHT](i, k) = this->m_data_origin[ik_idx + ((jn - 1) * this->m_stride_j)];
+                unsigned int ik_idx             = (i * this->m_stride_i) + (k * this->m_stride_k);
+                m_edges[2U + Side::LEFT](i, k)  = this->m_data_origin[ik_idx + (j0 * this->m_stride_j)];
+                m_edges[2U + Side::RIGHT](i, k) = this->m_data_origin[ik_idx + ((jn - 1) * this->m_stride_j)];
             }
         }
         // axis k
@@ -88,9 +87,9 @@ class Array3DWithGhosts : public Array3D<T>
         {
             for (int i = i0; i < in; i++)
             {
-                unsigned ij_idx                = (i * this->m_stride_i) + (j * this->m_stride_j);
-                m_edges[4 + Side::LEFT](i, j)  = this->m_data_origin[ij_idx + (k0 * this->m_stride_k)];
-                m_edges[4 + Side::RIGHT](i, j) = this->m_data_origin[ij_idx + ((kn - 1) * this->m_stride_k)];
+                unsigned ij_idx                 = (i * this->m_stride_i) + (j * this->m_stride_j);
+                m_edges[4U + Side::LEFT](i, j)  = this->m_data_origin[ij_idx + (k0 * this->m_stride_k)];
+                m_edges[4U + Side::RIGHT](i, j) = this->m_data_origin[ij_idx + ((kn - 1) * this->m_stride_k)];
             }
         }
     }
@@ -121,12 +120,12 @@ class Array3DWithGhosts : public Array3D<T>
             else
                 continue;
 
-            unsigned int axis_side_idx = axis * 2;
+            unsigned int axis_side_idx = axis * 2 + side;
             switch (axis)
             {
-                case 0: return m_ghosts[axis_side_idx + side](j, k);
-                case 1: return m_ghosts[axis_side_idx + side](i, k);
-                case 2: return m_ghosts[axis_side_idx + side](i, j);
+                case 0: return m_ghosts[axis_side_idx](j, k);
+                case 1: return m_ghosts[axis_side_idx](i, k);
+                case 2: return m_ghosts[axis_side_idx](i, j);
             }
         }
 
@@ -143,7 +142,7 @@ class Array3DWithGhosts : public Array3D<T>
      * @returns A copy of the requested edge plane.
      */
     Array2D<T> edge(const unsigned int& axis, Side side)
-    { return m_edges[axis * 2 + side]; }
+    { return m_edges[axis * 2U + side]; }
 
   private:
     /**
@@ -153,10 +152,16 @@ class Array3DWithGhosts : public Array3D<T>
      * @param[in] new_ghost_values - The new ghost cell values.
      */
     void setGhostCells(unsigned int const axis, Side side, Array2D<T> new_ghost_values)
-    { new_ghost_values.deepCopy(m_ghosts[axis * 2 + side]); }
+    { new_ghost_values.deepCopy(m_ghosts[axis * 2U + side]); }
 
+    /**
+     * @brief Set the edge cells for a given axis and side.
+     *
+     * @param[in] axis - The axis that should be set (i, j, k) => (0, 1, 2).
+     * @param[in] new_ghost_values - The new edge cell values.
+     */
     void setEdgeCells(unsigned int const axis, Side side, Array2D<T> new_edge_values)
-    { new_edge_values.deepCopy(m_edges[axis * 2 + side]); }
+    { new_edge_values.deepCopy(m_edges[axis * 2U + side]); }
 
     /// @brief The ghost cells and cells on the edge of the domain owned by this array.
     std::array<Array2D<T>, 6> m_ghosts;
