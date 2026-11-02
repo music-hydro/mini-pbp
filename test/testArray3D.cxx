@@ -46,15 +46,16 @@ TEST_CASE("Array3D::subArray preserves memory locations")
     }
 }
 
-TEST_CASE("Array3D copy constructor preserves memory locations")
+TEST_CASE("Array3D constructors preserve memory locations")
 {
     unsigned int n = 3;
     size_t size    = n * n * n;
     std::vector<double> x_raw(size);
+    Array3D<double> z(n, n, n, &x_raw[0]);
     Array3D<double> x(n, n, n, x_raw);
-
     Array3D<double> y(x);
 
+    unsigned int idx = 0;
     for (unsigned int k = 0; k < n; k++)
     {
         for (unsigned int j = 0; j < n; j++)
@@ -62,7 +63,10 @@ TEST_CASE("Array3D copy constructor preserves memory locations")
             for (unsigned int i = 0; i < n; i++)
             {
                 REQUIRE(y(i, j, k) == x(i, j, k));
-                REQUIRE(&y(i, j, k) == &x(i, j, k));
+                REQUIRE(&y(i, j, k) == &x_raw[idx]);
+                REQUIRE(&x(i, j, k) == &x_raw[idx]);
+                REQUIRE(&z(i, j, k) == &x_raw[idx]);
+                idx++;
             }
         }
     }
