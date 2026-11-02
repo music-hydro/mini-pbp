@@ -18,7 +18,13 @@ class Array3DWithGhostsTest
     std::shared_ptr<Array3D<double>> my_array;
     std::shared_ptr<Array3DWithGhosts<double>> my_array_with_ghosts;
 
-    /// @brief Default constructor
+    /**
+     * @brief Default constructor
+     *
+     * @details Allocates and populates the vector and Array3D which define
+     *          this Array3DWithGhosts and instantiates the Array3DWithGhosts.
+     *          Ghost and edge slabs are also filled with -1.0.
+     */
     Array3DWithGhostsTest()
     {
         // Define the problem
@@ -31,7 +37,7 @@ class Array3DWithGhostsTest
         input_1d = std::make_shared<std::vector<double>>(size);
 
         // Populate the 1D array with an incrementing contiguous counter
-        for (int i = 0; i < (int)size; i++)
+        for (int i = 0; i < (size_t)size; i++)
             (*input_1d)[i] = (double)i;
 
         my_array = std::make_shared<Array3D<double>>(ni, nj, nk, *input_1d);

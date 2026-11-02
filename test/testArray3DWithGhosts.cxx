@@ -4,7 +4,6 @@
 
 TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts(i,j,k) accesses contiguously")
 {
-    // Verify that the inner cells match the values from the input Array3D
     Slab slab = this->my_array_with_ghosts->cellSlab();
     int i0    = slab.start(0);
     int j0    = slab.start(1);
@@ -12,14 +11,20 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts(i,j,k) accesses conti
     int in    = slab.end(0);
     int jn    = slab.end(1);
     int kn    = slab.end(2);
-    for (int k = k0 + 1; k < kn - 1; k++)
+
+    // Verify that the inner cells match the values from the input Array3D and are contiguous
+    double* current_ptr = &(*my_array)(i0, j0, k0);
+    for (int k = k0; k < kn; ++k)
     {
-        for (int j = j0 + 1; j < jn - 1; j++)
+        for (int j = j0; j < jn; ++j)
         {
-            for (int i = i0 + 1; i < in - 1; i++)
+            for (int i = i0; i < in; ++i)
             {
-                REQUIRE((*my_array_with_ghosts)(i, j, k) == (*my_array)(i, j, k));
-                REQUIRE(&(*my_array_with_ghosts)(i, j, k) == &(*my_array)(i, j, k));
+                double* const my_array_ptr = &(*my_array)(i, j, k);
+                REQUIRE((*my_array_with_ghosts)(i, j, k) == *my_array_ptr);
+                REQUIRE(&(*my_array_with_ghosts)(i, j, k) == my_array_ptr);
+                REQUIRE(my_array_ptr == current_ptr);
+                current_ptr++;
             }
         }
     }
@@ -39,11 +44,11 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts(i,j,k) accesses conti
         }
     }
     // axis j
+    current_ghost_left  = &(*my_array_with_ghosts)(i0, j0 - 1, k0);
+    current_ghost_right = &(*my_array_with_ghosts)(i0, jn, k0);
     for (int k = k0; k < kn; k++)
     {
-        current_ghost_left  = &(*my_array_with_ghosts)(i0 + 1, j0 - 1, k);
-        current_ghost_right = &(*my_array_with_ghosts)(i0 + 1, jn, k);
-        for (int i = i0 + 1; i < in; i++)
+        for (int i = i0; i < in; i++)
         {
             REQUIRE(&(*my_array_with_ghosts)(i, j0 - 1, k) == current_ghost_left);
             REQUIRE(&(*my_array_with_ghosts)(i, jn, k) == current_ghost_right);
@@ -54,11 +59,9 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts(i,j,k) accesses conti
     // axis k
     current_ghost_left  = &(*my_array_with_ghosts)(i0, j0, k0 - 1);
     current_ghost_right = &(*my_array_with_ghosts)(i0, j0, kn);
-    for (int j = j0 + 1; j < jn; j++)
+    for (int j = j0; j < jn; j++)
     {
-        current_ghost_left  = &(*my_array_with_ghosts)(i0 + 1, j, k0 - 1);
-        current_ghost_right = &(*my_array_with_ghosts)(i0 + 1, j, kn);
-        for (int i = i0 + 1; i < in; i++)
+        for (int i = i0; i < in; i++)
         {
             REQUIRE(&(*my_array_with_ghosts)(i, j, k0 - 1) == current_ghost_left);
             REQUIRE(&(*my_array_with_ghosts)(i, j, kn) == current_ghost_right);

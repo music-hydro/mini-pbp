@@ -26,7 +26,7 @@ class Array3DWithGhosts : public Array3D<T>
     /**
      * @brief Constructs an Array3DWithGhosts from a parent Array3D.
      *
-     * @details Pre-allocates ghost cell arrays bases on the given bounds.
+     * @details Pre-allocates ghost cell arrays based on the given bounds.
      *
      * @param ni - The number of elements to be extracted in the first direction.
      * @param nj - The number of elements to be extracted in the second direction.
@@ -100,6 +100,14 @@ class Array3DWithGhosts : public Array3D<T>
      * @details The values for indices overlapping within ghost are returned
      *          from the respective contiguous slab arrays, rather than the
      *          bulk array.
+     *
+     *          Note that the axes are ordered in priority as i->j->k. For
+     *          example, any cell within an ith axis ghost plane will be
+     *          returned from that plane. If a cell is not in an ith axis ghost
+     *          plane but is in a jth axis ghost plane it will be returned from
+     *          sed plane. Finally, if a cell is neither in an ith or jth axis
+     *          ghost plane, but is in a kth axis ghost plane, only then will
+     *          it be returned from that kth axis ghost plane.
      *
      * @param i - The index in the first dimension.
      * @param j - The index in the second dimension.

@@ -138,8 +138,8 @@ TEST_CASE("Array3D.deepCopy() Makes a copy without reallocating")
     std::vector<double> x_raw(size);
     std::vector<double> y_raw(size);
 
-    Array3D<double> x(n, n, n, &x_raw[0]);
-    Array3D<double> y(n, n, n, &y_raw[0]);
+    Array3D<double> x(n, n, n, x_raw);
+    Array3D<double> y(n, n, n, y_raw);
 
     for (unsigned int i = 0; i < size; i++)
     {

@@ -1,6 +1,5 @@
 #include "Array2D.h"
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/matchers/catch_matchers_string.hpp>
 
 TEST_CASE("Array2D copy constructor preserves memory locations")
 {
