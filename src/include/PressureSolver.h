@@ -74,7 +74,7 @@ class PressureSolver
     };
 
     /**
-     * @class Constructor
+     * @brief Constructor
      *
      * @param[in] settings - The solver settings.
      * @param[in] rowGlobalIndices - Global indices of the rows owned by this rank, in the local order of the vectors.
