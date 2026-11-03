@@ -13,7 +13,10 @@ set(PROJ_TEST_DIR "${PROJECT_SOURCE_DIR}/test")
 
 set(TEST_FILES
     "${PROJ_TEST_DIR}/fixtures/PhysicsBasedPreconditionerTest.cxx"
+    "${PROJ_TEST_DIR}/fixtures/Array3DWithGhostsTest.cxx"
     "${PROJ_TEST_DIR}/testArray3D.cxx"
+    "${PROJ_TEST_DIR}/testArray2D.cxx"
+    "${PROJ_TEST_DIR}/testArray3DWithGhosts.cxx"
     "${PROJ_TEST_DIR}/testPackedVariables.cxx"
     "${PROJ_TEST_DIR}/testPhysicsBasedPreconditioner.cxx"
     "${PROJ_TEST_DIR}/testReconstructDensityDelta.cxx"
@@ -37,4 +40,3 @@ add_test(NAME mini_pbp_unit_tests COMMAND mini_pbp_unit_tests)
 
 add_executable(mini_pbp_benchmarks ${BENCHMARK_FILES} ${HEADER_FILES} ${IMPLEMENTATION_FILES})
 target_link_libraries(mini_pbp_benchmarks PRIVATE Catch2::Catch2WithMain)
-add_test(NAME mini_pbp_benchmarks COMMAND mini_pbp_benchmarks)
