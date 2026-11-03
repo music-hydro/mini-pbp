@@ -1,6 +1,8 @@
 #include "PressureSolver.h"
+#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 #include <cmath>
 #include <cstdio>
 #include <string>
@@ -26,29 +28,52 @@ namespace
     };
 
     /**
-     * @brief Read the matrix rows and the rhs/solution of one rank from the MUSIC data files.
+     * @brief Read the matrix rows, the rhs and the expected solution of one rank from the MUSIC data files.
      *
-     * The matrix file has one line per entry (global row, global column, value) with the rows in the local order of the
-     * vectors. The rhs/solution file has one line per row (global row, dp_rhs, delta_prec).
+     * @details The files of rank r are `<prefix>_rank<r>_matrix_inputs.dat`, one line per entry (global row, global
+     * column, value), `<prefix>_rank<r>_rhs_inputs.dat`, one line per row (global row, dp_rhs), and
+     * `<prefix>_rank<r>_expected_outputs.dat`, one line per row (global row, delta_prec). All three list the rows in the
+     * local order of the vectors.
+     *
+     * @param[in] prefix - The path of the data files up to `_rank<r>`.
+     * @param[in] rank - The rank to read.
+     * @param[in] expectedRows - The number of rows this rank should have.
+     *
+     * @return The local system of the rank.
      */
-    LocalSystem readLocalSystem(const std::string& prefix, int rank)
+    LocalSystem readLocalSystem(const std::string& prefix, const int rank, const size_t expectedRows)
     {
         LocalSystem system;
-
-        const std::string vectorsPath = prefix + "_rhs_solution_rank" + std::to_string(rank) + ".dat";
-        FILE* vectorsFile             = fopen(vectorsPath.c_str(), "r");
-        REQUIRE(vectorsFile != nullptr);
+        const std::string rankPrefix = prefix + "_rank" + std::to_string(rank);
         long long row;
-        double rhs, solution;
-        while (fscanf(vectorsFile, "%lld %lf %lf", &row, &rhs, &solution) == 3)
+
+        const std::string rhsPath = rankPrefix + "_rhs_inputs.dat";
+        FILE* rhsFile             = fopen(rhsPath.c_str(), "r");
+        REQUIRE(rhsFile != nullptr);
+        double rhs;
+        while (fscanf(rhsFile, "%lld %lf", &row, &rhs) == 2)
         {
             system.rowGlobalIndices.push_back(GO(row));
             system.rhs.push_back(rhs);
+        }
+        fclose(rhsFile);
+        REQUIRE(system.rowGlobalIndices.size() == expectedRows);
+
+        const std::string solutionPath = rankPrefix + "_expected_outputs.dat";
+        FILE* solutionFile             = fopen(solutionPath.c_str(), "r");
+        REQUIRE(solutionFile != nullptr);
+        double solution;
+        while (fscanf(solutionFile, "%lld %lf", &row, &solution) == 2)
+        {
+            // Same rows in the same order as in the rhs file
+            REQUIRE(system.expectedSolution.size() < expectedRows);
+            REQUIRE(GO(row) == system.rowGlobalIndices[system.expectedSolution.size()]);
             system.expectedSolution.push_back(solution);
         }
-        fclose(vectorsFile);
+        fclose(solutionFile);
+        REQUIRE(system.expectedSolution.size() == expectedRows);
 
-        const std::string matrixPath = prefix + "_matrix_rank" + std::to_string(rank) + ".dat";
+        const std::string matrixPath = rankPrefix + "_matrix_inputs.dat";
         FILE* matrixFile             = fopen(matrixPath.c_str(), "r");
         REQUIRE(matrixFile != nullptr);
         long long column;
@@ -57,7 +82,7 @@ namespace
         system.rowOffsets.push_back(0);
         while (fscanf(matrixFile, "%lld %lld %lf", &row, &column, &value) == 3)
         {
-            // Entries of a row are contiguous, and rows come in the same order as in the rhs/solution file
+            // Entries of a row are contiguous, and rows come in the same order as in the rhs file
             if (GO(row) != system.rowGlobalIndices.at(localRow))
             {
                 system.rowOffsets.push_back(system.values.size());
@@ -69,17 +94,17 @@ namespace
         }
         system.rowOffsets.push_back(system.values.size());
         fclose(matrixFile);
-        REQUIRE(system.rowOffsets.size() == system.rowGlobalIndices.size() + 1);
+        REQUIRE(system.rowOffsets.size() == expectedRows + 1);
 
         return system;
     }
 
     /**
-     * @brief Read the number of iterations MUSIC needed for the solve.
+     * @brief Read the number of iterations MUSIC needed for the solve, from `<prefix>_expected_outputs_info.dat`.
      */
     int readMusicIterations(const std::string& prefix)
     {
-        FILE* infoFile = fopen((prefix + "_info.dat").c_str(), "r");
+        FILE* infoFile = fopen((prefix + "_expected_outputs_info.dat").c_str(), "r");
         REQUIRE(infoFile != nullptr);
         int iterations = -1;
         REQUIRE(fscanf(infoFile, "niter %d", &iterations) == 1);
@@ -103,13 +128,35 @@ namespace
     }
 
     /**
-     * @brief Relative residual |b - A x| / |b| of the unscaled system.
+     * @brief Relative residual |b - A x| / |b| of the system as MUSIC wrote it, for a solution x found by the solver.
+     *
+     * This is a check of the solver that does not rely on it: the solver only holds the scaled matrix D A D, so the
+     * matrix A is built again here from the MUSIC data, then A x is computed with Tpetra and the norms are reduced over
+     * all ranks.
+     *
+     * GMRES stops on the residual of the scaled system, |D b - D A D x'| / |D b| with x = D x'. When every row of A has
+     * the same one norm, as in the Roberts test (uniform periodic grid, constant density and sound speed), D is a
+     * constant times the identity and the two relative residuals are equal, so this one must also be below the GMRES
+     * tolerance. For other systems the two differ.
+     *
+     * @param[in] system - The matrix rows and rhs of this rank.
+     * @param[in] solver - The solver, for its row map (the distribution of the rows over the ranks).
+     * @param[in] solution - The solution of this rank, in the local order of the rows.
+     *
+     * @return The relative residual over all ranks.
      */
     double relativeResidual(const LocalSystem& system, const PressureSolver& solver, const std::vector<double>& solution)
     {
         using Vector = PressureSolver::Vector;
 
-        PressureSolver::CrsMatrix matrix(solver.rowMap(), 7);
+        // Rebuild the unscaled matrix A with the rows of this rank. The column indices are global; fillComplete()
+        // works out which columns belong to other ranks and sets up the communication A x needs for them.
+        size_t maxEntriesPerRow = 0;
+        for (size_t row = 0; row < system.rowGlobalIndices.size(); row++)
+        {
+            maxEntriesPerRow = std::max(maxEntriesPerRow, system.rowOffsets[row + 1] - system.rowOffsets[row]);
+        }
+        PressureSolver::CrsMatrix matrix(solver.rowMap(), maxEntriesPerRow);
         for (size_t row = 0; row < system.rowGlobalIndices.size(); row++)
         {
             const size_t begin = system.rowOffsets[row];
@@ -120,6 +167,7 @@ namespace
         }
         matrix.fillComplete();
 
+        // Put x in a Tpetra vector with the same row map, so that local entry i is global row rowGlobalIndices[i]
         Vector x(solver.rowMap());
         Vector ax(solver.rowMap());
         {
@@ -131,6 +179,7 @@ namespace
         }
         matrix.apply(x, ax);
 
+        // Local part of r = b - A x; the norms of r and b are then summed over all ranks
         std::vector<double> residual(solution.size());
         {
             auto view = ax.getLocalViewHost(Tpetra::Access::ReadOnly);
@@ -148,8 +197,10 @@ TEST_CASE("PressureSolver rejects an invalid number of dimensions")
 {
     auto comm = Tpetra::getDefaultComm();
     std::vector<GO> rows {GO(comm->getRank())};
-    PressureSolver::Settings settings {1, 1.0e-6, 10};
+    PressureSolver::Settings settings {static_cast<PressureSolver::NumberOfDimensions>(1), 1.0e-6, 10};
     REQUIRE_THROWS_AS(PressureSolver(settings, rows, comm), std::invalid_argument);
+    REQUIRE_THROWS_WITH(PressureSolver(settings, rows, comm),
+                        Catch::Matchers::ContainsSubstring("PressureSolver: ndim must be 2 or 3, found 1"));
 }
 
 TEST_CASE("PressureSolver solves a diagonal system in one iteration")
@@ -171,7 +222,7 @@ TEST_CASE("PressureSolver solves a diagonal system in one iteration")
     }
     rowOffsets[rowsOnRank] = rowsOnRank;
 
-    PressureSolver::Settings settings {3, 1.0e-10, 15};
+    PressureSolver::Settings settings {PressureSolver::THREE, 1.0e-10, 15};
     PressureSolver solver(settings, rows, comm);
     solver.setMatrix(rowOffsets, rows, values);
     solver.computePreconditioner();
@@ -183,7 +234,7 @@ TEST_CASE("PressureSolver solves a diagonal system in one iteration")
     REQUIRE(result.iterations == 1);
     for (int i = 0; i < rowsOnRank; i++)
     {
-        REQUIRE_THAT(solution[i], Catch::Matchers::WithinRel(1.0 / values[i], 1.0e-12));
+        REQUIRE_THAT(solution[i], Catch::Matchers::WithinRel(1.0 / values[i], 1.0e-14));
     }
 }
 
@@ -196,11 +247,12 @@ TEST_CASE("PressureSolver reproduces the MUSIC pressure solve of the Roberts dyn
     // 16^3 Roberts dynamo test (tests/3dim/roberts in MUSIC), first pressure solve of the first time step
     const std::string prefix =
         std::string(TEST_DATA_DIR) + "/pressure_solve_roberts_dynamo_" + (numRanks == 1 ? "1rank" : "4ranks");
-    const LocalSystem system  = readLocalSystem(prefix, comm->getRank());
+    const size_t globalRows   = 16 * 16 * 16;  // prec_nvar = 1, one row per cell
+    const LocalSystem system  = readLocalSystem(prefix, comm->getRank(), globalRows / size_t(numRanks));
     const int musicIterations = readMusicIterations(prefix);
 
     // Settings of the Roberts test namelist (pbp_residual) and MUSIC defaults
-    PressureSolver::Settings settings {3, 2.0e-3, 15, 0, -1};
+    PressureSolver::Settings settings {PressureSolver::THREE, 2.0e-3, 15, 0, PressureSolver::HEURISTIC};
     PressureSolver solver(settings, system.rowGlobalIndices, comm);
     solver.setMatrix(system.rowOffsets, system.columnGlobalIndices, system.values);
     solver.computePreconditioner();

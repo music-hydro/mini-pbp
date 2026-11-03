@@ -27,13 +27,14 @@ set(IMPLEMENTATION_FILES
 
 add_executable(mini-pbp "${SRC_DIR}/main.cxx" ${HEADER_FILES} ${IMPLEMENTATION_FILES})
 
-# Pressure solve with Trilinos (Tpetra, Belos, MueLu on Kokkos). Built only when Trilinos is found, e.g. by setting
-# Trilinos_DIR to the install prefix.
+# Pressure solve with Trilinos (Tpetra, Belos, MueLu on Kokkos). Built only when Trilinos is found, e.g. by adding
+# the Trilinos install prefix to CMAKE_PREFIX_PATH.
 find_package(Trilinos QUIET COMPONENTS Tpetra Belos MueLu)
 if(Trilinos_FOUND)
     message(STATUS "Found Trilinos ${Trilinos_VERSION}: building the pressure solver")
     find_package(MPI REQUIRED COMPONENTS CXX)
     add_library(mini_pbp_pressure_solver
+        "${INCLUDE_DIRS}/HostArrayVector.h"
         "${INCLUDE_DIRS}/PressureSolver.h"
         "${SRC_DIR}/PressureSolver.cxx"
     )

@@ -1,28 +1,22 @@
 /**
  * @class PressureSolver
  *
- * @brief Solves the preconditioner pressure system M dP = dp_rhs with Trilinos, using the same method and settings as
- * MUSIC (`src/trilinos/PbpOperator.cpp`): symmetric diagonal scaling, Belos pseudo block GMRES and a MueLu multigrid
- * right preconditioner.
+ * @brief Solves the preconditioner pressure system M dP = dp_rhs with Trilinos: symmetric diagonal scaling, Belos
+ * pseudo block GMRES and a MueLu multigrid right preconditioner.
  *
- * In the physics based preconditioner of MUSIC, the hydro correction is reduced to a parabolic problem for the pressure
- * correction dP. For prec_nvar = 1, M is the 7 point (3D) or 5 point (2D) operator built by `set_matrix` in
- * `src/solvers/preconditioner.f90`: diagonal 1/dt + dt c^2 sum(coef), off diagonal -dt c^2 coef for each neighbour,
- * where coeff the pressure coefficients times the neighbour link weights. It acts as a
- * Poisson operator as dt grows, which is why the multigrid starts from the MueLu Poisson defaults. The rhs dp_rhs is
- * built by `set_pressure_rhs` and the solution dP is used by `apply` to recover the rest of the correction.
+ * @details In the physics based preconditioner, the hydro correction is reduced to a parabolic problem for the pressure
+ * correction dP. For prec_nvar = 1, M is the 7 point (3D) or 5 point (2D) operator with diagonal
+ * 1/dt + dt c^2 sum(coef) and off diagonal -dt c^2 coef for each neighbour, where coef is the pressure coefficients
+ * times the neighbour link weights. It acts as a Poisson operator as dt grows, which is why the multigrid starts from
+ * the MueLu Poisson defaults. The solution dP is then used to recover the rest of the correction.
  *
- * The parts of MUSIC this class follows:
- * - constructor: Belos and MueLu settings and the hierarchy heuristics of the PbpOperator constructor and of
- *   `HierarchyHeuristics` / `GridAggregationModel` (`src/trilinos/PbpOperator.cpp`)
- * - setMatrix(): `PbpOperator::ComputeMatrix`, with the CSR arrays standing in for the `set_matrix` callback and
- *   `music_cpp_pbp_set_matrix_from_arrays` (`src/trilinos/TrilinosInterface.cpp`)
- * - computePreconditioner(): `PbpOperator::ComputePreconditioner`
- * - solve(): `PbpOperator::solve_pressure`, called from `apply` through `music_cpp_pbp_solve_pressure`
+ * The matrix is given as CSR arrays with global column indices. It can be set again every Newton iteration, while the
+ * multigrid hierarchy is only rebuilt when computePreconditioner() is called (once per time step, on the first Newton
+ * iteration).
  *
- * The matrix is given as CSR arrays with global column indices. As in MUSIC (`PbpPrecond::pre_solve` in
- * `src/trilinos/PbpPrecond.h`), the matrix can be set again every Newton iteration while the multigrid hierarchy is
- * only rebuilt when computePreconditioner() is called (MUSIC does it on the first Newton iteration of a time step).
+ * Before the solve the system is scaled: instead of M X = Y, it solves M' X' = Y' with M' = D M D, Y' = D Y and
+ * X = D X', where D is the diagonal matrix of the inverse square roots of the row one norms of M. Scaling both sides by
+ * the same D keeps the symmetry of M.
  */
 
 #ifndef PressureSolver_H
@@ -51,16 +45,34 @@ class PressureSolver
     using Operator      = Tpetra::Operator<Scalar, LocalOrdinal, GlobalOrdinal, Node>;
 
     /*================================================================================================================*/
+    /// Number of dimensions of the problem
+    enum NumberOfDimensions
+    {
+        TWO   = 2,
+        THREE = 3
+    };
+
+    /**
+     * @brief Solver on the coarsest multigrid level. In the MUSIC namelist, use_coarse_solver < 0 is HEURISTIC, 0 is
+     * NO_SOLVER and > 0 is KLU2.
+     */
+    enum CoarseSolver
+    {
+        HEURISTIC,  // KLU2 in 3D, none in 2D
+        NO_SOLVER,  // No coarse solver, only the smoother on the coarsest level
+        KLU2        // Direct solve with KLU2
+    };
+
     /**
      * @brief Solver settings, named after the MUSIC namelist entries of `&NewtonKrylov`.
      */
     struct Settings
     {
-        int ndim;                      // Number of dimensions of the problem (2 or 3)
-        double pbp_residual;           // GMRES convergence tolerance, relative to the norm of the RHS
-        int pbp_max_iter;              // Maximum number of GMRES iterations
-        int max_levels_override = 0;   // Maximum number of multigrid levels, <= 0 uses the heuristic
-        int use_coarse_solver   = -1;  // < 0 heuristic, == 0 no coarse solver, > 0 KLU2 coarse solver
+        NumberOfDimensions ndim;                     // Number of dimensions of the problem
+        double pbp_residual;                         // GMRES convergence tolerance, relative to the norm of the RHS
+        int pbp_max_iter;                            // Maximum number of GMRES iterations
+        int max_levels_override        = 0;          // Maximum number of multigrid levels, <= 0 uses the heuristic
+        CoarseSolver use_coarse_solver = HEURISTIC;  // Solver on the coarsest multigrid level
     };
 
     /**
@@ -86,9 +98,9 @@ class PressureSolver
 
     /*================================================================================================================*/
     /**
-     * @brief Set the matrix values and apply the symmetric diagonal scaling.
+     * @brief Set the matrix values and apply the symmetric diagonal scaling M' = D M D.
      *
-     * The sparsity pattern is fixed by the first call; later calls must give the same pattern.
+     * @details The sparsity pattern is fixed by the first call; later calls must give the same pattern.
      *
      * @param[in] rowOffsets - CSR row offsets for the local rows, of size numLocalRows + 1.
      * @param[in] columnGlobalIndices - Global column index of each entry.
@@ -120,7 +132,7 @@ class PressureSolver
     { return m_rowMap; }
 
     /**
-     * @brief Getter for the scaled matrix D A D.
+     * @brief Getter for the scaled matrix M' = D M D (see the class description).
      */
     Teuchos::RCP<const CrsMatrix> scaledMatrix() const
     { return m_matrix; }
@@ -129,7 +141,8 @@ class PressureSolver
     const Settings m_settings;
     Teuchos::RCP<const Map> m_rowMap;
     Teuchos::RCP<CrsMatrix> m_matrix;
-    Teuchos::RCP<Vector> m_diag;
+    Teuchos::RCP<Vector> m_diag;     // Diagonal of D, the inverse square roots of the row one norms of M
+    Teuchos::RCP<Vector> m_yScaled;  // Y' = D Y, the rhs of the scaled system
     Teuchos::ParameterList m_belosSettings;
     Teuchos::ParameterList m_mueluSettings;
     Teuchos::RCP<MueLu::TpetraOperator<Scalar, LocalOrdinal, GlobalOrdinal, Node>> m_preconditioner;

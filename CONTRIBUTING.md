@@ -20,7 +20,7 @@ The pressure solver and its tests are only built when CMake finds Trilinos
 compiler wrapper that Trilinos was built with:
 
 ```sh
-cmake -B build -DTrilinos_DIR=<trilinos install prefix>
+cmake -B build -DCMAKE_PREFIX_PATH=<trilinos install prefix>
 cmake --build build
 ctest --test-dir build --output-on-failure
 ```
