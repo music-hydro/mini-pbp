@@ -19,6 +19,7 @@ set(TEST_FILES
     "${PROJ_TEST_DIR}/testArray3DWithGhosts.cxx"
     "${PROJ_TEST_DIR}/testPackedVariables.cxx"
     "${PROJ_TEST_DIR}/testPhysicsBasedPreconditioner.cxx"
+    "${PROJ_TEST_DIR}/testPressureMatrix.cxx"
     "${PROJ_TEST_DIR}/testReconstructDensityDelta.cxx"
     "${PROJ_TEST_DIR}/testReconstructEnergyDelta.cxx"
     "${PROJ_TEST_DIR}/testSetPressureRhs.cxx"
