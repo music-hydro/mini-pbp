@@ -1,0 +1,5 @@
+niter 5
+nranks 1
+prec_nvar 1
+ndim 3
+dt  4.5228571428571426E-004
