@@ -72,6 +72,12 @@ class Slab
         return end(axis) - start(axis);
     }
 
+    /**
+     * @brief Get the number of cells defined by this slab.
+     */
+    size_t volume() const
+    { return static_cast<size_t>((m_end[0] - m_start[0]) * (m_end[1] - m_start[1]) * (m_end[2] - m_start[2])); }
+
   private:
     /// The ranges over which this slab defines
     const std::array<int, 3> m_start;

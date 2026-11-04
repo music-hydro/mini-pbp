@@ -9,10 +9,11 @@
 
 #include "Array3DWithGhosts.h"
 #include "GhostExchangePlan.h"
+#include "MpiTest.cxx"
 #include <memory>
 #include <vector>
 
-class Array3DWithGhostsTest
+class Array3DWithGhostsTest : public MpiTest
 {
   protected:
     std::shared_ptr<std::vector<double>> input_1d;
@@ -25,9 +26,10 @@ class Array3DWithGhostsTest
      *
      * @details Allocates and populates the vector and Array3D which define
      *          this Array3DWithGhosts and instantiates the Array3DWithGhosts.
-     *          Ghost and edge slabs are also filled with -1.0.
+     *          Ghost and boundary slabs are also filled with -1.0.
      */
-    Array3DWithGhostsTest()
+    Array3DWithGhostsTest() :
+        MpiTest()
     {
         // Define the problem
         unsigned int ni = 30;
@@ -38,54 +40,28 @@ class Array3DWithGhostsTest
         // Allocate a 1D array equal to the size of a 3D array
         input_1d = std::make_shared<std::vector<double>>(size);
 
-        // Populate the 1D array with an incrementing contiguous counter
-        for (int i = 0; i < (size_t)size; i++)
-            (*input_1d)[i] = (double)i;
-
         my_array = std::make_shared<Array3D<double>>(ni, nj, nk, *input_1d);
-        std::array<BoundaryConditions, 6> bcs;
-        std::array<unsigned int, 6> neighbours;
-        my_plan = std::make_shared<GhostExchangePlan<double>>(*my_array, bcs, neighbours);
+        ;
+        my_plan = std::make_shared<GhostExchangePlan<double>>(
+            *my_array, m_local_boundary_conditions, m_neighbours, m_cartesian_communicator);
 
         // Create an Array3DWithGhosts instance wrapping the Array3D
         my_array_with_ghosts = std::make_shared<Array3DWithGhosts<double>>(*my_plan);
-        for (int axis = 0; axis < 3; axis++)
+
+        // Populate the 1D array with the rank of the current process
+        for (int i = 0; i < (size_t)size; i++)
+            (*input_1d)[i] = my_array_with_ghosts->m_plan.m_my_rank;
+
+        // Fill with -1.0 to help highlight unset values in tests.
+        for (int plane_idx = 0; plane_idx < 6; plane_idx++)
         {
-            for (int side = Side::LEFT; side < Side::RIGHT; side++)
-            {
-
-                std::unique_ptr<Array2D<double>> new_ghost = nullptr;
-                std::unique_ptr<Array2D<double>> new_edge  = nullptr;
-                switch (axis)
-                {
-                    case 0:
-                    {
-                        new_ghost = std::make_unique<Array2D<double>>(nj, nk);
-                        new_edge  = std::make_unique<Array2D<double>>(nj, nk);
-                        break;
-                    }
-                    case 1:
-                    {
-                        new_ghost = std::make_unique<Array2D<double>>(ni - 1, nk);
-                        new_edge  = std::make_unique<Array2D<double>>(ni - 1, nk);
-                        break;
-                    }
-                    case 2:
-                    {
-                        new_ghost = std::make_unique<Array2D<double>>(nj - 1, nk - 1);
-                        new_edge  = std::make_unique<Array2D<double>>(nj - 1, nk - 1);
-                        break;
-                    }
-                }
-
-                // Fill with -1.0 to help highlight unset values in tests.
-                new_ghost->fill(-1.0);
-                new_edge->fill(-1.0);
-                my_array_with_ghosts->setGhostCells(axis, (Side)side, *new_ghost);
-                my_array_with_ghosts->setEdgeCells(axis, (Side)side, *new_edge);
-            }
+            my_array_with_ghosts->m_ghosts[plane_idx].fill(-1.0);
+            my_array_with_ghosts->m_boundaries[plane_idx].fill(-1.0);
         }
     }
+
+    void callUpdateBoundaries()
+    { my_array_with_ghosts->updateBoundaries(); }
 };
 
 #endif  // Array3DWithGhostsTest_H
