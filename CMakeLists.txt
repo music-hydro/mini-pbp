@@ -19,10 +19,12 @@ set(HEADER_FILES
     "${INCLUDE_DIRS}/PackedVariables.h"
     "${INCLUDE_DIRS}/Slab.h"
     "${INCLUDE_DIRS}/PhysicsBasedPreconditioner.h"
+    "${INCLUDE_DIRS}/PressureMatrix.h"
 )
 set(IMPLEMENTATION_FILES
     "${SRC_DIR}/PackedVariables.cxx"
     "${SRC_DIR}/PhysicsBasedPreconditioner.cxx"
+    "${SRC_DIR}/PressureMatrix.cxx"
 )
 
 add_executable(mini-pbp "${SRC_DIR}/main.cxx" ${HEADER_FILES} ${IMPLEMENTATION_FILES})
