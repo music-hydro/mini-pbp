@@ -34,16 +34,19 @@ jobs:
       - name: Prepare apt package cache
         run: mkdir -p "$RUNNER_TEMP/apt-cache/archives/partial"
 
-      - name: Cache apt packages
+      - name: Cache APT packages
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: ${{ runner.temp }}/apt-cache/archives
-          key: ${{ runner.os }}-${{ runner.arch }}-apt-openmpi-cxx-v1
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-${{ hashFiles('.github/apt-packages.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-
+
 
       - name: Install and setup MPI
         run: |
           sudo apt-get update
-          sudo apt-get -o Dir::Cache::archives="$RUNNER_TEMP/apt-cache/archives" install --no-install-recommends -y g++ libopenmpi-dev openmpi-bin
+          sudo apt-get install --no-install-recommends -y g++ libopenmpi-dev openmpi-bin
           printf 'CXX=%s\nOMPI_CXX=%s\n' "$(command -v mpic++)" "$(command -v g++)" >> "$GITHUB_ENV"
 
       - name: Build tests
