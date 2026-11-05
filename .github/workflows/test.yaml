@@ -35,7 +35,7 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: /var/cache/apt/archives
-          key: cache-${{ hashFiles('.github/apt-packages.txt') }}
+          key: cache-${{ hashFiles('.github/workflows/test.yaml') }}
 
 
       - name: Install and setup MPI
