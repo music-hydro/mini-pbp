@@ -81,7 +81,7 @@ class Array3D
      * @param[in] parent - The parent Array3D whose sub slab should be copied.
      * @param[in] sub_slab - The sub slab to be copied from the parent slab.
      */
-    Array3D(Array3D<T>& parent, const Slab& sub_slab) :
+    Array3D(const Array3D<T>& parent, const Slab& sub_slab) :
         m_data_origin(parent.start()),
         m_stride_i(parent.m_stride_i),
         m_stride_j(parent.m_stride_j),

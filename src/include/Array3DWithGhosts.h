@@ -13,7 +13,6 @@
 #include "MpiType.h"
 #include "Slab.h"
 #include <array>
-#include <iostream>
 #include <mpi.h>
 
 enum Direction
@@ -92,13 +91,12 @@ class Array3DWithGhosts : public Array3D<T>
             else
                 continue;
 
-            // unsigned int axis_side_idx = get_plane_index(axis, direction);
-            size_t idx = planeIndex(axis, direction);
+            const Array2D<T>& current_ghost = ghost(axis, direction);
             switch (axis)
             {
-                case 0: return m_ghosts[idx](j, k);
-                case 1: return m_ghosts[idx](i, k);
-                case 2: return m_ghosts[idx](i, j);
+                case 0: return current_ghost(j, k);
+                case 1: return current_ghost(i, k);
+                case 2: return current_ghost(i, j);
             }
         }
 
@@ -114,8 +112,8 @@ class Array3DWithGhosts : public Array3D<T>
      *
      * @returns A copy of the requested ghost plane.
      */
-    Array2D<T> ghost(const unsigned int& axis, Direction direction)
-    { return m_ghosts[axis * 2U + direction]; }
+    const Array2D<T>& ghost(const unsigned int& axis, const Direction& direction) const
+    { return m_ghosts[planeIndex(axis, direction)]; }
 
     /**
      * @brief Get the contiguous boundary plane for a given axis and direction.
@@ -125,8 +123,8 @@ class Array3DWithGhosts : public Array3D<T>
      *
      * @returns A copy of the requested boundary plane.
      */
-    Array2D<T> boundary(const unsigned int& axis, Direction direction)
-    { return m_boundaries[axis * 2U + direction]; }
+    const Array2D<T>& boundary(const unsigned int& axis, const Direction& direction) const
+    { return m_boundaries[planeIndex(axis, direction)]; }
 
     /**
      * @brief Exchange ghost cells with neighbour ranks according to the plan.
@@ -141,24 +139,16 @@ class Array3DWithGhosts : public Array3D<T>
         // Exchange ghosts
         for (unsigned int axis = 0; axis < 3; ++axis)
         {
+            // Store requests in a vector to be waited for later
             std::vector<MPI_Request> requests;
-            size_t negative_plane_idx          = planeIndex(axis, Direction::NEGATIVE);
-            size_t positive_plane_idx          = planeIndex(axis, Direction::POSITIVE);
-            Array2D<T> negative_boundary_plane = m_boundaries[negative_plane_idx];
-            Array2D<T> positive_boundary_plane = m_boundaries[positive_plane_idx];
-            Array2D<T> negative_ghost_plane    = m_ghosts[negative_plane_idx];
-            Array2D<T> positive_ghost_plane    = m_ghosts[positive_plane_idx];
-
-            // Get the neighbours
-            int negative_neighbour_rank = m_plan.neighbours()[negative_plane_idx];
-            int positive_neighbour_rank = m_plan.neighbours()[positive_plane_idx];
 
             // Set the negative direction boundary ghosts
+            int positive_neighbour_rank = m_plan.neighbours()[planeIndex(axis, Direction::POSITIVE)];
             if (positive_neighbour_rank != MPI_PROC_NULL)
             {
                 MPI_Request send_request;
-                MPI_Request recv_request;
-                int buffer_size = positive_boundary_plane.cellSlab().volume();
+                const Array2D<T>& positive_boundary_plane = boundary(axis, Direction::POSITIVE);
+                int buffer_size                           = positive_boundary_plane.cellSlab().volume();
                 MPI_Isend(positive_boundary_plane.start(),
                           buffer_size,
                           MpiType<T>::value,
@@ -166,6 +156,10 @@ class Array3DWithGhosts : public Array3D<T>
                           Direction::POSITIVE,
                           communicator,
                           &send_request);
+                requests.push_back(send_request);
+
+                MPI_Request recv_request;
+                const Array2D<T>& positive_ghost_plane = ghost(axis, Direction::POSITIVE);
                 MPI_Irecv(positive_ghost_plane.start(),
                           buffer_size,
                           MpiType<T>::value,
@@ -173,17 +167,17 @@ class Array3DWithGhosts : public Array3D<T>
                           Direction::NEGATIVE,
                           communicator,
                           &recv_request);
-                requests.push_back(send_request);
                 requests.push_back(recv_request);
             }
             else
                 applyBoundaryConditions(axis, Direction::POSITIVE);
 
+            int negative_neighbour_rank = m_plan.neighbours()[planeIndex(axis, Direction::NEGATIVE)];
             if (negative_neighbour_rank != MPI_PROC_NULL)
             {
-                int buffer_size = negative_boundary_plane.cellSlab().volume();
                 MPI_Request send_request;
-                MPI_Request recv_request;
+                const Array2D<T>& negative_boundary_plane = boundary(axis, Direction::NEGATIVE);
+                int buffer_size                           = negative_boundary_plane.cellSlab().volume();
                 MPI_Isend(negative_boundary_plane.start(),
                           buffer_size,
                           MpiType<T>::value,
@@ -191,6 +185,10 @@ class Array3DWithGhosts : public Array3D<T>
                           Direction::NEGATIVE,
                           communicator,
                           &send_request);
+                requests.push_back(send_request);
+
+                MPI_Request recv_request;
+                const Array2D<T>& negative_ghost_plane = ghost(axis, Direction::NEGATIVE);
                 MPI_Irecv(negative_ghost_plane.start(),
                           buffer_size,
                           MpiType<T>::value,
@@ -198,7 +196,6 @@ class Array3DWithGhosts : public Array3D<T>
                           Direction::POSITIVE,
                           communicator,
                           &recv_request);
-                requests.push_back(send_request);
                 requests.push_back(recv_request);
             }
             else
@@ -226,39 +223,39 @@ class Array3DWithGhosts : public Array3D<T>
         int in = this->m_slab.end(0), jn = this->m_slab.end(1), kn = this->m_slab.end(2);
         // Populate the contiguous boundary planes within m_boundaries
         // axis i
-        size_t negative_plane_idx = planeIndex(0U, Direction::NEGATIVE);
-        size_t positive_plane_idx = planeIndex(0U, Direction::POSITIVE);
+        const Array2D<T>& i_negative_boundary = boundary(0U, Direction::NEGATIVE);
+        const Array2D<T>& i_positive_boundary = boundary(0U, Direction::POSITIVE);
         for (int k = k0; k < kn; k++)
         {
             for (int j = j0; j < jn; j++)
             {
-                unsigned int jk_idx                    = (j * this->m_stride_j) + (k * this->m_stride_k);
-                m_boundaries[negative_plane_idx](j, k) = this->m_data_origin[jk_idx + (i0 * this->m_stride_i)];
-                m_boundaries[positive_plane_idx](j, k) = this->m_data_origin[jk_idx + ((in - 1) * this->m_stride_i)];
+                unsigned int jk_idx       = (j * this->m_stride_j) + (k * this->m_stride_k);
+                i_negative_boundary(j, k) = this->m_data_origin[jk_idx + (i0 * this->m_stride_i)];
+                i_positive_boundary(j, k) = this->m_data_origin[jk_idx + ((in - 1) * this->m_stride_i)];
             }
         }
         // axis j
-        negative_plane_idx = planeIndex(1U, Direction::NEGATIVE);
-        positive_plane_idx = planeIndex(1U, Direction::POSITIVE);
+        const Array2D<T>& j_negative_boundary = boundary(1U, Direction::NEGATIVE);
+        const Array2D<T>& j_positive_boundary = boundary(1U, Direction::POSITIVE);
         for (int k = k0; k < kn; k++)
         {
             for (int i = i0; i < in; i++)
             {
-                unsigned int ik_idx                    = (i * this->m_stride_i) + (k * this->m_stride_k);
-                m_boundaries[negative_plane_idx](i, k) = this->m_data_origin[ik_idx + (j0 * this->m_stride_j)];
-                m_boundaries[positive_plane_idx](i, k) = this->m_data_origin[ik_idx + ((jn - 1) * this->m_stride_j)];
+                unsigned int ik_idx       = (i * this->m_stride_i) + (k * this->m_stride_k);
+                j_negative_boundary(i, k) = this->m_data_origin[ik_idx + (j0 * this->m_stride_j)];
+                j_positive_boundary(i, k) = this->m_data_origin[ik_idx + ((jn - 1) * this->m_stride_j)];
             }
         }
         // axis k
-        negative_plane_idx = planeIndex(2U, Direction::NEGATIVE);
-        positive_plane_idx = planeIndex(2U, Direction::POSITIVE);
+        const Array2D<T>& k_negative_boundary = boundary(2U, Direction::NEGATIVE);
+        const Array2D<T>& k_positive_boundary = boundary(2U, Direction::POSITIVE);
         for (int j = j0; j < jn; j++)
         {
             for (int i = i0; i < in; i++)
             {
-                unsigned ij_idx                        = (i * this->m_stride_i) + (j * this->m_stride_j);
-                m_boundaries[negative_plane_idx](i, j) = this->m_data_origin[ij_idx + (k0 * this->m_stride_k)];
-                m_boundaries[positive_plane_idx](i, j) = this->m_data_origin[ij_idx + ((kn - 1) * this->m_stride_k)];
+                unsigned ij_idx           = (i * this->m_stride_i) + (j * this->m_stride_j);
+                k_negative_boundary(i, j) = this->m_data_origin[ij_idx + (k0 * this->m_stride_k)];
+                k_positive_boundary(i, j) = this->m_data_origin[ij_idx + ((kn - 1) * this->m_stride_k)];
             }
         }
     }

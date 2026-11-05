@@ -80,12 +80,12 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Unit tests of Array3DWithGhosts")
         Slab slab = my_array_with_ghosts->cellSlab();
         int i0 = slab.start(0), j0 = slab.start(1), k0 = slab.start(2);
         int in = slab.end(0), jn = slab.end(1), kn = slab.end(2);
-        Array2D<double> i_negative_boundary = my_array_with_ghosts->boundary(0, Direction::NEGATIVE);
-        Array2D<double> i_positive_boundary = my_array_with_ghosts->boundary(0, Direction::POSITIVE);
-        Array2D<double> j_negative_boundary = my_array_with_ghosts->boundary(1, Direction::NEGATIVE);
-        Array2D<double> j_positive_boundary = my_array_with_ghosts->boundary(1, Direction::POSITIVE);
-        Array2D<double> k_negative_boundary = my_array_with_ghosts->boundary(2, Direction::NEGATIVE);
-        Array2D<double> k_positive_boundary = my_array_with_ghosts->boundary(2, Direction::POSITIVE);
+        const Array2D<double>& i_negative_boundary = my_array_with_ghosts->boundary(0, Direction::NEGATIVE);
+        const Array2D<double>& i_positive_boundary = my_array_with_ghosts->boundary(0, Direction::POSITIVE);
+        const Array2D<double>& j_negative_boundary = my_array_with_ghosts->boundary(1, Direction::NEGATIVE);
+        const Array2D<double>& j_positive_boundary = my_array_with_ghosts->boundary(1, Direction::POSITIVE);
+        const Array2D<double>& k_negative_boundary = my_array_with_ghosts->boundary(2, Direction::NEGATIVE);
+        const Array2D<double>& k_positive_boundary = my_array_with_ghosts->boundary(2, Direction::POSITIVE);
 
         // axis i
         for (int k = k0; k < kn; k++)
@@ -159,12 +159,12 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Unit tests of Array3DWithGhosts")
         Slab slab = my_array_with_ghosts->cellSlab();
         int i0 = slab.start(0), j0 = slab.start(1), k0 = slab.start(2);
         int in = slab.end(0), jn = slab.end(1), kn = slab.end(2);
-        Array2D<double> i_negative_ghost = my_array_with_ghosts->ghost(0, Direction::NEGATIVE);
-        Array2D<double> i_positive_ghost = my_array_with_ghosts->ghost(0, Direction::POSITIVE);
-        Array2D<double> j_negative_ghost = my_array_with_ghosts->ghost(1, Direction::NEGATIVE);
-        Array2D<double> j_positive_ghost = my_array_with_ghosts->ghost(1, Direction::POSITIVE);
-        Array2D<double> k_negative_ghost = my_array_with_ghosts->ghost(2, Direction::NEGATIVE);
-        Array2D<double> k_positive_ghost = my_array_with_ghosts->ghost(2, Direction::POSITIVE);
+        const Array2D<double>& i_negative_ghost = my_array_with_ghosts->ghost(0, Direction::NEGATIVE);
+        const Array2D<double>& i_positive_ghost = my_array_with_ghosts->ghost(0, Direction::POSITIVE);
+        const Array2D<double>& j_negative_ghost = my_array_with_ghosts->ghost(1, Direction::NEGATIVE);
+        const Array2D<double>& j_positive_ghost = my_array_with_ghosts->ghost(1, Direction::POSITIVE);
+        const Array2D<double>& k_negative_ghost = my_array_with_ghosts->ghost(2, Direction::NEGATIVE);
+        const Array2D<double>& k_positive_ghost = my_array_with_ghosts->ghost(2, Direction::POSITIVE);
 
         std::array<int, 6> expected_ghost_values(m_neighbours);
         // If at a boundary, account for boundary conditions
