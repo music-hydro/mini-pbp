@@ -40,13 +40,21 @@ TEST_CASE("GhostExchangePlan Constructor does not make copies of data")
     }
 }
 
-TEST_CASE("GhostExchangePlan Constructor throws for periodic boundary without neighbour")
+void verifyConstructorThrows(const std::array<int, 6>& neighbours,
+                             const std::array<BoundaryConditions, 6>& global_bcs,
+                             const std::string& expected_error_message)
 {
     unsigned int n = 4;
     size_t size    = n * n * n;
     std::vector<double> x_raw(size);
     Array3D<double> x(n, n, n, x_raw);
 
+    REQUIRE_THROWS_WITH(GhostExchangePlan<double>(x, global_bcs, neighbours, MPI_COMM_WORLD),
+                        Catch::Matchers::ContainsSubstring(expected_error_message));
+}
+
+TEST_CASE("GhostExchangePlan Constructor throws for PERIODIC boundary without neighbour")
+{
     std::array<int, 6> neighbours                = {MPI_PROC_NULL, 1, 2, 3, 4, 5};
     std::array<BoundaryConditions, 6> global_bcs = {BoundaryConditions::PERIODIC,
                                                     BoundaryConditions::PERIODIC,
@@ -55,6 +63,18 @@ TEST_CASE("GhostExchangePlan Constructor throws for periodic boundary without ne
                                                     BoundaryConditions::ZERO_VALUE,
                                                     BoundaryConditions::ZERO_VALUE};
 
-    REQUIRE_THROWS_WITH(GhostExchangePlan<double>(x, global_bcs, neighbours, MPI_COMM_WORLD),
-                        Catch::Matchers::ContainsSubstring("No neighbour found at periodic boundary"));
+    verifyConstructorThrows(neighbours, global_bcs, "No neighbour found at periodic boundary");
+}
+
+TEST_CASE("GhostExchangePlan Constructor throws for INNER boundary without neighbour")
+{
+    std::array<int, 6> neighbours                = {MPI_PROC_NULL, 1, 2, 3, 4, 5};
+    std::array<BoundaryConditions, 6> global_bcs = {BoundaryConditions::INNER,
+                                                    BoundaryConditions::INNER,
+                                                    BoundaryConditions::ZERO_DERIVATIVE,
+                                                    BoundaryConditions::ZERO_DERIVATIVE,
+                                                    BoundaryConditions::ZERO_VALUE,
+                                                    BoundaryConditions::ZERO_VALUE};
+
+    verifyConstructorThrows(neighbours, global_bcs, "No neighbour found at inner boundary");
 }

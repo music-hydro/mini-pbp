@@ -63,9 +63,14 @@ class GhostExchangePlan
 
         // Validate BCs and neighbours. PERIODIC BC should result in neighbours at boundaries.
         for (unsigned int axis_direction = 0; axis_direction < 6; axis_direction++)
-            if ((m_boundary_conditions[axis_direction] == BoundaryConditions::PERIODIC) &&
-                (m_neighbours[axis_direction] == MPI_PROC_NULL))
-                throw std::invalid_argument("No neighbour found at periodic boundary");
+            if (m_neighbours[axis_direction] == MPI_PROC_NULL)
+            {
+                if (m_boundary_conditions[axis_direction] == BoundaryConditions::PERIODIC)
+                    throw std::invalid_argument("No neighbour found at periodic boundary");
+
+                if (m_boundary_conditions[axis_direction] == BoundaryConditions::INNER)
+                    throw std::invalid_argument("No neighbour found at inner boundary");
+            }
     }
 
     /**
