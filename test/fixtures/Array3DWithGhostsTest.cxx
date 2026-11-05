@@ -60,21 +60,6 @@ class Array3DWithGhostsTest : public MpiTest
         }
     }
 
-    /**
-     * @brief Logic for testing contiguous access from the operator()(int i, int j, int, k).
-     */
-    void testOperatorContiguousAccess();
-
-    /**
-     * @brief Unit test of updateBoundaries
-     */
-    void testUpdateBoundaries();
-
-    /**
-     * @brief Unit test of exchangeGhosts
-     */
-    void testExchangeGhosts();
-
     void callUpdateBoundaries()
     { my_array_with_ghosts->updateBoundaries(); }
 };
