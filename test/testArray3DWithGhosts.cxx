@@ -170,7 +170,7 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Unit tests of Array3DWithGhosts")
         // If at a boundary, account for boundary conditions
         for (int idx = 0; idx < 6; idx++)
             if (m_neighbours[idx] == MPI_PROC_NULL)
-                expected_ghost_values[idx] = my_plan->boundary_conditions()[idx] == ZERO_VALUE ? -1 * my_rank : my_rank;
+                expected_ghost_values[idx] = my_plan->boundaryConditions()[idx] == ZERO_VALUE ? -1 * my_rank : my_rank;
 
         // axis i
         for (int k = k0; k < kn; k++)

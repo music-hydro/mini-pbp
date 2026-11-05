@@ -42,11 +42,11 @@ class Array3DWithGhostsTest : public MpiTest
 
         my_array = std::make_shared<Array3D<double>>(ni, nj, nk, *input_1d);
         ;
-        my_plan = std::make_shared<GhostExchangePlan<double>>(
-            *my_array, m_local_boundary_conditions, m_neighbours, m_cartesian_communicator);
+        my_plan =
+            std::make_shared<GhostExchangePlan<double>>(m_local_boundary_conditions, m_neighbours, m_cartesian_communicator);
 
         // Create an Array3DWithGhosts instance wrapping the Array3D
-        my_array_with_ghosts = std::make_shared<Array3DWithGhosts<double>>(*my_plan);
+        my_array_with_ghosts = std::make_shared<Array3DWithGhosts<double>>(*my_array, *my_plan);
 
         // Populate the 1D array with the rank of the current process
         for (int i = 0; i < (size_t)size; i++)

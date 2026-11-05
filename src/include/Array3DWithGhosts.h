@@ -29,15 +29,16 @@ class Array3DWithGhosts : public Array3D<T>
 
   public:
     /**
-     * @brief Constructs an Array3DWithGhosts from a GhostExchangePlan.
+     * @brief Constructs an Array3DWithGhosts from an Array3D and a GhostExchangePlan.
      *
      * @details Pre-allocates ghost cell arrays bases on the bounds set within
      *          the plan.
      *
-     * @param plan - The plan defining how ghost cells should be exchanged.
+     * @param[in] inner_array - The 3D view of the array without ghost cells.
+     * @param[in] plan - The plan defining how ghost cells should be exchanged.
      */
-    Array3DWithGhosts(GhostExchangePlan<T>& plan) :
-        Array3D<T>(plan.array()),
+    Array3DWithGhosts(const Array3D<T>& inner_array, GhostExchangePlan<T>& plan) :
+        Array3D<T>(inner_array),
         m_plan(plan),
         m_ni(this->m_slab.extent(0)),
         m_nj(this->m_slab.extent(1)),
@@ -288,7 +289,7 @@ class Array3DWithGhosts : public Array3D<T>
         size_t plane_idx          = planeIndex(axis, direction);
         Array2D<T> ghost_plane    = m_ghosts[plane_idx];
         Array2D<T> boundary_plane = m_boundaries[plane_idx];
-        BoundaryConditions bc     = m_plan.boundary_conditions()[plane_idx];
+        BoundaryConditions bc     = m_plan.boundaryConditions()[plane_idx];
 
         T parity;
         if (bc == BoundaryConditions::ZERO_VALUE)

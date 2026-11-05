@@ -7,7 +7,6 @@
 #ifndef GhostExchangePlan_H
 #define GhostExchangePlan_H
 
-#include "Array3D.h"
 #include <array>
 #include <mpi.h>
 #include <stdexcept>
@@ -30,8 +29,7 @@ class GhostExchangePlan
      * @brief Copy constructor
      */
     GhostExchangePlan(const GhostExchangePlan<T>& parent) :
-        m_array(parent.array()),
-        m_boundary_conditions(parent.boundary_conditions()),
+        m_boundary_conditions(parent.boundaryConditions()),
         m_neighbours(parent.neighbours()),
         m_communicator(parent.communicator()),
         m_my_rank(-1)
@@ -44,16 +42,13 @@ class GhostExchangePlan
      *          following structure:
      *              {-x, +x, -y, +y, -z, +z}
      *
-     * @param[in] array - The 3D view of the array without ghost cells.
      * @param[in] boundary_conditions - The boundary conditions for this ranks block of cells.
      * @param[in] neighbours - The neighbouring MPI ranks for the current process.
      * @param[in] communicator - The MPI communicator for this plan.
      */
-    GhostExchangePlan(const Array3D<T>& array,
-                      const std::array<BoundaryConditions, 6>& boundary_conditions,
+    GhostExchangePlan(const std::array<BoundaryConditions, 6>& boundary_conditions,
                       const std::array<int, 6>& neighbours,
                       const MPI_Comm& communicator) :
-        m_array(array),
         m_boundary_conditions(boundary_conditions),
         m_neighbours(neighbours),
         m_communicator(communicator),
@@ -74,18 +69,12 @@ class GhostExchangePlan
     }
 
     /**
-     * @brief Get the array for which this plan has been created.
-     */
-    Array3D<T> array() const
-    { return m_array; }
-
-    /**
      * @brief Get the global boundary conditions for this plan.
      *
      * @return An array of boundary conditions with the following structure:
      *              {-x, +x, -y, +y, -z, +z}
      */
-    std::array<BoundaryConditions, 6> boundary_conditions() const
+    std::array<BoundaryConditions, 6> boundaryConditions() const
     { return m_boundary_conditions; }
 
     /**
@@ -104,7 +93,6 @@ class GhostExchangePlan
     { return m_communicator; }
 
   private:
-    Array3D<T> m_array;
     const std::array<BoundaryConditions, 6> m_boundary_conditions;
     const std::array<int, 6> m_neighbours;
     const MPI_Comm m_communicator;
