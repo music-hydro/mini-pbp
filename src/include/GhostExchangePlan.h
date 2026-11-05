@@ -33,7 +33,7 @@ class GhostExchangePlan
         m_neighbours(parent.neighbours()),
         m_communicator(parent.communicator()),
         m_my_rank(-1)
-    { MPI_Comm_rank(MPI_COMM_WORLD, &m_my_rank); }
+    { MPI_Comm_rank(m_communicator, &m_my_rank); }
 
     /**
      * @brief Constructor
