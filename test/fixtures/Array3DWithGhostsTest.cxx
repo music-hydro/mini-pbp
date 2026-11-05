@@ -52,13 +52,28 @@ class Array3DWithGhostsTest : public MpiTest
         for (int i = 0; i < (size_t)size; i++)
             (*input_1d)[i] = my_array_with_ghosts->m_plan.m_my_rank;
 
-        // Fill with -1.0 to help highlight unset values in tests.
+        // Fill with -42.0 to help highlight unset values in tests.
         for (int plane_idx = 0; plane_idx < 6; plane_idx++)
         {
-            my_array_with_ghosts->m_ghosts[plane_idx].fill(-1.0);
-            my_array_with_ghosts->m_boundaries[plane_idx].fill(-1.0);
+            my_array_with_ghosts->m_ghosts[plane_idx].fill(-42.0);
+            my_array_with_ghosts->m_boundaries[plane_idx].fill(-42.0);
         }
     }
+
+    /**
+     * @brief Logic for testing contiguous access from the operator()(int i, int j, int, k).
+     */
+    void testOperatorContiguousAccess();
+
+    /**
+     * @brief Unit test of updateBoundaries
+     */
+    void testUpdateBoundaries();
+
+    /**
+     * @brief Unit test of exchangeGhosts
+     */
+    void testExchangeGhosts();
 
     void callUpdateBoundaries()
     { my_array_with_ghosts->updateBoundaries(); }

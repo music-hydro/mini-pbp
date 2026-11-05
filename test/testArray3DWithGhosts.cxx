@@ -3,7 +3,23 @@
 #include <catch2/catch_test_macros.hpp>
 #include <mpi.h>
 
-TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts(i,j,k) accesses contiguously")
+TEST_CASE_METHOD(Array3DWithGhostsTest, "Unit tests of Array3DWithGhosts")
+{
+    SECTION("Array3DWithGhosts(i,j,k) accesses contiguously")
+    { testOperatorContiguousAccess(); }
+
+    MPI_Barrier(m_cartesian_communicator);
+
+    SECTION("Array3DWithGhosts::updateBoundaries populates boundaries correctly")
+    { testUpdateBoundaries(); }
+
+    MPI_Barrier(m_cartesian_communicator);
+
+    SECTION("Array3DWithGhosts::exchangeGhosts")
+    { testExchangeGhosts(); }
+}
+
+void Array3DWithGhostsTest::testOperatorContiguousAccess()
 {
     Slab slab = this->my_array_with_ghosts->cellSlab();
     int i0    = slab.start(0);
@@ -72,7 +88,7 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts(i,j,k) accesses conti
     }
 }
 
-TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::updateBoundaries populates boundaries correctly")
+void Array3DWithGhostsTest::testUpdateBoundaries()
 {
     // Verify boundaries do not contain the expected values
     Slab slab = my_array_with_ghosts->cellSlab();
@@ -146,20 +162,12 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::updateBoundaries pop
     }
 }
 
-TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
+void Array3DWithGhostsTest::testExchangeGhosts()
 {
-    // Define a small problem
-    unsigned int n = 30;
-    size_t size    = n * n * n;
-
-    // Allocate and initialise the data
+    // Initialise inner arrays with the rank values
     int my_rank = myRank(m_cartesian_communicator);
-    std::vector<double> input_1d_vector(size);
-    for (int idx = 0; idx < size; idx++)
-        input_1d_vector[idx] = my_rank;
-    Array3D<double> arr(n, n, n, input_1d_vector);
-    GhostExchangePlan<double> plan(*my_array, m_local_boundary_conditions, m_neighbours, m_cartesian_communicator);
-    Array3DWithGhosts<double> arr_with_ghosts(plan);
+    for (int idx = 0; idx < input_1d->size(); idx++)
+        (*input_1d)[idx] = my_rank;
 
     // Verify ghosts do not contain the expected values
     Slab slab = my_array_with_ghosts->cellSlab();
@@ -172,13 +180,19 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     Array2D<double> k_negative_ghost = my_array_with_ghosts->ghost(2, Direction::NEGATIVE);
     Array2D<double> k_positive_ghost = my_array_with_ghosts->ghost(2, Direction::POSITIVE);
 
+    std::array<int, 6> expected_ghost_values(m_neighbours);
+    // If at a boundary, account for boundary conditions
+    for (int idx = 0; idx < 6; idx++)
+        if (m_neighbours[idx] == MPI_PROC_NULL)
+            expected_ghost_values[idx] = my_plan->boundary_conditions()[idx] == ZERO_VALUE ? -1 * my_rank : my_rank;
+
     // axis i
     for (int k = k0; k < kn; k++)
     {
         for (int j = j0; j < jn; j++)
         {
-            REQUIRE(i_negative_ghost(j, k) != m_neighbours[0]);
-            REQUIRE(i_positive_ghost(j, k) != m_neighbours[1]);
+            REQUIRE(i_negative_ghost(j, k) != expected_ghost_values[0]);
+            REQUIRE(i_positive_ghost(j, k) != expected_ghost_values[1]);
         }
     }
     // axis j
@@ -186,8 +200,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int i = i0; i < in; i++)
         {
-            REQUIRE(j_negative_ghost(i, k) != m_neighbours[2]);
-            REQUIRE(j_positive_ghost(i, k) != m_neighbours[3]);
+            REQUIRE(j_negative_ghost(i, k) != expected_ghost_values[2]);
+            REQUIRE(j_positive_ghost(i, k) != expected_ghost_values[3]);
         }
     }
     // axis k
@@ -195,19 +209,19 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int i = i0; i < in; i++)
         {
-            REQUIRE(k_negative_ghost(i, j) != m_neighbours[4]);
-            REQUIRE(k_positive_ghost(i, j) != m_neighbours[5]);
+            REQUIRE(k_negative_ghost(i, j) != expected_ghost_values[4]);
+            REQUIRE(k_positive_ghost(i, j) != expected_ghost_values[5]);
         }
     }
-    arr_with_ghosts.exchangeGhosts();
+    my_array_with_ghosts->exchangeGhosts();
 
     // axis i
     for (int k = k0; k < kn; k++)
     {
         for (int j = j0; j < jn; j++)
         {
-            REQUIRE(i_negative_ghost(j, k) == m_neighbours[0]);
-            REQUIRE(i_positive_ghost(j, k) == m_neighbours[1]);
+            REQUIRE((int)i_negative_ghost(j, k) == expected_ghost_values[0]);
+            REQUIRE((int)i_positive_ghost(j, k) == expected_ghost_values[1]);
         }
     }
     // axis j
@@ -215,8 +229,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int i = i0; i < in; i++)
         {
-            REQUIRE(j_negative_ghost(i, k) == m_neighbours[2]);
-            REQUIRE(j_positive_ghost(i, k) == m_neighbours[3]);
+            REQUIRE(j_negative_ghost(i, k) == expected_ghost_values[2]);
+            REQUIRE(j_positive_ghost(i, k) == expected_ghost_values[3]);
         }
     }
     // axis k
@@ -224,10 +238,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int i = i0; i < in; i++)
         {
-            REQUIRE(k_negative_ghost(i, j) == m_neighbours[4]);
-            REQUIRE(k_positive_ghost(i, j) == m_neighbours[5]);
+            REQUIRE(k_negative_ghost(i, j) == expected_ghost_values[4]);
+            REQUIRE(k_positive_ghost(i, j) == expected_ghost_values[5]);
         }
     }
-
-    REQUIRE(true);
 }

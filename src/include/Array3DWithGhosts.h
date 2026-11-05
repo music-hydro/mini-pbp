@@ -177,6 +177,7 @@ class Array3DWithGhosts : public Array3D<T>
             }
             else
                 applyBoundaryConditions(axis, Direction::POSITIVE);
+
             if (negative_neighbour_rank != MPI_PROC_NULL)
             {
                 int buffer_size = negative_boundary_plane.cellSlab().volume();
@@ -204,7 +205,6 @@ class Array3DWithGhosts : public Array3D<T>
 
             for (int ridx = 0; ridx < requests.size(); ridx++)
             {
-                std::cout << "Rank " << my_rank << ", for axis " << axis << ", waiting for request " << ridx << std::endl;
                 int result = MPI_Wait(&requests[ridx], MPI_STATUS_IGNORE);
                 if (result != MPI_SUCCESS)
                 {
