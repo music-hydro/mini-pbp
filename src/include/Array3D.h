@@ -30,7 +30,8 @@ class Array3D
         m_stride_i(1),
         m_stride_j(ni),
         m_stride_k(ni * nj),
-        m_slab({0, 0, 0}, {(int)ni, (int)nj, (int)nk})
+        m_slab({0, 0, 0}, {(int)ni, (int)nj, (int)nk}),
+        m_is_sub_array(false)
     {
     }
 
@@ -47,7 +48,8 @@ class Array3D
         m_stride_i(1),
         m_stride_j(ni),
         m_stride_k(ni * nj),
-        m_slab({0, 0, 0}, {(int)ni, (int)nj, (int)nk})
+        m_slab({0, 0, 0}, {(int)ni, (int)nj, (int)nk}),
+        m_is_sub_array(false)
     {
     }
 
@@ -66,7 +68,8 @@ class Array3D
         m_stride_i(1),
         m_stride_j(ni),
         m_stride_k(ni * nj),
-        m_slab({0, 0, 0}, {(int)ni, (int)nj, (int)nk})
+        m_slab({0, 0, 0}, {(int)ni, (int)nj, (int)nk}),
+        m_is_sub_array(false)
     {
         size_t domain_size = ni * nj * nk;
         if (data_1D.size() != domain_size) { throw std::invalid_argument("Size of data_1D is not equal to (ni * nj * nk)"); }
@@ -86,7 +89,8 @@ class Array3D
         m_stride_i(parent.m_stride_i),
         m_stride_j(parent.m_stride_j),
         m_stride_k(parent.m_stride_k),
-        m_slab(sub_slab)
+        m_slab(sub_slab),
+        m_is_sub_array(true)
     {
         Slab parent_slab = parent.cellSlab();
         for (int axis = 0; axis < 3; axis++)
@@ -106,7 +110,8 @@ class Array3D
         m_stride_i(parent.m_stride_i),
         m_stride_j(parent.m_stride_j),
         m_stride_k(parent.m_stride_k),
-        m_slab(parent.m_slab)
+        m_slab(parent.m_slab),
+        m_is_sub_array(parent.m_is_sub_array)
     {
     }
 
@@ -122,7 +127,7 @@ class Array3D
      * @returns An Array3D wrapper around a potentially non-contiguous slab of
      *          cells defined within the this Array3D's current slab.
      */
-    Array3D subArray(const Slab& sub_slab)
+    Array3D subArray(const Slab& sub_slab) const
     { return Array3D<T>(*this, sub_slab); }
 
     /**
@@ -206,12 +211,25 @@ class Array3D
         return m_data_origin + offset;
     }
 
+    /**
+     * @brief Get if this array is a sub array.
+     */
+    bool isSubArray() const
+    { return m_is_sub_array; }
+
   protected:
-    T* const m_data_origin;        /**< @brief Pointer to array memory origin */
-    const unsigned int m_stride_i; /**< @brief Index stride along the first dimension */
-    const unsigned int m_stride_j; /**< @brief Index stride along the second dimension */
-    const unsigned int m_stride_k; /**< @brief Index stride along the third dimension */
+    /// @brief Pointer to array memory origin.
+    T* const m_data_origin;
+    /// @brief Index stride along the first dimension.
+    const unsigned int m_stride_i;
+    /// @brief Index stride along the second dimension.
+    const unsigned int m_stride_j;
+    /// @brief Index stride along the third dimension.
+    const unsigned int m_stride_k;
+    /// @brief The cell slab this array represents.
     const Slab m_slab;
+    /// @brief A flag to indicate if this is a sub array or a larger array.
+    const bool m_is_sub_array;
 };
 
 #endif  // Array3D_H

@@ -1,6 +1,7 @@
 #include "Array3DWithGhosts.h"
 #include "fixtures/Array3DWithGhostsTest.cxx"
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 #include <mpi.h>
 
 TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts(i,j,k) accesses contiguously")
@@ -226,4 +227,21 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
             REQUIRE(k_positive_ghost(i, j) == expected_ghost_values[5]);
         }
     }
+}
+
+TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts constructed from a sub array throws")
+{
+    // Define the problem
+    unsigned int n = 10;
+    size_t size    = n * n * n;
+
+    // Allocate a 1D array equal to the size of a 3D array
+    std::vector<double> input_1d(size);
+
+    Array3D<double> full_array(n, n, n, input_1d);
+    Array3D<double> sub_array(full_array, Slab({2, 2, 2}, {8, 8, 8}));
+
+    // Create an Array3DWithGhosts instance wrapping the Array3D
+    REQUIRE_THROWS_WITH(Array3DWithGhosts<double>(sub_array, *my_plan),
+                        Catch::Matchers::ContainsSubstring("A sub array cannot be used to create an array with ghosts"));
 }

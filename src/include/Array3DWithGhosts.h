@@ -14,6 +14,7 @@
 #include "Slab.h"
 #include <array>
 #include <mpi.h>
+#include <stdexcept>
 
 enum Direction
 {
@@ -55,6 +56,7 @@ class Array3DWithGhosts : public Array3D<T>
                       Array2D<T>(m_ni, m_nj),
                       Array2D<T>(m_ni, m_nj)})
     {
+        if (this->m_is_sub_array) throw std::invalid_argument("A sub array cannot be used to create an array with ghosts");
     }
 
     /**
