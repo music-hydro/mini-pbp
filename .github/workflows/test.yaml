@@ -35,8 +35,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y gfortran libopenmpi-dev openmpi-bin
-          export FC="$(which mpif90)"
-          export OMPI_FC="$(which gfortran)"
 
       - name: Build tests
         run:
