@@ -37,4 +37,10 @@ struct MpiType<long>
     inline static const MPI_Datatype value = MPI_LONG;
 };
 
+template<>
+struct MpiType<std::uint32_t>
+{
+    inline static const MPI_Datatype value = MPI_UINT32_T;
+};
+
 #endif  // MpiTypes_H
