@@ -26,7 +26,7 @@ class Array3DWithGhostsTest : public MpiTest
      *
      * @details Allocates and populates the vector and Array3D which define
      *          this Array3DWithGhosts and instantiates the Array3DWithGhosts.
-     *          Ghost and boundary slabs are also filled with -1.0.
+     *          Ghost and boundary slabs are also filled with dummy data.
      */
     Array3DWithGhostsTest() :
         MpiTest()

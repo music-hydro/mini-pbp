@@ -207,11 +207,7 @@ class Array3DWithGhosts : public Array3D<T>
             for (int ridx = 0; ridx < requests.size(); ridx++)
             {
                 int result = MPI_Wait(&requests[ridx], MPI_STATUS_IGNORE);
-                if (result != MPI_SUCCESS)
-                {
-                    throw std::runtime_error("Ghost exchange failed for rank " + std::to_string(my_rank));
-                    MPI_Finalize();
-                }
+                if (result != MPI_SUCCESS) throw std::runtime_error("Ghost exchange failed for rank " + std::to_string(my_rank));
             }
         }
     }
@@ -302,9 +298,9 @@ class Array3DWithGhosts : public Array3D<T>
         boundary_plane.deepCopy(ghost_plane, parity);
     }
 
-    GhostExchangePlan<T> m_plan;
-    unsigned int m_ni;
-    unsigned int m_nj;
+    const GhostExchangePlan<T> m_plan;
+    const unsigned int m_ni;
+    const unsigned int m_nj;
     unsigned int m_nk;
     /// @brief The ghost cells and cells on the boundary of the domain owned by this array.
     std::array<Array2D<T>, 6> m_ghosts;
