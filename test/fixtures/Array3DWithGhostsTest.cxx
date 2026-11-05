@@ -41,7 +41,7 @@ class Array3DWithGhostsTest : public MpiTest
         input_1d = std::make_shared<std::vector<double>>(size);
 
         my_array = std::make_shared<Array3D<double>>(ni, nj, nk, *input_1d);
-        ;
+
         my_plan =
             std::make_shared<GhostExchangePlan<double>>(m_local_boundary_conditions, m_neighbours, m_cartesian_communicator);
 
