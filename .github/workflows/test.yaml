@@ -34,7 +34,9 @@ jobs:
       - name: Install MPI and setup MPI
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y gfortran libopenmpi-dev openmpi-bin
+          sudo apt-get install --no-install-recommends -y gcc libopenmpi-dev openmpi-bin
+          export CXX="$(which mpic++)"
+          export OMPI_CXX="$(which g++)"
 
       - name: Build tests
         run:
