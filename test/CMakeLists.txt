@@ -57,8 +57,10 @@ target_compile_definitions(mini_pbp_mpi_unit_tests PRIVATE
     TEST_DATA_DIR="${PROJ_TEST_DIR}/data"
 )
 
+set(MPI_PREFLAGS --map-by :OVERSUBSCRIBE ${MPIEXEC_PREFLAGS})
+
 foreach(num_ranks 1 4 8)
     add_test(NAME mini_pbp_mpi_unit_tests_${num_ranks}_ranks
-        COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${num_ranks} ${MPIEXEC_PREFLAGS}
+        COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${num_ranks} ${MPI_PREFLAGS}
             $<TARGET_FILE:mini_pbp_mpi_unit_tests> ${MPIEXEC_POSTFLAGS})
 endforeach()
