@@ -31,16 +31,11 @@ jobs:
           path: build/_deps
           key: cache-${{ hashFiles('./test/CMakeLists.txt') }}
 
-      - name: Prepare apt package cache
-        run: mkdir -p "$RUNNER_TEMP/apt-cache/archives/partial"
-
       - name: Cache APT packages
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-${{ hashFiles('.github/apt-packages.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-apt-
+          key: cache-${{ hashFiles('.github/apt-packages.txt') }}
 
 
       - name: Install and setup MPI
