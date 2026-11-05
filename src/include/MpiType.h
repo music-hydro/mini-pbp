@@ -7,6 +7,7 @@
 #ifndef MpiTypes_H
 #define MpiTypes_H
 
+#include <cstdint>
 #include <mpi.h>
 #include <type_traits>
 

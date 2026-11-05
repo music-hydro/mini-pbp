@@ -1,4 +1,5 @@
 #include <catch2/catch_session.hpp>
+#include <cstdint>
 #include <mpi.h>
 #include <MpiType.h>
 
