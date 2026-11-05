@@ -31,6 +31,13 @@ jobs:
           path: build/_deps
           key: cache-${{ hashFiles('./test/CMakeLists.txt') }}
 
+      - name: Install MPI and setup MPI
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y gfortran libopenmpi-dev openmpi-bin
+          export FC="$(which mpif90)"
+          export OMPI_FC="$(which gfortran)"
+
       - name: Build tests
         run:
           cmake -B build;
