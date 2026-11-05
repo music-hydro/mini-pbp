@@ -10,8 +10,8 @@ TEST_CASE("GhostExchangePlan Constructor does not make copies of data")
     std::vector<double> x_raw(size);
     Array3D<double> x(n, n, n, x_raw);
 
-    std::array<BoundaryConditions, 6> bcs = {BoundaryConditions::NONE,
-                                             BoundaryConditions::NONE,
+    std::array<BoundaryConditions, 6> bcs = {BoundaryConditions::INNER,
+                                             BoundaryConditions::INNER,
                                              BoundaryConditions::ZERO_DERIVATIVE,
                                              BoundaryConditions::ZERO_DERIVATIVE,
                                              BoundaryConditions::ZERO_VALUE,

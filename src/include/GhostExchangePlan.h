@@ -17,7 +17,7 @@ enum BoundaryConditions
     ZERO_VALUE,
     ZERO_DERIVATIVE,
     PERIODIC,
-    NONE
+    INNER
 };
 
 template<typename T>

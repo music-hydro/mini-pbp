@@ -118,9 +118,9 @@ class MpiTest
         std::array<BoundaryConditions, 6> bcs {};
         for (int axis_direction = 0; axis_direction < 6; axis_direction++)
         {
-            if (global_bcs[axis_direction] == BoundaryConditions::NONE) throw std::runtime_error("Found NONE");
+            if (global_bcs[axis_direction] == BoundaryConditions::INNER) throw std::runtime_error("Found INNER");
             bcs[axis_direction] =
-                neighbours[axis_direction] == MPI_PROC_NULL ? global_bcs[axis_direction] : BoundaryConditions::NONE;
+                neighbours[axis_direction] == MPI_PROC_NULL ? global_bcs[axis_direction] : BoundaryConditions::INNER;
         }
         return bcs;
     }
