@@ -1,7 +1,7 @@
 #include "Array3DWithGhosts.h"
 #include "DirectionalArray.h"
-#include "Slab.h"
 #include "fixtures/Array3DWithGhostsTest.cxx"
+#include "Slab.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <mpi.h>
@@ -9,8 +9,8 @@
 TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourLinkWeights returns the correct weights")
 {
     // Define the problem
-    int n = 3;
-    size_t size    = n * n * n;
+    int n       = 3;
+    size_t size = n * n * n;
 
     // Allocate a 1D array equal to the size of a 3D array
     std::vector<double> input_1d = std::vector<double>(size);
@@ -29,7 +29,7 @@ TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourLinkWeights returns the c
     // Global slab shouldn't matter here.
     Slab global_slab({0, 0, 0}, {n, n, n});
 
-    GhostExchangePlan<double> my_plan(global_slab, bcs, neighbours, m_cartesian_communicator);
+    GhostExchangePlan my_plan(global_slab, bcs, neighbours, m_cartesian_communicator);
     Array3DWithGhosts<double> my_array_with_ghosts(my_array, my_plan);
 
     DirectionalArray<double> inner_cell_weights = my_array_with_ghosts.neighbourLinkWeights(1, 1, 1);

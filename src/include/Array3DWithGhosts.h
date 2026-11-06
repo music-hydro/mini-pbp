@@ -266,7 +266,7 @@ class Array3DWithGhosts : public Array3D<T>
     /**
      * @brief Get the ghost exchange plan used to define this array.
      */
-    GhostExchangePlan<T> plan()
+    GhostExchangePlan plan()
     { return m_plan; }
 
   private:
