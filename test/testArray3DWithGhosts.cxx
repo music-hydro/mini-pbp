@@ -1,4 +1,5 @@
 #include "Array3DWithGhosts.h"
+#include "DirectionalArray.h"
 #include "fixtures/Array3DWithGhostsTest.cxx"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
@@ -165,7 +166,7 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     const Array2D<double>& k_negative_ghost = my_array_with_ghosts->ghost(2, Direction::NEGATIVE);
     const Array2D<double>& k_positive_ghost = my_array_with_ghosts->ghost(2, Direction::POSITIVE);
 
-    std::array<int, 6> expected_ghost_values(m_neighbours);
+    DirectionalArray<int> expected_ghost_values(m_neighbours);
     // If at a boundary, account for boundary conditions
     for (int idx = 0; idx < 6; idx++)
         if (m_neighbours[idx] == MPI_PROC_NULL)
@@ -176,8 +177,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int j = j0; j < jn; j++)
         {
-            REQUIRE(i_negative_ghost(j, k) != expected_ghost_values[0]);
-            REQUIRE(i_positive_ghost(j, k) != expected_ghost_values[1]);
+            REQUIRE(i_negative_ghost(j, k) != expected_ghost_values.get(0U, Direction::NEGATIVE));
+            REQUIRE(i_positive_ghost(j, k) != expected_ghost_values.get(0U, Direction::POSITIVE));
         }
     }
     // axis j
@@ -185,8 +186,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int i = i0; i < in; i++)
         {
-            REQUIRE(j_negative_ghost(i, k) != expected_ghost_values[2]);
-            REQUIRE(j_positive_ghost(i, k) != expected_ghost_values[3]);
+            REQUIRE(j_negative_ghost(i, k) != expected_ghost_values.get(1U, Direction::NEGATIVE));
+            REQUIRE(j_positive_ghost(i, k) != expected_ghost_values.get(1U, Direction::POSITIVE));
         }
     }
     // axis k
@@ -194,8 +195,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int i = i0; i < in; i++)
         {
-            REQUIRE(k_negative_ghost(i, j) != expected_ghost_values[4]);
-            REQUIRE(k_positive_ghost(i, j) != expected_ghost_values[5]);
+            REQUIRE(k_negative_ghost(i, j) != expected_ghost_values.get(2U, Direction::NEGATIVE));
+            REQUIRE(k_positive_ghost(i, j) != expected_ghost_values.get(2U, Direction::POSITIVE));
         }
     }
     my_array_with_ghosts->exchangeGhosts();
@@ -205,8 +206,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int j = j0; j < jn; j++)
         {
-            REQUIRE((int)i_negative_ghost(j, k) == expected_ghost_values[0]);
-            REQUIRE((int)i_positive_ghost(j, k) == expected_ghost_values[1]);
+            REQUIRE((int)i_negative_ghost(j, k) == expected_ghost_values.get(0U, Direction::NEGATIVE));
+            REQUIRE((int)i_positive_ghost(j, k) == expected_ghost_values.get(0U, Direction::POSITIVE));
         }
     }
     // axis j
@@ -214,8 +215,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int i = i0; i < in; i++)
         {
-            REQUIRE(j_negative_ghost(i, k) == expected_ghost_values[2]);
-            REQUIRE(j_positive_ghost(i, k) == expected_ghost_values[3]);
+            REQUIRE(j_negative_ghost(i, k) == expected_ghost_values.get(1U, Direction::NEGATIVE));
+            REQUIRE(j_positive_ghost(i, k) == expected_ghost_values.get(1U, Direction::POSITIVE));
         }
     }
     // axis k
@@ -223,8 +224,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int i = i0; i < in; i++)
         {
-            REQUIRE(k_negative_ghost(i, j) == expected_ghost_values[4]);
-            REQUIRE(k_positive_ghost(i, j) == expected_ghost_values[5]);
+            REQUIRE(k_negative_ghost(i, j) == expected_ghost_values.get(2U, Direction::NEGATIVE));
+            REQUIRE(k_positive_ghost(i, j) == expected_ghost_values.get(2U, Direction::POSITIVE));
         }
     }
 }

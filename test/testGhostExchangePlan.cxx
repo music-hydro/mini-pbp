@@ -1,4 +1,5 @@
 #include "GhostExchangePlan.h"
+#include "DirectionalArray.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <mpi.h>
@@ -6,8 +7,8 @@
 TEST_CASE("GhostExchangePlan Constructor throws for boundary without a required neighbour",
           "[boundary_conditions][expected_error_message]")
 {
-    std::array<int, 6> neighbours = {MPI_PROC_NULL, 1, 2, 3, 4, 5};
-    std::array<BoundaryConditions, 6> global_bcs;
+    DirectionalArray<int> neighbours = {MPI_PROC_NULL, 1, 2, 3, 4, 5};
+    DirectionalArray<BoundaryConditions> global_bcs;
     std::string expected_error_message;
 
     SECTION("PERIODIC boundary without neighbour")
