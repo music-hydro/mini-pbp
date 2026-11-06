@@ -40,7 +40,8 @@ TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner rejects invali
 {
     const std::array<int, 3> nc     = {3, 3, 3};
     const size_t size               = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
-    GhostExchangePlan plan          = GhostExchangePlanTest::periodicPlan();
+    Slab global_domain({0,0,0}, nc);
+    GhostExchangePlan plan  = GhostExchangePlanTest::periodicPlan(global_domain);
     const unsigned int num_sol_vars = PhysicsBasedPreconditioner::num_sol_vars();
     std::vector<double> solution_raw(num_sol_vars * size);
     std::vector<double> solution_dPd_raw(PhysicsBasedPreconditioner::num_sol_dPd_vars() * size);
