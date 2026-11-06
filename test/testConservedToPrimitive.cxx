@@ -87,7 +87,7 @@ namespace
                                           nmom,
                                           mhd_enabled,
                                           cell_counts,
-                                          GhostExchangePlanTest::periodicPlan(),
+                                          GhostExchangePlanTest::periodicPlan(Slab({0, 0, 0}, cell_counts)),
                                           primitive_initial_value)
         {
         }
@@ -460,7 +460,8 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_t
     MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
     if (num_ranks != 1) { SKIP("Test requires exactly 1 rank"); }
 
-    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
+    Slab global_domain({0, 0, 0}, {3, 3, 3});
+    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan(global_domain);
     checkAgainstRobertsDynamo(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_1rank_rank0", plan);
 }
 
@@ -487,7 +488,8 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_t
     }
     DirectionalArray<BoundaryConditions> inner;
     inner.fill(BoundaryConditions::INNER);
-    GhostExchangePlan<double> plan(inner, neighbours, cartesian);
+    Slab global_domain({0, 0, 0}, {16, 16, 16});
+    GhostExchangePlan<double> plan(global_domain, inner, neighbours, cartesian);
     checkAgainstRobertsDynamo(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_4ranks_rank" + std::to_string(rank),
                               plan);
     MPI_Comm_free(&cartesian);

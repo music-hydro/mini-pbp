@@ -12,6 +12,7 @@
 #include "MpiTest.cxx"
 #include <memory>
 #include <vector>
+#include <mpi.h>
 
 class Array3DWithGhostsTest : public MpiTest
 {
@@ -32,10 +33,13 @@ class Array3DWithGhostsTest : public MpiTest
         MpiTest()
     {
         // Define the problem
-        unsigned int ni = 30;
-        unsigned int nj = 40;
-        unsigned int nk = 30;
-        size_t size     = ni * nj * nk;
+        int num_ranks;
+        MPI_Comm_size(m_cartesian_communicator, &num_ranks);
+        // local sizes equal the global sizes divided by the number of ranks in each dimension
+        unsigned int ni = m_global_domain_slab.end(0) / m_dimensions[0];
+        unsigned int nj = m_global_domain_slab.end(1) / m_dimensions[1];
+        unsigned int nk = m_global_domain_slab.end(2) / m_dimensions[2];
+        size_t size           = ni * nj * nk;
 
         // Allocate a 1D array equal to the size of a 3D array
         input_1d = std::make_shared<std::vector<double>>(size);
@@ -43,7 +47,7 @@ class Array3DWithGhostsTest : public MpiTest
         my_array = std::make_shared<Array3D<double>>(ni, nj, nk, *input_1d);
 
         my_plan =
-            std::make_shared<GhostExchangePlan<double>>(m_local_boundary_conditions, m_neighbours, m_cartesian_communicator);
+            std::make_shared<GhostExchangePlan<double>>(m_global_domain_slab, m_local_boundary_conditions, m_neighbours, m_cartesian_communicator);
 
         // Create an Array3DWithGhosts instance wrapping the Array3D
         my_array_with_ghosts = std::make_shared<Array3DWithGhosts<double>>(*my_array, *my_plan);
