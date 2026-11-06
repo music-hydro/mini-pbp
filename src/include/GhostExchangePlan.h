@@ -8,6 +8,7 @@
 #define GhostExchangePlan_H
 
 #include "DirectionalArray.h"
+#include "Slab.h"
 #include <array>
 #include <mpi.h>
 #include <stdexcept>
@@ -31,6 +32,7 @@ class GhostExchangePlan
      * @brief Copy constructor
      */
     GhostExchangePlan(const GhostExchangePlan<T>& parent) :
+        m_global_domain(parent.globalDomain()),
         m_boundary_conditions(parent.boundaryConditions()),
         m_neighbours(parent.neighbours()),
         m_communicator(parent.communicator()),
@@ -44,13 +46,16 @@ class GhostExchangePlan
      *          following structure:
      *              {-x, +x, -y, +y, -z, +z}
      *
+     * @param[in] global_domain - The slab which defines the global domain (i.e. including all cells).
      * @param[in] boundary_conditions - The boundary conditions for this ranks block of cells.
      * @param[in] neighbours - The neighbouring MPI ranks for the current process.
      * @param[in] communicator - The MPI communicator for this plan.
      */
-    GhostExchangePlan(const DirectionalArray<BoundaryConditions>& boundary_conditions,
+    GhostExchangePlan(const Slab& global_domain,
+                      const DirectionalArray<BoundaryConditions>& boundary_conditions,
                       const DirectionalArray<int>& neighbours,
                       const MPI_Comm& communicator) :
+        m_global_domain(global_domain),
         m_boundary_conditions(boundary_conditions),
         m_neighbours(neighbours),
         m_communicator(communicator),
@@ -94,7 +99,14 @@ class GhostExchangePlan
     MPI_Comm communicator() const
     { return m_communicator; }
 
+    /**
+     * @brief Get the slab which defines the global domain.
+     */
+    Slab globalDomain() const
+    { return m_global_domain; }
+
   private:
+    const Slab m_global_domain;
     const DirectionalArray<BoundaryConditions> m_boundary_conditions;
     const DirectionalArray<int> m_neighbours;
     const MPI_Comm m_communicator;

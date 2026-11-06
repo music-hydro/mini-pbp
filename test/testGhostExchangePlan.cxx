@@ -1,5 +1,6 @@
 #include "GhostExchangePlan.h"
 #include "DirectionalArray.h"
+#include "Slab.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <mpi.h>
@@ -8,6 +9,7 @@ TEST_CASE("GhostExchangePlan Constructor throws for boundary without a required 
           "[boundary_conditions][expected_error_message]")
 {
     DirectionalArray<int> neighbours = {MPI_PROC_NULL, 1, 2, 3, 4, 5};
+    Slab global_domain({0, 0, 0}, {3, 3, 3});
     DirectionalArray<BoundaryConditions> global_bcs;
     std::string expected_error_message;
 
@@ -33,6 +35,6 @@ TEST_CASE("GhostExchangePlan Constructor throws for boundary without a required 
                                   BoundaryConditions::ZERO_VALUE};
     }
 
-    REQUIRE_THROWS_WITH(GhostExchangePlan<double>(global_bcs, neighbours, MPI_COMM_WORLD),
+    REQUIRE_THROWS_WITH(GhostExchangePlan<double>(global_domain, global_bcs, neighbours, MPI_COMM_WORLD),
                         Catch::Matchers::ContainsSubstring(expected_error_message));
 }
