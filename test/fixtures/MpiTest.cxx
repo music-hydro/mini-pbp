@@ -62,7 +62,8 @@ class MpiTest
     /**
      * @brief Create a cartesian topology from all ranks within MPI_COMM_WORLD
      */
-    static MPI_Comm createCartesianTopology(const std::array<int, 3>& dimensions, const DirectionalArray<BoundaryConditions>& global_bcs)
+    static MPI_Comm createCartesianTopology(const std::array<int, 3>& dimensions,
+                                            const DirectionalArray<BoundaryConditions>& global_bcs)
     {
         int num_ranks;
         MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);

@@ -1,7 +1,7 @@
 #include "Array3DWithGhosts.h"
 #include "DirectionalArray.h"
-#include "Slab.h"
 #include "fixtures/Array3DWithGhostsTest.cxx"
+#include "Slab.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <mpi.h>
@@ -9,8 +9,8 @@
 TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourLinkWeights returns the correct weights")
 {
     // Define the problem
-    int n = 3;
-    size_t size    = n * n * n;
+    int n       = 3;
+    size_t size = n * n * n;
 
     // Allocate a 1D array equal to the size of a 3D array
     std::vector<double> input_1d = std::vector<double>(size);
