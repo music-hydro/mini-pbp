@@ -87,10 +87,10 @@ class GhostExchangePlan
     std::array<int, 3>
         neighbourCellPosition(const int& i, const int& j, const int& k, const unsigned int& axis, const Direction& direction)
     {
-        const Slab& global_domain = globalDomain();
-        std::array<int, 3> position           = {global_domain.start(0) + i, global_domain.start(1) + j, global_domain.start(2) + k};
-        position[axis]                        = direction == Direction::NEGATIVE ? position[axis] - 1 : position[axis] + 1;
-        int n = global_domain.end(axis);
+        const Slab& global_domain   = globalDomain();
+        std::array<int, 3> position = {global_domain.start(0) + i, global_domain.start(1) + j, global_domain.start(2) + k};
+        position[axis]              = direction == Direction::NEGATIVE ? position[axis] - 1 : position[axis] + 1;
+        int n                       = global_domain.end(axis);
         if (boundaryConditions().get(axis, direction) == BoundaryConditions::PERIODIC)
             position[axis] = ((position[axis] % n) + n) % n;
         else if (position[axis] < global_domain.start(axis) || position[axis] >= n)

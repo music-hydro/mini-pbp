@@ -9,8 +9,8 @@
 #ifndef MpiTest_H
 #define MpiTest_H
 
-#include "GhostExchangePlan.h"
 #include "DirectionalArray.h"
+#include "GhostExchangePlan.h"
 #include <array>
 #include <mpi.h>
 #include <stdexcept>
@@ -62,7 +62,8 @@ class MpiTest
     /**
      * @brief Create a cartesian topology from all ranks within MPI_COMM_WORLD
      */
-    static MPI_Comm createCartesianTopology(const std::array<int, 3>& dimensions, const DirectionalArray<BoundaryConditions>& global_bcs)
+    static MPI_Comm createCartesianTopology(const std::array<int, 3>& dimensions,
+                                            const DirectionalArray<BoundaryConditions>& global_bcs)
     {
         int num_ranks;
         MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
@@ -108,9 +109,21 @@ class MpiTest
     static DirectionalArray<int> neighbours(const MPI_Comm& cartesian_communicator)
     {
         DirectionalArray<int> neighbours;
-        MPI_Cart_shift(cartesian_communicator, Axis::X, 1, &neighbours.get(Axis::X, Direction::NEGATIVE), &neighbours.get(Axis::X, Direction::POSITIVE));
-        MPI_Cart_shift(cartesian_communicator, Axis::Y, 1, &neighbours.get(Axis::Y, Direction::NEGATIVE), &neighbours.get(Axis::Y, Direction::POSITIVE));
-        MPI_Cart_shift(cartesian_communicator, Axis::Z, 1, &neighbours.get(Axis::Z, Direction::NEGATIVE), &neighbours.get(Axis::Z, Direction::POSITIVE));
+        MPI_Cart_shift(cartesian_communicator,
+                       Axis::X,
+                       1,
+                       &neighbours.get(Axis::X, Direction::NEGATIVE),
+                       &neighbours.get(Axis::X, Direction::POSITIVE));
+        MPI_Cart_shift(cartesian_communicator,
+                       Axis::Y,
+                       1,
+                       &neighbours.get(Axis::Y, Direction::NEGATIVE),
+                       &neighbours.get(Axis::Y, Direction::POSITIVE));
+        MPI_Cart_shift(cartesian_communicator,
+                       Axis::Z,
+                       1,
+                       &neighbours.get(Axis::Z, Direction::NEGATIVE),
+                       &neighbours.get(Axis::Z, Direction::POSITIVE));
         return neighbours;
     }
 
@@ -125,7 +138,7 @@ class MpiTest
      * @returns The boundary conditions for this ranks block of cells.
      */
     static DirectionalArray<BoundaryConditions> localBoundaryConditions(const DirectionalArray<BoundaryConditions>& global_bcs,
-                                                                     const DirectionalArray<int>& neighbours)
+                                                                        const DirectionalArray<int>& neighbours)
     {
         DirectionalArray<BoundaryConditions> bcs {};
         for (int axis_direction = 0; axis_direction < 6; axis_direction++)
