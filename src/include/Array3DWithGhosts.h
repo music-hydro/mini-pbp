@@ -233,6 +233,36 @@ class Array3DWithGhosts : public Array3D<T>
         }
     }
 
+    /**
+     * @brief Get the weights associated with links to neighbouring cells.
+     *
+     * @details 0 for reflective boundaries, 1 otherwise.
+     *
+     * @param i - The cell index in the first dimension.
+     * @param j - The cell index in the second dimension.
+     * @param k - The cell index in the third dimension.
+     *
+     * @returns The weights in each direction
+     */
+    DirectionalArray<T> neighbourLinkWeights(int i, int j, int k) const
+    {
+        DirectionalArray<T> weights;
+        for (int axis = 0; axis < 3; axis++)
+        {
+            weights.get(axis, Direction::NEGATIVE) =
+                (i == this->cellSlab().start(axis) &&
+                 m_plan.boundaryConditions().get(axis, Direction::NEGATIVE) == BoundaryConditions::REFLECTIVE) ?
+                    static_cast<T>(1.0) :
+                    static_cast<T>(0.0);
+            weights.get(axis, Direction::POSITIVE) =
+                (i == this->cellSlab().end(axis) &&
+                 m_plan.boundaryConditions().get(axis, Direction::POSITIVE) == BoundaryConditions::REFLECTIVE) ?
+                    static_cast<T>(1.0) :
+                    static_cast<T>(0.0);
+        }
+        return weights;
+    }
+
   private:
     /**
      * @brief Determine if the given index is at a boundary and return that boundaries direction
