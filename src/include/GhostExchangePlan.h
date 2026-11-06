@@ -7,6 +7,8 @@
 #ifndef GhostExchangePlan_H
 #define GhostExchangePlan_H
 
+#include "DirectionalArray.h"
+#include "Slab.h"
 #include <array>
 #include <mpi.h>
 #include <stdexcept>
@@ -16,6 +18,7 @@ enum BoundaryConditions
     ZERO_VALUE,
     ZERO_DERIVATIVE,
     PERIODIC,
+    REFLECTIVE,
     INNER
 };
 
@@ -29,6 +32,7 @@ class GhostExchangePlan
      * @brief Copy constructor
      */
     GhostExchangePlan(const GhostExchangePlan<T>& parent) :
+        m_global_domain(parent.globalDomain()),
         m_boundary_conditions(parent.boundaryConditions()),
         m_neighbours(parent.neighbours()),
         m_communicator(parent.communicator()),
@@ -42,13 +46,16 @@ class GhostExchangePlan
      *          following structure:
      *              {-x, +x, -y, +y, -z, +z}
      *
+     * @param[in] global_domain - The slab which defines the global domain (i.e. including all cells).
      * @param[in] boundary_conditions - The boundary conditions for this ranks block of cells.
      * @param[in] neighbours - The neighbouring MPI ranks for the current process.
      * @param[in] communicator - The MPI communicator for this plan.
      */
-    GhostExchangePlan(const std::array<BoundaryConditions, 6>& boundary_conditions,
-                      const std::array<int, 6>& neighbours,
+    GhostExchangePlan(const Slab& global_domain,
+                      const DirectionalArray<BoundaryConditions>& boundary_conditions,
+                      const DirectionalArray<int>& neighbours,
                       const MPI_Comm& communicator) :
+        m_global_domain(global_domain),
         m_boundary_conditions(boundary_conditions),
         m_neighbours(neighbours),
         m_communicator(communicator),
@@ -69,12 +76,35 @@ class GhostExchangePlan
     }
 
     /**
+     * @brief Get the global indices of a neighbouring cell in a given direction along an axis.
+     *
+     * @param[in] i - The cell index in the first dimension.
+     * @param[in] j - The cell index in the second dimension.
+     * @param[in] k - The cell index in the third dimension.
+     * @param[in] axis - The axis along which to look for neighbours.
+     * @param[in] direction - The direction in which along the axis to look for neighbours.
+     */
+    std::array<int, 3>
+        neighbourCellPosition(const int& i, const int& j, const int& k, const unsigned int& axis, const Direction& direction)
+    {
+        const Slab& global_domain   = globalDomain();
+        std::array<int, 3> position = {global_domain.start(0) + i, global_domain.start(1) + j, global_domain.start(2) + k};
+        position[axis]              = direction == Direction::NEGATIVE ? position[axis] - 1 : position[axis] + 1;
+        int n                       = global_domain.end(axis);
+        if (boundaryConditions().get(axis, direction) == BoundaryConditions::PERIODIC)
+            position[axis] = ((position[axis] % n) + n) % n;
+        else if (position[axis] < global_domain.start(axis) || position[axis] >= n)
+            position[axis] = -1;
+        return position;
+    }
+
+    /**
      * @brief Get the global boundary conditions for this plan.
      *
      * @return An array of boundary conditions with the following structure:
      *              {-x, +x, -y, +y, -z, +z}
      */
-    std::array<BoundaryConditions, 6> boundaryConditions() const
+    DirectionalArray<BoundaryConditions> boundaryConditions() const
     { return m_boundary_conditions; }
 
     /**
@@ -83,7 +113,7 @@ class GhostExchangePlan
      * @details `neighbours` should have the following structure:
      *              {-x, +x, -y, +y, -z, +z}
      */
-    std::array<int, 6> neighbours() const
+    DirectionalArray<int> neighbours() const
     { return m_neighbours; }
 
     /**
@@ -92,9 +122,16 @@ class GhostExchangePlan
     MPI_Comm communicator() const
     { return m_communicator; }
 
+    /**
+     * @brief Get the slab which defines the global domain.
+     */
+    Slab globalDomain() const
+    { return m_global_domain; }
+
   private:
-    const std::array<BoundaryConditions, 6> m_boundary_conditions;
-    const std::array<int, 6> m_neighbours;
+    const Slab m_global_domain;
+    const DirectionalArray<BoundaryConditions> m_boundary_conditions;
+    const DirectionalArray<int> m_neighbours;
     const MPI_Comm m_communicator;
     int m_my_rank;
 };

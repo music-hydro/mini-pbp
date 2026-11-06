@@ -9,18 +9,13 @@
 
 #include "Array2D.h"
 #include "Array3D.h"
+#include "DirectionalArray.h"
 #include "GhostExchangePlan.h"
 #include "MpiType.h"
 #include "Slab.h"
 #include <array>
 #include <mpi.h>
 #include <stdexcept>
-
-enum Direction
-{
-    NEGATIVE,
-    POSITIVE
-};
 
 template<typename T>
 class Array3DWithGhosts : public Array3D<T>
@@ -115,7 +110,7 @@ class Array3DWithGhosts : public Array3D<T>
      * @returns A copy of the requested ghost plane.
      */
     const Array2D<T>& ghost(const unsigned int& axis, const Direction& direction) const
-    { return m_ghosts[planeIndex(axis, direction)]; }
+    { return m_ghosts.get(axis, direction); }
 
     /**
      * @brief Get the contiguous boundary plane for a given axis and direction.
@@ -126,7 +121,7 @@ class Array3DWithGhosts : public Array3D<T>
      * @returns A copy of the requested boundary plane.
      */
     const Array2D<T>& boundary(const unsigned int& axis, const Direction& direction) const
-    { return m_boundaries[planeIndex(axis, direction)]; }
+    { return m_boundaries.get(axis, direction); }
 
     /**
      * @brief Exchange ghost cells with neighbour ranks according to the plan.
@@ -145,7 +140,7 @@ class Array3DWithGhosts : public Array3D<T>
             std::vector<MPI_Request> requests;
 
             // Set the negative direction boundary ghosts
-            int positive_neighbour_rank = m_plan.neighbours()[planeIndex(axis, Direction::POSITIVE)];
+            int positive_neighbour_rank = m_plan.neighbours().get(axis, Direction::POSITIVE);
             if (positive_neighbour_rank != MPI_PROC_NULL)
             {
                 MPI_Request send_request;
@@ -174,7 +169,7 @@ class Array3DWithGhosts : public Array3D<T>
             else
                 applyBoundaryConditions(axis, Direction::POSITIVE);
 
-            int negative_neighbour_rank = m_plan.neighbours()[planeIndex(axis, Direction::NEGATIVE)];
+            int negative_neighbour_rank = m_plan.neighbours().get(axis, Direction::NEGATIVE);
             if (negative_neighbour_rank != MPI_PROC_NULL)
             {
                 MPI_Request send_request;
@@ -210,6 +205,42 @@ class Array3DWithGhosts : public Array3D<T>
             }
         }
     }
+
+    /**
+     * @brief Get the weights associated with links to neighbouring cells.
+     *
+     * @details 0 for reflective boundaries, 1 otherwise.
+     *
+     * @param i - The cell index in the first dimension.
+     * @param j - The cell index in the second dimension.
+     * @param k - The cell index in the third dimension.
+     *
+     * @returns The weights in each direction
+     */
+    DirectionalArray<T> neighbourLinkWeights(int i, int j, int k) const
+    {
+        DirectionalArray<T> weights;
+        for (int axis = 0; axis < 3; axis++)
+        {
+            weights.get(axis, Direction::NEGATIVE) =
+                (i == this->cellSlab().start(axis) &&
+                 m_plan.boundaryConditions().get(axis, Direction::NEGATIVE) == BoundaryConditions::REFLECTIVE) ?
+                    static_cast<T>(1.0) :
+                    static_cast<T>(0.0);
+            weights.get(axis, Direction::POSITIVE) =
+                (i == this->cellSlab().end(axis) &&
+                 m_plan.boundaryConditions().get(axis, Direction::POSITIVE) == BoundaryConditions::REFLECTIVE) ?
+                    static_cast<T>(1.0) :
+                    static_cast<T>(0.0);
+        }
+        return weights;
+    }
+
+    /**
+     * @brief Get the ghost exchange plan used to define this array.
+     */
+    GhostExchangePlan<T> plan()
+    { return m_plan; }
 
   private:
     /**
@@ -263,17 +294,6 @@ class Array3DWithGhosts : public Array3D<T>
     }
 
     /**
-     * @brief Consistent definition of how to index m_boundaries and m_ghosts
-     *
-     * @param[in] axis - The axis whose plane should be indexed.
-     * @param[in] direction - The direction of the axis to be index.
-     *
-     * @returns The plane index for accessing m_boundaries and m_ghosts.
-     */
-    size_t planeIndex(const unsigned int& axis, const Direction& direction) const
-    { return static_cast<size_t>(axis * 2U + direction); }
-
-    /**
      * @brief Apply the boundary conditions to a ghost plane.
      *
      * @param[in] axis - The axis whose ghost should be filled.
@@ -281,10 +301,9 @@ class Array3DWithGhosts : public Array3D<T>
      */
     void applyBoundaryConditions(unsigned int axis, Direction direction)
     {
-        size_t plane_idx          = planeIndex(axis, direction);
-        Array2D<T> ghost_plane    = m_ghosts[plane_idx];
-        Array2D<T> boundary_plane = m_boundaries[plane_idx];
-        BoundaryConditions bc     = m_plan.boundaryConditions()[plane_idx];
+        Array2D<T> ghost_plane    = m_ghosts.get(axis, direction);
+        Array2D<T> boundary_plane = m_boundaries.get(axis, direction);
+        BoundaryConditions bc     = m_plan.boundaryConditions().get(axis, direction);
 
         T parity;
         if (bc == BoundaryConditions::ZERO_VALUE)
@@ -302,9 +321,9 @@ class Array3DWithGhosts : public Array3D<T>
     const unsigned int m_nj;
     unsigned int m_nk;
     /// @brief The ghost cells and cells on the boundary of the domain owned by this array.
-    std::array<Array2D<T>, 6> m_ghosts;
+    DirectionalArray<Array2D<T>> m_ghosts;
     /// @brief The cells on the boundary of the domain owned by this array.
-    std::array<Array2D<T>, 6> m_boundaries;
+    DirectionalArray<Array2D<T>> m_boundaries;
 };
 
 #endif  // Array3DWithGhosts_H

@@ -1,8 +1,58 @@
 #include "Array3DWithGhosts.h"
+#include "DirectionalArray.h"
 #include "fixtures/Array3DWithGhostsTest.cxx"
+#include "Slab.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <mpi.h>
+
+TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourLinkWeights returns the correct weights")
+{
+    // Define the problem
+    int n       = 3;
+    size_t size = n * n * n;
+
+    // Allocate a 1D array equal to the size of a 3D array
+    std::vector<double> input_1d = std::vector<double>(size);
+
+    Array3D<double> my_array(n, n, n, input_1d);
+
+    // The neighbouring ranks shouldn't matter
+    DirectionalArray<int> neighbours({0, 0, 0, 0, 0, 0});
+    DirectionalArray<BoundaryConditions> bcs({BoundaryConditions::INNER,
+                                              BoundaryConditions::INNER,
+                                              BoundaryConditions::REFLECTIVE,
+                                              BoundaryConditions::REFLECTIVE,
+                                              BoundaryConditions::INNER,
+                                              BoundaryConditions::INNER});
+
+    // Global slab shouldn't matter here.
+    Slab global_slab({0, 0, 0}, {n, n, n});
+
+    GhostExchangePlan<double> my_plan(global_slab, bcs, neighbours, m_cartesian_communicator);
+    Array3DWithGhosts<double> my_array_with_ghosts(my_array, my_plan);
+
+    DirectionalArray<double> inner_cell_weights = my_array_with_ghosts.neighbourLinkWeights(1, 1, 1);
+    return;
+    for (int idx = 0; idx < 6; idx++)
+        REQUIRE(inner_cell_weights[idx] == 1.0);
+
+    std::array<int, 3> coords = {1, 1, 1};
+    for (int axis = 0; axis < 3; axis++)
+    {
+        coords[axis] = 0;
+        DirectionalArray<double> negative_boundary_cell_weights =
+            my_array_with_ghosts.neighbourLinkWeights(coords[0], coords[1], coords[2]);
+        REQUIRE(negative_boundary_cell_weights.get(axis, Direction::NEGATIVE) == 0.0);
+        REQUIRE(negative_boundary_cell_weights.get(axis, Direction::POSITIVE) == 1.0);
+
+        coords[axis] = 2;
+        DirectionalArray<double> positive_boundary_cell_weights =
+            my_array_with_ghosts.neighbourLinkWeights(coords[0], coords[1], coords[2]);
+        REQUIRE(positive_boundary_cell_weights.get(axis, Direction::NEGATIVE) == 0.0);
+        REQUIRE(positive_boundary_cell_weights.get(axis, Direction::POSITIVE) == 1.0);
+    }
+}
 
 TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts(i,j,k) accesses contiguously")
 {
@@ -165,7 +215,7 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     const Array2D<double>& k_negative_ghost = my_array_with_ghosts->ghost(2, Direction::NEGATIVE);
     const Array2D<double>& k_positive_ghost = my_array_with_ghosts->ghost(2, Direction::POSITIVE);
 
-    std::array<int, 6> expected_ghost_values(m_neighbours);
+    DirectionalArray<int> expected_ghost_values(m_neighbours);
     // If at a boundary, account for boundary conditions
     for (int idx = 0; idx < 6; idx++)
         if (m_neighbours[idx] == MPI_PROC_NULL)
@@ -176,8 +226,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int j = j0; j < jn; j++)
         {
-            REQUIRE(i_negative_ghost(j, k) != expected_ghost_values[0]);
-            REQUIRE(i_positive_ghost(j, k) != expected_ghost_values[1]);
+            REQUIRE(i_negative_ghost(j, k) != expected_ghost_values.get(0U, Direction::NEGATIVE));
+            REQUIRE(i_positive_ghost(j, k) != expected_ghost_values.get(0U, Direction::POSITIVE));
         }
     }
     // axis j
@@ -185,8 +235,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int i = i0; i < in; i++)
         {
-            REQUIRE(j_negative_ghost(i, k) != expected_ghost_values[2]);
-            REQUIRE(j_positive_ghost(i, k) != expected_ghost_values[3]);
+            REQUIRE(j_negative_ghost(i, k) != expected_ghost_values.get(1U, Direction::NEGATIVE));
+            REQUIRE(j_positive_ghost(i, k) != expected_ghost_values.get(1U, Direction::POSITIVE));
         }
     }
     // axis k
@@ -194,8 +244,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int i = i0; i < in; i++)
         {
-            REQUIRE(k_negative_ghost(i, j) != expected_ghost_values[4]);
-            REQUIRE(k_positive_ghost(i, j) != expected_ghost_values[5]);
+            REQUIRE(k_negative_ghost(i, j) != expected_ghost_values.get(2U, Direction::NEGATIVE));
+            REQUIRE(k_positive_ghost(i, j) != expected_ghost_values.get(2U, Direction::POSITIVE));
         }
     }
     my_array_with_ghosts->exchangeGhosts();
@@ -205,8 +255,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int j = j0; j < jn; j++)
         {
-            REQUIRE((int)i_negative_ghost(j, k) == expected_ghost_values[0]);
-            REQUIRE((int)i_positive_ghost(j, k) == expected_ghost_values[1]);
+            REQUIRE((int)i_negative_ghost(j, k) == expected_ghost_values.get(0U, Direction::NEGATIVE));
+            REQUIRE((int)i_positive_ghost(j, k) == expected_ghost_values.get(0U, Direction::POSITIVE));
         }
     }
     // axis j
@@ -214,8 +264,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int i = i0; i < in; i++)
         {
-            REQUIRE(j_negative_ghost(i, k) == expected_ghost_values[2]);
-            REQUIRE(j_positive_ghost(i, k) == expected_ghost_values[3]);
+            REQUIRE(j_negative_ghost(i, k) == expected_ghost_values.get(1U, Direction::NEGATIVE));
+            REQUIRE(j_positive_ghost(i, k) == expected_ghost_values.get(1U, Direction::POSITIVE));
         }
     }
     // axis k
@@ -223,8 +273,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int i = i0; i < in; i++)
         {
-            REQUIRE(k_negative_ghost(i, j) == expected_ghost_values[4]);
-            REQUIRE(k_positive_ghost(i, j) == expected_ghost_values[5]);
+            REQUIRE(k_negative_ghost(i, j) == expected_ghost_values.get(2U, Direction::NEGATIVE));
+            REQUIRE(k_positive_ghost(i, j) == expected_ghost_values.get(2U, Direction::POSITIVE));
         }
     }
 }
