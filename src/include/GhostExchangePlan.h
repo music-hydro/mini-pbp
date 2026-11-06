@@ -17,6 +17,7 @@ enum BoundaryConditions
     ZERO_VALUE,
     ZERO_DERIVATIVE,
     PERIODIC,
+    REFLECTIVE,
     INNER
 };
 
