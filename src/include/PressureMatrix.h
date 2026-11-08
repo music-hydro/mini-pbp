@@ -15,6 +15,9 @@
  * - for prec_nvar = 2 also (P, e), (e, P) and (e, e), with e_coef = coef times the face average of dT/de chi:
  *   J_Pe = -dP/de / rho, J_eP = -dt P / rho^2, J_ee = -1 / rho.
  *
+ * Per cell quantities on the six faces use DirectionalArray, laid out {-x, +x, -y, +y, -z, +z} and indexed by axis
+ * (0 x, 1 y, 2 z) and Direction (NEGATIVE, POSITIVE).
+ *
  * The rows come in the local order of the vectors (ivar, i, j, k), the entries of a row in the order MUSIC sets them,
  * so the arrays can be given to PressureSolver::setMatrix() as they are.
  */
@@ -23,6 +26,7 @@
 #define PressureMatrix_H
 
 #include "Array3D.h"
+#include "DirectionalArray.h"
 #include <array>
 #include <cstddef>
 #include <vector>
@@ -37,12 +41,12 @@ class PressureMatrix
      */
     struct Decomposition
     {
-        unsigned int ndim;                              // Number of dimensions (2 or 3)
-        std::array<unsigned int, 3> localCells;         // Cells of this rank along each axis (1 along k in 2D)
-        std::array<GlobalIndex, 3> globalStart;         // Global position of the first cell of this rank, from 0
-        std::array<GlobalIndex, 3> globalCells;         // Cells of the whole domain along each axis
-        std::array<bool, 3> periodic;                   // Whether the domain is periodic along each axis
-        std::array<std::array<bool, 2>, 3> reflective;  // [axis][side]: this rank has a reflective boundary there
+        unsigned int ndim;                        // Number of dimensions (2 or 3)
+        std::array<unsigned int, 3> local_cells;  // Cells of this rank along each axis (1 along k in 2D)
+        std::array<GlobalIndex, 3> global_start;  // Global position of the first cell of this rank, from 0
+        std::array<GlobalIndex, 3> global_cells;  // Cells of the whole domain along each axis
+        std::array<bool, 3> periodic;             // Whether the domain is periodic along each axis
+        DirectionalArray<bool> reflective;        // Whether this rank has a reflective boundary on that face
     };
 
     /**
@@ -59,15 +63,11 @@ class PressureMatrix
         const Array3D<double>* dTde;      // dT/de (prec_nvar = 2 only)
     };
 
-    /// Grid Laplacian coefficients (MUSIC `cell_centered_laplacian_coeffs`) per cell of the rank, [axis][side]
-    using LaplacianCoefficients = std::array<std::array<const Array3D<double>*, 2>, 3>;
-
-    /// Side of a cell along an axis
-    static constexpr unsigned int SIDE_L = 0;
-    static constexpr unsigned int SIDE_R = 1;
+    /// Grid Laplacian coefficients (MUSIC `cell_centered_laplacian_coeffs`) of the six faces of each cell of the rank
+    using LaplacianCoefficients = Array3D<DirectionalArray<double>>;
 
     /**
-     * @class Constructor
+     * @brief Constructor
      *
      * @param[in] decomposition - The cells of this rank in the whole domain and their boundaries.
      * @param[in] prec_nvar - The number of variables to precondition (1: just pressure, 2: pressure and energy).
@@ -97,19 +97,19 @@ class PressureMatrix
      * @brief Global indices of the rows of this rank, in the local order of the vectors.
      */
     const std::vector<GlobalIndex>& rowGlobalIndices() const
-    { return m_rowGlobalIndices; }
+    { return m_row_global_indices; }
 
     /**
      * @brief CSR row offsets, of size number of local rows + 1.
      */
     const std::vector<size_t>& rowOffsets() const
-    { return m_rowOffsets; }
+    { return m_row_offsets; }
 
     /**
      * @brief Global column index of each entry.
      */
     const std::vector<GlobalIndex>& columnGlobalIndices() const
-    { return m_columnGlobalIndices; }
+    { return m_column_global_indices; }
 
     /**
      * @brief Value of each entry.
@@ -118,40 +118,37 @@ class PressureMatrix
     { return m_values; }
 
   private:
-    /// Coefficients per [axis][side]
-    using Coefficients = std::array<std::array<double, 2>, 3>;
-
     /**
      * @brief Grid Laplacian coefficients times rho / rho_face, as MUSIC `pressure_coeffs`.
      */
-    Coefficients pressureCoefficients(const SolutionFields& solution,
-                                      const LaplacianCoefficients& laplacian,
-                                      const unsigned int i,
-                                      const unsigned int j,
-                                      const unsigned int k) const;
+    DirectionalArray<double> pressureCoefficients(const SolutionFields& solution,
+                                                  const LaplacianCoefficients& laplacian,
+                                                  const unsigned int i,
+                                                  const unsigned int j,
+                                                  const unsigned int k) const;
 
     /**
      * @brief 1 for each neighbour link, 0 on a reflective boundary face and along unused axes, as MUSIC
      * `neighbor_links_weights`.
      */
-    Coefficients neighbourLinksWeights(const unsigned int i, const unsigned int j, const unsigned int k) const;
+    DirectionalArray<double> neighbourLinksWeights(const unsigned int i, const unsigned int j, const unsigned int k) const;
 
     /**
-     * @brief Sum of the coefficients, along the side first to reduce cancellations between directions, as MUSIC
-     * `coef_sum`.
+     * @brief Sum of the coefficients, adding the two directions of an axis first to reduce cancellations between axes,
+     * as MUSIC `coef_sum`.
      */
-    static double coefSum(const Coefficients& c);
+    static double coefSum(const DirectionalArray<double>& coefficients);
 
     /**
-     * @brief Global index of unknown `ivar` at the neighbour of local cell (i, j, k) along `axis` on `side`, or -1 if
-     * the neighbour does not exist, as MUSIC `pbp_dof_t%neighbor`.
+     * @brief Global index of unknown `ivar` at the neighbour of local cell (i, j, k) along `axis` in `direction`, or -1
+     * if the neighbour does not exist, as MUSIC `pbp_dof_t%neighbor`.
      */
     GlobalIndex neighbourDofIndex(const unsigned int i,
                                   const unsigned int j,
                                   const unsigned int k,
                                   const unsigned int ivar,
                                   const unsigned int axis,
-                                  const unsigned int side) const;
+                                  const Direction direction) const;
 
     /**
      * @brief Append an entry to the current row, skipped when the column does not exist, as MUSIC `set_element`.
@@ -165,9 +162,9 @@ class PressureMatrix
 
     const Decomposition m_decomposition;
     const unsigned int m_prec_nvar;
-    std::vector<GlobalIndex> m_rowGlobalIndices;
-    std::vector<size_t> m_rowOffsets;
-    std::vector<GlobalIndex> m_columnGlobalIndices;
+    std::vector<GlobalIndex> m_row_global_indices;
+    std::vector<size_t> m_row_offsets;
+    std::vector<GlobalIndex> m_column_global_indices;
     std::vector<double> m_values;
 };
 

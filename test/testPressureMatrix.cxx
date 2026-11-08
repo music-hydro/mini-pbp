@@ -1,4 +1,5 @@
 #include "Array3D.h"
+#include "DirectionalArray.h"
 #include "PressureMatrix.h"
 #include <array>
 #include <catch2/catch_test_macros.hpp>
@@ -23,26 +24,30 @@ namespace
         std::array<unsigned int, 3> nc;
         unsigned int kg;
         std::vector<double> rho, pressure, dPde, chi, dTde;
-        std::vector<double> squaredSoundSpeed;
-        std::array<std::array<std::vector<double>, 2>, 3> laplacian;
+        std::vector<double> squared_sound_speed;
+        std::vector<DirectionalArray<double>> laplacian;
 
         CellData(const unsigned int ndim_, const std::array<unsigned int, 3> nc_) :
             ndim(ndim_),
             nc(nc_),
             kg(ndim_ == 3 ? 1 : 0)
         {
-            const size_t numGhosted = size_t(nc[0] + 2) * (nc[1] + 2) * (nc[2] + 2 * kg);
-            const size_t numCells   = size_t(nc[0]) * nc[1] * nc[2];
+            const size_t num_ghosted = size_t(nc[0] + 2) * (nc[1] + 2) * (nc[2] + 2 * kg);
+            const size_t num_cells   = size_t(nc[0]) * nc[1] * nc[2];
             for (std::vector<double>* field : {&rho, &pressure, &dPde, &chi, &dTde})
             {
-                field->assign(numGhosted, 1.0);
+                field->assign(num_ghosted, 1.0);
             }
-            squaredSoundSpeed.assign(numCells, 1.0);
-            for (unsigned int axis = 0; axis < 3; axis++)
+            squared_sound_speed.assign(num_cells, 1.0);
+            laplacian.resize(num_cells);
+            for (DirectionalArray<double>& faces : laplacian)
             {
-                for (unsigned int side = 0; side < 2; side++)
+                for (unsigned int axis = 0; axis < 3; axis++)
                 {
-                    laplacian[axis][side].assign(numCells, (axis < ndim) ? 1.0 : 0.0);
+                    for (const Direction direction : {Direction::NEGATIVE, Direction::POSITIVE})
+                    {
+                        faces.get(axis, direction) = (axis < ndim) ? 1.0 : 0.0;
+                    }
                 }
             }
         }
@@ -53,11 +58,14 @@ namespace
 
         void setLaplacian(const double value)
         {
-            for (unsigned int axis = 0; axis < ndim; axis++)
+            for (DirectionalArray<double>& faces : laplacian)
             {
-                for (unsigned int side = 0; side < 2; side++)
+                for (unsigned int axis = 0; axis < ndim; axis++)
                 {
-                    laplacian[axis][side].assign(laplacian[axis][side].size(), value);
+                    for (const Direction direction : {Direction::NEGATIVE, Direction::POSITIVE})
+                    {
+                        faces.get(axis, direction) = value;
+                    }
                 }
             }
         }
@@ -71,18 +79,10 @@ namespace
             Array3D<double> vdPde(gi, gj, gk, dPde.data());
             Array3D<double> vchi(gi, gj, gk, chi.data());
             Array3D<double> vdTde(gi, gj, gk, dTde.data());
-            Array3D<double> vasqr(nc[0], nc[1], nc[2], squaredSoundSpeed.data());
-            Array3D<double> lapILeft(nc[0], nc[1], nc[2], laplacian[0][0].data());
-            Array3D<double> lapIRight(nc[0], nc[1], nc[2], laplacian[0][1].data());
-            Array3D<double> lapJLeft(nc[0], nc[1], nc[2], laplacian[1][0].data());
-            Array3D<double> lapJRight(nc[0], nc[1], nc[2], laplacian[1][1].data());
-            Array3D<double> lapKLeft(nc[0], nc[1], nc[2], laplacian[2][0].data());
-            Array3D<double> lapKRight(nc[0], nc[1], nc[2], laplacian[2][1].data());
-            PressureMatrix::SolutionFields solution         = {&vrho, &vpressure, &vdPde, &vchi, &vdTde};
-            PressureMatrix::LaplacianCoefficients lapCoeffs = {
-                {{&lapILeft, &lapIRight}, {&lapJLeft, &lapJRight}, {&lapKLeft, &lapKRight}}
-            };
-            matrix.assemble(dt, solution, vasqr, lapCoeffs);
+            Array3D<double> vasqr(nc[0], nc[1], nc[2], squared_sound_speed.data());
+            PressureMatrix::LaplacianCoefficients laplacian_coefficients(nc[0], nc[1], nc[2], laplacian);
+            PressureMatrix::SolutionFields solution = {&vrho, &vpressure, &vdPde, &vchi, &vdTde};
+            matrix.assemble(dt, solution, vasqr, laplacian_coefficients);
         }
     };
 
@@ -93,14 +93,15 @@ namespace
         singleRank(const unsigned int ndim, const std::array<unsigned int, 3> nc, const bool periodic, const bool reflective)
     {
         PressureMatrix::Decomposition d;
-        d.ndim        = ndim;
-        d.localCells  = nc;
-        d.globalStart = {0, 0, 0};
-        d.globalCells = {GI(nc[0]), GI(nc[1]), GI(nc[2])};
-        d.periodic    = {periodic, periodic, periodic && ndim == 3};
+        d.ndim         = ndim;
+        d.local_cells  = nc;
+        d.global_start = {0, 0, 0};
+        d.global_cells = {GI(nc[0]), GI(nc[1]), GI(nc[2])};
+        d.periodic     = {periodic, periodic, periodic && ndim == 3};
         for (unsigned int axis = 0; axis < 3; axis++)
         {
-            d.reflective[axis] = {reflective && axis < ndim, reflective && axis < ndim};
+            d.reflective.get(axis, Direction::NEGATIVE) = reflective && axis < ndim;
+            d.reflective.get(axis, Direction::POSITIVE) = reflective && axis < ndim;
         }
         return d;
     }
@@ -109,19 +110,19 @@ namespace
      * @brief Check one row: its global index, columns in order and values.
      */
     void checkRow(const PressureMatrix& matrix,
-                  const size_t localRow,
-                  const GI expectedRow,
-                  const std::vector<GI>& expectedColumns,
-                  const std::vector<double>& expectedValues)
+                  const size_t local_row,
+                  const GI expected_row,
+                  const std::vector<GI>& expected_columns,
+                  const std::vector<double>& expected_values)
     {
-        REQUIRE(matrix.rowGlobalIndices().at(localRow) == expectedRow);
-        const size_t begin = matrix.rowOffsets().at(localRow);
-        const size_t end   = matrix.rowOffsets().at(localRow + 1);
-        REQUIRE(end - begin == expectedColumns.size());
-        for (size_t n = 0; n < expectedColumns.size(); n++)
+        REQUIRE(matrix.rowGlobalIndices().at(local_row) == expected_row);
+        const size_t begin = matrix.rowOffsets().at(local_row);
+        const size_t end   = matrix.rowOffsets().at(local_row + 1);
+        REQUIRE(end - begin == expected_columns.size());
+        for (size_t n = 0; n < expected_columns.size(); n++)
         {
-            CHECK(matrix.columnGlobalIndices()[begin + n] == expectedColumns[n]);
-            CHECK(matrix.values()[begin + n] == expectedValues[n]);
+            CHECK(matrix.columnGlobalIndices()[begin + n] == expected_columns[n]);
+            CHECK(matrix.values()[begin + n] == expected_values[n]);
         }
     }
 
@@ -143,7 +144,7 @@ TEST_CASE("PressureMatrix rejects invalid input")
     REQUIRE_THROWS_AS(PressureMatrix(d2), std::invalid_argument);
 
     PressureMatrix::Decomposition d3 = singleRank(3, {3, 3, 3}, true, false);
-    d3.globalStart                   = {1, 0, 0};
+    d3.global_start                  = {1, 0, 0};
     REQUIRE_THROWS_AS(PressureMatrix(d3), std::invalid_argument);
 }
 
@@ -151,15 +152,15 @@ TEST_CASE("PressureMatrix numbers unknowns as MUSIC")
 {
     // Right half of a 4 x 3 x 2 domain, prec_nvar = 2
     PressureMatrix::Decomposition d = singleRank(3, {2, 3, 2}, false, false);
-    d.globalCells                   = {4, 3, 2};
-    d.globalStart                   = {2, 0, 0};
+    d.global_cells                  = {4, 3, 2};
+    d.global_start                  = {2, 0, 0};
     PressureMatrix matrix(d, 2);
 
     // ivar + prec_nvar * (i + ni * (j + nj * k)) over the whole domain
     REQUIRE(matrix.globalDofIndex(0, 0, 0, 0) == 0);
     REQUIRE(matrix.globalDofIndex(1, 2, 1, 1) == 1 + 2 * (1 + 4 * (2 + 3 * 1)));
 
-    CellData data(3, d.localCells);
+    CellData data(3, d.local_cells);
     data.assemble(matrix, dt);
 
     // Rows in the local order (ivar, i, j, k)
@@ -177,7 +178,7 @@ TEST_CASE("PressureMatrix periodic 3D stencil")
     PressureMatrix matrix(singleRank(3, {3, 3, 3}, true, false));
     CellData data(3, {3, 3, 3});
     data.setLaplacian(lap);
-    data.squaredSoundSpeed.assign(data.squaredSoundSpeed.size(), cs2);
+    data.squared_sound_speed.assign(data.squared_sound_speed.size(), cs2);
     data.assemble(matrix, dt);
 
     REQUIRE(matrix.rowGlobalIndices().size() == 27);
@@ -194,7 +195,7 @@ TEST_CASE("PressureMatrix open boundary keeps the face in the diagonal")
     PressureMatrix matrix(singleRank(3, {3, 3, 3}, false, false));
     CellData data(3, {3, 3, 3});
     data.setLaplacian(lap);
-    data.squaredSoundSpeed.assign(data.squaredSoundSpeed.size(), cs2);
+    data.squared_sound_speed.assign(data.squared_sound_speed.size(), cs2);
     data.assemble(matrix, dt);
 
     // Corner cell: no neighbours outside the domain, but the diagonal still has all 6 faces
@@ -207,7 +208,7 @@ TEST_CASE("PressureMatrix reflective boundary drops the face")
     PressureMatrix matrix(singleRank(3, {3, 3, 3}, false, true));
     CellData data(3, {3, 3, 3});
     data.setLaplacian(lap);
-    data.squaredSoundSpeed.assign(data.squaredSoundSpeed.size(), cs2);
+    data.squared_sound_speed.assign(data.squared_sound_speed.size(), cs2);
     data.assemble(matrix, dt);
 
     // Corner cell: the 3 boundary faces have weight 0, diagonal 2 + 3 * 4
@@ -222,7 +223,7 @@ TEST_CASE("PressureMatrix weights the coefficients by rho / rho_face")
     PressureMatrix matrix(singleRank(3, {3, 3, 3}, true, false));
     CellData data(3, {3, 3, 3});
     data.setLaplacian(lap);
-    data.squaredSoundSpeed.assign(data.squaredSoundSpeed.size(), cs2);
+    data.squared_sound_speed.assign(data.squared_sound_speed.size(), cs2);
     data.rho[data.ghosted(1, 1, 1)] = 3.0;
     data.assemble(matrix, dt);
 
@@ -237,7 +238,7 @@ TEST_CASE("PressureMatrix 2D stencil")
     PressureMatrix matrix(singleRank(2, {3, 3, 1}, true, false));
     CellData data(2, {3, 3, 1});
     data.setLaplacian(lap);
-    data.squaredSoundSpeed.assign(data.squaredSoundSpeed.size(), cs2);
+    data.squared_sound_speed.assign(data.squared_sound_speed.size(), cs2);
     data.assemble(matrix, dt);
 
     REQUIRE(matrix.values().size() == 9 * 5);
@@ -249,12 +250,12 @@ TEST_CASE("PressureMatrix neighbours on another rank")
 {
     // Right half of a non periodic 4 x 2 x 2 domain
     PressureMatrix::Decomposition d = singleRank(3, {2, 2, 2}, false, false);
-    d.globalCells                   = {4, 2, 2};
-    d.globalStart                   = {2, 0, 0};
+    d.global_cells                  = {4, 2, 2};
+    d.global_start                  = {2, 0, 0};
     PressureMatrix matrix(d);
-    CellData data(3, d.localCells);
+    CellData data(3, d.local_cells);
     data.setLaplacian(lap);
-    data.squaredSoundSpeed.assign(data.squaredSoundSpeed.size(), cs2);
+    data.squared_sound_speed.assign(data.squared_sound_speed.size(), cs2);
     data.assemble(matrix, dt);
 
     // Local cell (0, 0, 0) is global (2, 0, 0): its left x neighbour (1, 0, 0) is on the other rank
@@ -268,7 +269,7 @@ TEST_CASE("PressureMatrix prec_nvar 2 blocks")
     PressureMatrix matrix(singleRank(3, {3, 3, 3}, true, false), 2);
     CellData data(3, {3, 3, 3});
     data.setLaplacian(lap);
-    data.squaredSoundSpeed.assign(data.squaredSoundSpeed.size(), cs2);
+    data.squared_sound_speed.assign(data.squared_sound_speed.size(), cs2);
     data.rho.assign(data.rho.size(), 2.0);
     data.pressure.assign(data.pressure.size(), 8.0);
     data.dPde.assign(data.dPde.size(), 1.0);
@@ -294,11 +295,11 @@ namespace
     /**
      * @brief Read the set_matrix inputs written by MUSIC for one rank, and return dt.
      */
-    double readMusicInputs(const std::string& path,
-                           PressureMatrix::Decomposition& d,
-                           std::vector<double>& rho,
-                           std::vector<double>& asqr,
-                           std::array<std::array<std::vector<double>, 2>, 3>& lapCoeffs)
+    double readInputs(const std::string& path,
+                      PressureMatrix::Decomposition& d,
+                      std::vector<double>& rho,
+                      std::vector<double>& asqr,
+                      std::vector<DirectionalArray<double>>& laplacian)
     {
         FILE* file = fopen(path.c_str(), "r");
         REQUIRE(file != nullptr);
@@ -309,44 +310,41 @@ namespace
         REQUIRE(fscanf(file, " ndim_prec_nvar %u %u", &d.ndim, &prec_nvar) == 2);
         REQUIRE(prec_nvar == 1);
         REQUIRE(fscanf(file, " dt %lf", &dt) == 1);
-        REQUIRE(fscanf(file, " local_cells %u %u %u", &d.localCells[0], &d.localCells[1], &d.localCells[2]) == 3);
+        REQUIRE(fscanf(file, " local_cells %u %u %u", &d.local_cells[0], &d.local_cells[1], &d.local_cells[2]) == 3);
         REQUIRE(fscanf(file, " global_start %lld %lld %lld", &gs[0], &gs[1], &gs[2]) == 3);
         REQUIRE(fscanf(file, " global_cells %lld %lld %lld", &gc[0], &gc[1], &gc[2]) == 3);
         REQUIRE(fscanf(file, " periodic %d %d %d", &periodic[0], &periodic[1], &periodic[2]) == 3);
         REQUIRE(fscanf(file, " reflective %d %d %d %d %d %d", &refl[0], &refl[1], &refl[2], &refl[3], &refl[4], &refl[5]) == 6);
         for (unsigned int axis = 0; axis < 3; axis++)
         {
-            d.globalStart[axis] = gs[axis];
-            d.globalCells[axis] = gc[axis];
-            d.periodic[axis]    = periodic[axis] != 0;
-            d.reflective[axis]  = {refl[axis] != 0, refl[axis + 3] != 0};
+            d.global_start[axis]                        = gs[axis];
+            d.global_cells[axis]                        = gc[axis];
+            d.periodic[axis]                            = periodic[axis] != 0;
+            d.reflective.get(axis, Direction::NEGATIVE) = refl[axis] != 0;
+            d.reflective.get(axis, Direction::POSITIVE) = refl[axis + 3] != 0;
         }
 
-        const unsigned int kg   = (d.ndim == 3) ? 1 : 0;
-        const size_t numGhosted = size_t(d.localCells[0] + 2) * (d.localCells[1] + 2) * (d.localCells[2] + 2 * kg);
-        const size_t numCells   = size_t(d.localCells[0]) * d.localCells[1] * d.localCells[2];
-        rho.resize(numGhosted);
+        const unsigned int kg    = (d.ndim == 3) ? 1 : 0;
+        const size_t num_ghosted = size_t(d.local_cells[0] + 2) * (d.local_cells[1] + 2) * (d.local_cells[2] + 2 * kg);
+        const size_t num_cells   = size_t(d.local_cells[0]) * d.local_cells[1] * d.local_cells[2];
+        rho.resize(num_ghosted);
         for (double& v : rho)
         {
             REQUIRE(fscanf(file, " %lf", &v) == 1);
         }
-        asqr.resize(numCells);
-        for (unsigned int axis = 0; axis < 3; axis++)
-        {
-            lapCoeffs[axis][0].resize(numCells);
-            lapCoeffs[axis][1].resize(numCells);
-        }
-        for (size_t c = 0; c < numCells; c++)
+        asqr.resize(num_cells);
+        laplacian.resize(num_cells);
+        for (size_t c = 0; c < num_cells; c++)
         {
             REQUIRE(fscanf(file,
                            " %lf %lf %lf %lf %lf %lf %lf",
                            &asqr[c],
-                           &lapCoeffs[0][0][c],
-                           &lapCoeffs[1][0][c],
-                           &lapCoeffs[2][0][c],
-                           &lapCoeffs[0][1][c],
-                           &lapCoeffs[1][1][c],
-                           &lapCoeffs[2][1][c]) == 7);
+                           &laplacian[c].get(0, Direction::NEGATIVE),
+                           &laplacian[c].get(1, Direction::NEGATIVE),
+                           &laplacian[c].get(2, Direction::NEGATIVE),
+                           &laplacian[c].get(0, Direction::POSITIVE),
+                           &laplacian[c].get(1, Direction::POSITIVE),
+                           &laplacian[c].get(2, Direction::POSITIVE)) == 7);
         }
         fclose(file);
         return dt;
@@ -355,7 +353,7 @@ namespace
 
 TEST_CASE("PressureMatrix matches the MUSIC matrix of the Roberts dynamo test")
 {
-    const std::string dataDir = TEST_DATA_DIR;
+    const std::string data_dir = TEST_DATA_DIR;
     for (const auto& [ranks, label] : std::vector<std::pair<int, std::string>> {
              {1, "1rank" },
              {4, "4ranks"}
@@ -366,35 +364,35 @@ TEST_CASE("PressureMatrix matches the MUSIC matrix of the Roberts dynamo test")
             CAPTURE(label, rank);
             PressureMatrix::Decomposition d;
             CellData data(3, {1, 1, 1});
-            const double dt = readMusicInputs(dataDir + "/pressure_matrix_roberts_dynamo_" + label + "_rank" +
-                                                  std::to_string(rank) + "_inputs.dat",
-                                              d,
-                                              data.rho,
-                                              data.squaredSoundSpeed,
-                                              data.laplacian);
-            data.ndim       = d.ndim;
-            data.nc         = d.localCells;
-            data.kg         = (d.ndim == 3) ? 1 : 0;
+            const double dt =
+                readInputs(data_dir + "/pressure_matrix_roberts_dynamo_" + label + "_rank" + std::to_string(rank) + "_inputs.dat",
+                           d,
+                           data.rho,
+                           data.squared_sound_speed,
+                           data.laplacian);
+            data.ndim = d.ndim;
+            data.nc   = d.local_cells;
+            data.kg   = (d.ndim == 3) ? 1 : 0;
 
             PressureMatrix matrix(d);
             data.assemble(matrix, dt);
 
             // MUSIC matrix rows of this rank (before the D A D scaling): global row, global column, value
-            const std::string matrixPath =
-                dataDir + "/pressure_solve_roberts_dynamo_" + label + "_rank" + std::to_string(rank) + "_matrix_inputs.dat";
-            FILE* file = fopen(matrixPath.c_str(), "r");
+            const std::string matrix_path =
+                data_dir + "/pressure_solve_roberts_dynamo_" + label + "_rank" + std::to_string(rank) + "_matrix_inputs.dat";
+            FILE* file = fopen(matrix_path.c_str(), "r");
             REQUIRE(file != nullptr);
             long long row, column;
             double value;
-            size_t entry = 0, localRow = 0;
+            size_t entry = 0, local_row = 0;
             while (fscanf(file, "%lld %lld %lf", &row, &column, &value) == 3)
             {
                 REQUIRE(entry < matrix.values().size());
-                while (matrix.rowOffsets()[localRow + 1] <= entry)
+                while (matrix.rowOffsets()[local_row + 1] <= entry)
                 {
-                    localRow++;
+                    local_row++;
                 }
-                REQUIRE(matrix.rowGlobalIndices()[localRow] == row);
+                REQUIRE(matrix.rowGlobalIndices()[local_row] == row);
                 REQUIRE(matrix.columnGlobalIndices()[entry] == column);
                 REQUIRE_THAT(matrix.values()[entry], Catch::Matchers::WithinRel(value, 1e-14));
                 entry++;
