@@ -33,6 +33,7 @@ class GhostExchangePlan
      */
     GhostExchangePlan(const GhostExchangePlan<T>& parent) :
         m_global_domain(parent.globalDomain()),
+        m_local_domain(parent.localDomain()),
         m_boundary_conditions(parent.boundaryConditions()),
         m_neighbours(parent.neighbours()),
         m_communicator(parent.communicator()),
@@ -47,15 +48,18 @@ class GhostExchangePlan
      *              {-x, +x, -y, +y, -z, +z}
      *
      * @param[in] global_domain - The slab which defines the global domain (i.e. including all cells).
+     * @param[in] local_domain - The cells of this rank, in the global indices of `global_domain`.
      * @param[in] boundary_conditions - The boundary conditions for this ranks block of cells.
      * @param[in] neighbours - The neighbouring MPI ranks for the current process.
      * @param[in] communicator - The MPI communicator for this plan.
      */
     GhostExchangePlan(const Slab& global_domain,
+                      const Slab& local_domain,
                       const DirectionalArray<BoundaryConditions>& boundary_conditions,
                       const DirectionalArray<int>& neighbours,
                       const MPI_Comm& communicator) :
         m_global_domain(global_domain),
+        m_local_domain(local_domain),
         m_boundary_conditions(boundary_conditions),
         m_neighbours(neighbours),
         m_communicator(communicator),
@@ -73,28 +77,59 @@ class GhostExchangePlan
                 if (m_boundary_conditions[axis_direction] == BoundaryConditions::INNER)
                     throw std::invalid_argument("No neighbour found at inner boundary");
             }
+
+        for (unsigned int axis = 0; axis < 3; axis++)
+            if (m_local_domain.start(axis) < m_global_domain.start(axis) || m_local_domain.end(axis) > m_global_domain.end(axis))
+                throw std::invalid_argument("The local domain must lie inside the global domain");
     }
 
     /**
-     * @brief Get the global indices of a neighbouring cell in a given direction along an axis.
+     * @brief Constructor for a rank which holds the whole global domain.
      *
-     * @param[in] i - The cell index in the first dimension.
-     * @param[in] j - The cell index in the second dimension.
-     * @param[in] k - The cell index in the third dimension.
+     * @copydetails GhostExchangePlan(const Slab&, const Slab&, const DirectionalArray<BoundaryConditions>&, const DirectionalArray<int>&, const MPI_Comm&)
+     */
+    GhostExchangePlan(const Slab& global_domain,
+                      const DirectionalArray<BoundaryConditions>& boundary_conditions,
+                      const DirectionalArray<int>& neighbours,
+                      const MPI_Comm& communicator) :
+        GhostExchangePlan(global_domain, global_domain, boundary_conditions, neighbours, communicator)
+    {
+    }
+
+    /**
+     * @brief Get the global indices of a neighbouring cell in a given direction along an axis, as MUSIC
+     *        `pbp_dof_t%neighbor`.
+     *
+     * @details The position is counted from the start of the global domain. A neighbour outside the global domain is
+     *          the periodic image at the other end when the domain is periodic there: the face has a PERIODIC boundary
+     *          condition, or it is an INNER face with a neighbour rank across the domain boundary (a periodic cartesian
+     *          communicator). Otherwise there is no neighbour and the position along `axis` is -1.
+     *
+     * @param[in] i - The local cell index of this rank in the first dimension.
+     * @param[in] j - The local cell index of this rank in the second dimension.
+     * @param[in] k - The local cell index of this rank in the third dimension.
      * @param[in] axis - The axis along which to look for neighbours.
      * @param[in] direction - The direction in which along the axis to look for neighbours.
      */
-    std::array<int, 3>
-        neighbourCellPosition(const int& i, const int& j, const int& k, const unsigned int& axis, const Direction& direction)
+    std::array<int, 3> neighbourCellPosition(const int& i,
+                                             const int& j,
+                                             const int& k,
+                                             const unsigned int& axis,
+                                             const Direction& direction) const
     {
-        const Slab& global_domain   = globalDomain();
-        std::array<int, 3> position = {global_domain.start(0) + i, global_domain.start(1) + j, global_domain.start(2) + k};
-        position[axis]              = direction == Direction::NEGATIVE ? position[axis] - 1 : position[axis] + 1;
-        int n                       = global_domain.end(axis);
-        if (boundaryConditions().get(axis, direction) == BoundaryConditions::PERIODIC)
-            position[axis] = ((position[axis] % n) + n) % n;
-        else if (position[axis] < global_domain.start(axis) || position[axis] >= n)
-            position[axis] = -1;
+        const std::array<int, 3> global_start = m_global_domain.start();
+        std::array<int, 3> position           = {m_local_domain.start(0) - global_start[0] + i,
+                                                 m_local_domain.start(1) - global_start[1] + j,
+                                                 m_local_domain.start(2) - global_start[2] + k};
+        position[axis]                        = direction == Direction::NEGATIVE ? position[axis] - 1 : position[axis] + 1;
+        const int n                           = static_cast<int>(m_global_domain.extent(axis));
+        if (position[axis] < 0 || position[axis] >= n)
+        {
+            const BoundaryConditions bc = m_boundary_conditions.get(axis, direction);
+            const bool periodic         = bc == BoundaryConditions::PERIODIC ||
+                                          (bc == BoundaryConditions::INNER && m_neighbours.get(axis, direction) != MPI_PROC_NULL);
+            position[axis]              = periodic ? ((position[axis] % n) + n) % n : -1;
+        }
         return position;
     }
 
@@ -128,8 +163,15 @@ class GhostExchangePlan
     Slab globalDomain() const
     { return m_global_domain; }
 
+    /**
+     * @brief Get the slab of the cells of this rank, in the global indices of globalDomain().
+     */
+    Slab localDomain() const
+    { return m_local_domain; }
+
   private:
     const Slab m_global_domain;
+    const Slab m_local_domain;
     const DirectionalArray<BoundaryConditions> m_boundary_conditions;
     const DirectionalArray<int> m_neighbours;
     const MPI_Comm m_communicator;
