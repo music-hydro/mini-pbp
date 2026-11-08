@@ -45,12 +45,12 @@ class HostArrayVector
     HostArrayVector(const Teuchos::RCP<const Map>& map, double data[], const HostArrayAccess access) :
         m_access(access),
         m_mirror(mirrorOf(data, map->getLocalNumElements())),
-        m_dualView(viewOf(data, map->getLocalNumElements(), m_mirror)),
-        m_vector(map, m_dualView)
+        m_dual_view(viewOf(data, map->getLocalNumElements(), m_mirror)),
+        m_vector(map, m_dual_view)
     {
         // The array carries the input, so the device side is stale. Tpetra syncs it on the first device access, and
         // shares these flags because copying a DualView shares its modified_flags view.
-        if (m_access != HostArrayAccess::WriteOnly) { m_dualView.modify_host(); }
+        if (m_access != HostArrayAccess::WriteOnly) { m_dual_view.modify_host(); }
     }
 
     /**
@@ -111,7 +111,7 @@ class HostArrayVector
 
     const HostArrayAccess m_access;
     DeviceView m_mirror;
-    DualView m_dualView;
+    DualView m_dual_view;
     Vector m_vector;
 };
 
