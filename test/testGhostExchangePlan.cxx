@@ -9,14 +9,15 @@
 TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourCellPosition returns the correct weights")
 {
     int n = 3;
-    // The neighbouring ranks shouldn't matter
-    DirectionalArray<int> neighbours({0, 0, 0, 0, 0, 0});
-    DirectionalArray<BoundaryConditions> bcs({BoundaryConditions::INNER,
-                                              BoundaryConditions::INNER,
+    // No neighbour across the i and k faces of the domain, periodic along j. An INNER face with a neighbour rank at the
+    // domain boundary would be periodic too (see the next test).
+    DirectionalArray<int> neighbours({MPI_PROC_NULL, MPI_PROC_NULL, 0, 0, MPI_PROC_NULL, MPI_PROC_NULL});
+    DirectionalArray<BoundaryConditions> bcs({BoundaryConditions::ZERO_VALUE,
+                                              BoundaryConditions::ZERO_VALUE,
                                               BoundaryConditions::PERIODIC,
                                               BoundaryConditions::PERIODIC,
-                                              BoundaryConditions::INNER,
-                                              BoundaryConditions::INNER});
+                                              BoundaryConditions::ZERO_DERIVATIVE,
+                                              BoundaryConditions::ZERO_DERIVATIVE});
     // Choose global slab so indices are on global boundaries
     Slab global_slab({0, 0, 0}, {n, n, n});
 
@@ -54,6 +55,28 @@ TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourCellPosition returns the 
     REQUIRE(positive_neighbour_position[0] == 1);
     REQUIRE(positive_neighbour_position[1] == 1);
     REQUIRE(positive_neighbour_position[2] == -1);
+}
+
+TEST_CASE_METHOD(MpiTest, "GhostExchangePlan::neighbourCellPosition counts from the global domain and wraps across INNER faces")
+{
+    // Cells 2 to 3 along i of a 4 x 3 x 3 domain, with a neighbour rank on every face (a periodic cartesian
+    // communicator), so every face is INNER
+    DirectionalArray<int> neighbours({0, 0, 0, 0, 0, 0});
+    DirectionalArray<BoundaryConditions> bcs({BoundaryConditions::INNER,
+                                              BoundaryConditions::INNER,
+                                              BoundaryConditions::INNER,
+                                              BoundaryConditions::INNER,
+                                              BoundaryConditions::INNER,
+                                              BoundaryConditions::INNER});
+    GhostExchangePlan<double> my_plan(
+        Slab({0, 0, 0}, {4, 3, 3}), Slab({2, 0, 0}, {4, 3, 3}), bcs, neighbours, m_cartesian_communicator);
+
+    // Local cell 0 along i is global cell 2: its negative neighbour is global cell 1, on the other rank
+    REQUIRE(my_plan.neighbourCellPosition(0, 1, 1, 0, Direction::NEGATIVE) == std::array<int, 3> {1, 1, 1});
+    // Local cell 1 along i is global cell 3: its positive neighbour is across the domain boundary, global cell 0
+    REQUIRE(my_plan.neighbourCellPosition(1, 1, 1, 0, Direction::POSITIVE) == std::array<int, 3> {0, 1, 1});
+    // Along j the rank holds the whole domain: cell 0 wraps to cell 2
+    REQUIRE(my_plan.neighbourCellPosition(1, 0, 1, 1, Direction::NEGATIVE) == std::array<int, 3> {3, 2, 1});
 }
 
 TEST_CASE("GhostExchangePlan Constructor throws for boundary without a required neighbour",

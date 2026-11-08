@@ -32,25 +32,36 @@ TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourLinkWeights returns the c
     GhostExchangePlan<double> my_plan(global_slab, bcs, neighbours, m_cartesian_communicator);
     Array3DWithGhosts<double> my_array_with_ghosts(my_array, my_plan);
 
-    DirectionalArray<double> inner_cell_weights = my_array_with_ghosts.neighbourLinkWeights(1, 1, 1);
-    return;
+    // Inner cell: every link is used in 3D
+    DirectionalArray<double> inner_cell_weights = my_array_with_ghosts.neighbourLinkWeights(1, 1, 1, 3);
     for (int idx = 0; idx < 6; idx++)
         REQUIRE(inner_cell_weights[idx] == 1.0);
 
-    std::array<int, 3> coords = {1, 1, 1};
+    // In 2D the links along k are not used
+    DirectionalArray<double> inner_cell_weights_2d = my_array_with_ghosts.neighbourLinkWeights(1, 1, 1, 2);
+    for (int idx = 0; idx < 4; idx++)
+        REQUIRE(inner_cell_weights_2d[idx] == 1.0);
+    REQUIRE(inner_cell_weights_2d.get(2, Direction::NEGATIVE) == 0.0);
+    REQUIRE(inner_cell_weights_2d.get(2, Direction::POSITIVE) == 0.0);
+
+    // Only the reflective faces (along y) drop the link, on the first cell for the negative face and on the last cell
+    // for the positive face
     for (int axis = 0; axis < 3; axis++)
     {
+        const double boundary_weight = (axis == 1) ? 0.0 : 1.0;
+        std::array<int, 3> coords    = {1, 1, 1};
+
         coords[axis] = 0;
         DirectionalArray<double> negative_boundary_cell_weights =
-            my_array_with_ghosts.neighbourLinkWeights(coords[0], coords[1], coords[2]);
-        REQUIRE(negative_boundary_cell_weights.get(axis, Direction::NEGATIVE) == 0.0);
+            my_array_with_ghosts.neighbourLinkWeights(coords[0], coords[1], coords[2], 3);
+        REQUIRE(negative_boundary_cell_weights.get(axis, Direction::NEGATIVE) == boundary_weight);
         REQUIRE(negative_boundary_cell_weights.get(axis, Direction::POSITIVE) == 1.0);
 
-        coords[axis] = 2;
+        coords[axis] = n - 1;
         DirectionalArray<double> positive_boundary_cell_weights =
-            my_array_with_ghosts.neighbourLinkWeights(coords[0], coords[1], coords[2]);
-        REQUIRE(positive_boundary_cell_weights.get(axis, Direction::NEGATIVE) == 0.0);
-        REQUIRE(positive_boundary_cell_weights.get(axis, Direction::POSITIVE) == 1.0);
+            my_array_with_ghosts.neighbourLinkWeights(coords[0], coords[1], coords[2], 3);
+        REQUIRE(positive_boundary_cell_weights.get(axis, Direction::NEGATIVE) == 1.0);
+        REQUIRE(positive_boundary_cell_weights.get(axis, Direction::POSITIVE) == boundary_weight);
     }
 }
 

@@ -128,94 +128,144 @@ void PhysicsBasedPreconditioner::reconstructDensityDelta(const Array3D<double>& 
 void PhysicsBasedPreconditioner::calculateSquaredSoundSpeed()
 { m_squared_sound_speed.fill(2.5266187266788758E007); }
 
-void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double>& pressure,
+void PhysicsBasedPreconditioner::assemblePressureMatrix(const unsigned int ndim,
+                                                        const double dt,
+                                                        Array3DWithGhosts<double>& rho,
+                                                        const Array3D<double>& squared_sound_speed,
                                                         const Array3D<DirectionalArray<double>>& laplacian_coefficients)
 {
-    // Compute squared sound speed
-    calculateSquaredSoundSpeed();
+    if (m_prec_nvar != 1)
+    {
+        throw std::invalid_argument("assemblePressureMatrix supports prec_nvar 1 only, found " + std::to_string(m_prec_nvar));
+    }
+    if (ndim != 2 && ndim != 3) { throw std::invalid_argument("ndim must be 2 or 3, found " + std::to_string(ndim)); }
 
-    // Fill pressure
-    Slab global_slab = pressure.plan().globalDomain();
-    Slab cell_slab   = pressure.cellSlab();
+    // The faces read rho one cell beyond the rank
+    rho.exchangeGhosts();
+
+    const GhostExchangePlan<double>& plan = rho.plan();
+    const Slab global_slab                = plan.globalDomain();
+    const Slab local_slab                 = plan.localDomain();
+    const Slab cell_slab                  = rho.cellSlab();
+    if (ndim == 2 && global_slab.extent(2) != 1) { throw std::invalid_argument("In 2D there must be a single cell along k"); }
+    for (unsigned int axis = 0; axis < 3; axis++)
+    {
+        if (cell_slab.extent(axis) != local_slab.extent(axis))
+        {
+            throw std::invalid_argument("The cells of rho must be the local domain of its plan");
+        }
+    }
+
+    // The pressure is the only unknown with prec_nvar 1
+    const unsigned int n_pressure    = 0;
+    const size_t num_rows            = size_t(cell_slab.extent(0)) * cell_slab.extent(1) * cell_slab.extent(2);
+    const size_t max_entries_per_row = 2 * ndim + 1;
+
+    m_global_pressure_row_indices.clear();
+    m_pressure_row_offsets.clear();
+    m_global_pressure_column_indices.clear();
+    m_pressure_matrix_for_solver.clear();
+    m_global_pressure_row_indices.reserve(num_rows);
+    m_pressure_row_offsets.reserve(num_rows + 1);
+    m_global_pressure_column_indices.reserve(num_rows * max_entries_per_row);
+    m_pressure_matrix_for_solver.reserve(num_rows * max_entries_per_row);
+    m_pressure_row_offsets.push_back(0);
+
     for (int k = cell_slab.start(2); k < cell_slab.end(2); ++k)
     {
         for (int j = cell_slab.start(1); j < cell_slab.end(1); ++j)
         {
             for (int i = cell_slab.start(0); i < cell_slab.end(0); ++i)
             {
-
-                const DirectionalArray<double> pressure_coefficients =
-                    pressureCoefficients(i, j, k, laplacian_coefficients(i, j, k), pressure.neighbourLinkWeights(i, j, k));
-                const double J_PP = m_dt * m_squared_sound_speed(i, j, k);
-
-                double pressure_coefficient_sum = 0.0;
-                for (int axis_idx = 0; axis_idx < 6; ++axis_idx)
-                    pressure_coefficient_sum += pressure_coefficients[axis_idx] + pressure_coefficients[axis_idx + 1U];
-
-                // Add the current cell's value to the pressure matrix
-                const unsigned long long global_index = globalVarIndex(i, j, k, m_n_pressure, global_slab);
-                m_global_pressure_row_indices.push_back(global_index);
-                m_global_pressure_column_indices.push_back(global_index);
-                m_pressure_matrix_for_solver.push_back(1.0 / m_dt - J_PP * pressure_coefficient_sum);
-
-                // Add neighbour cell values to the pressure matrix
-                for (int axis = 0; axis < 3; ++axis)
+                // (pressure, pressure) matrix element
+                DirectionalArray<double> coefficients = pressureCoefficients(ndim, rho, laplacian_coefficients(i, j, k), i, j, k);
+                const DirectionalArray<double> weights = rho.neighbourLinkWeights(i, j, k, ndim);
+                for (size_t face = 0; face < coefficients.size(); face++)
                 {
-                    // Determine the neighbour cell positions
-                    std::array<int, 3> negative_neighbour_position =
-                        pressure.plan().neighbourCellPosition(i, j, k, axis, Direction::NEGATIVE);
-                    std::array<int, 3> positive_neighbour_position =
-                        pressure.plan().neighbourCellPosition(i, j, k, axis, Direction::POSITIVE);
-
-                    // Get the global var indices for each neighbour
-                    unsigned long long global_negative_neighbour_var_index = globalVarIndex(negative_neighbour_position[0],
-                                                                                            negative_neighbour_position[1],
-                                                                                            negative_neighbour_position[2],
-                                                                                            m_n_pressure,
-                                                                                            global_slab);
-                    unsigned long long global_positive_neighbour_var_index = globalVarIndex(positive_neighbour_position[0],
-                                                                                            positive_neighbour_position[1],
-                                                                                            positive_neighbour_position[2],
-                                                                                            m_n_pressure,
-                                                                                            global_slab);
-
-                    // Add the global indices to the column index map
-                    m_global_pressure_column_indices.push_back(global_negative_neighbour_var_index);
-                    m_global_pressure_column_indices.push_back(global_positive_neighbour_var_index);
-
-                    // Push the value for each neighbour into the pressure matrix
-                    m_pressure_matrix_for_solver.push_back(J_PP * pressure_coefficients.get(axis, Direction::NEGATIVE));
-                    m_pressure_matrix_for_solver.push_back(J_PP * pressure_coefficients.get(axis, Direction::POSITIVE));
+                    coefficients[face] = coefficients[face] * weights[face];
                 }
+                const double J_PP = -dt * squared_sound_speed(i, j, k);
+
+                const std::array<int, 3> position = {local_slab.start(0) - global_slab.start(0) + i - cell_slab.start(0),
+                                                     local_slab.start(1) - global_slab.start(1) + j - cell_slab.start(1),
+                                                     local_slab.start(2) - global_slab.start(2) + k - cell_slab.start(2)};
+                const long long row               = globalVarIndex(position, n_pressure, global_slab);
+                m_global_pressure_row_indices.push_back(row);
+                setElement(row, 1.0 / dt - J_PP * coefSum(coefficients));
+                for (unsigned int axis = 0; axis < ndim; axis++)
+                {
+                    for (const Direction direction : {Direction::NEGATIVE, Direction::POSITIVE})
+                    {
+                        const std::array<int, 3> neighbour = plan.neighbourCellPosition(
+                            i - cell_slab.start(0), j - cell_slab.start(1), k - cell_slab.start(2), axis, direction);
+                        setElement(globalVarIndex(neighbour, n_pressure, global_slab), J_PP * coefficients.get(axis, direction));
+                    }
+                }
+                m_pressure_row_offsets.push_back(m_pressure_matrix_for_solver.size());
             }
         }
     }
 }
 
-DirectionalArray<double> PhysicsBasedPreconditioner::pressureCoefficients(const int& i,
-                                                                          const int& j,
-                                                                          const int& k,
+DirectionalArray<double> PhysicsBasedPreconditioner::pressureCoefficients(const unsigned int ndim,
+                                                                          const Array3DWithGhosts<double>& rho,
                                                                           const DirectionalArray<double>& laplacian_coefficients,
-                                                                          const DirectionalArray<double>& weights)
+                                                                          const int i,
+                                                                          const int j,
+                                                                          const int k)
 {
     // Coefficients for usual Laplacian operator
     DirectionalArray<double> coefficients = laplacian_coefficients;
 
-    Array3D<double> rho_matrix = m_solution.singleVariableView(m_n_rho);
-    double rho                 = rho_matrix(i, j, k);
+    // Obtain density at cell center (rho) and faces (rho_face)
+    const double rho_centre = rho(i, j, k);
     DirectionalArray<double> rho_face;
+    rho_face.fill(rho_centre);
+    rho_face.get(0, Direction::NEGATIVE) = (rho(i, j, k) + rho(i - 1, j, k)) * 0.5;
+    rho_face.get(0, Direction::POSITIVE) = (rho(i + 1, j, k) + rho(i, j, k)) * 0.5;
+    rho_face.get(1, Direction::NEGATIVE) = (rho(i, j, k) + rho(i, j - 1, k)) * 0.5;
+    rho_face.get(1, Direction::POSITIVE) = (rho(i, j + 1, k) + rho(i, j, k)) * 0.5;
+    if (ndim == 3)
+    {
+        rho_face.get(2, Direction::NEGATIVE) = (rho(i, j, k) + rho(i, j, k - 1)) * 0.5;
+        rho_face.get(2, Direction::POSITIVE) = (rho(i, j, k + 1) + rho(i, j, k)) * 0.5;
+    }
 
-    rho_face[0] = rho_matrix(i, j, k) + rho_matrix(i - 1, j, k) * 0.5;
-    rho_face[1] = rho_matrix(i + 1, j, k) + rho_matrix(i, j, k) * 0.5;
-    rho_face[2] = rho_matrix(i, j, k) + rho_matrix(i, j - 1, k) * 0.5;
-    rho_face[3] = rho_matrix(i, j + 1, k) + rho_matrix(i, j, k) * 0.5;
-    // This is only really needed if we are working in 3D but so far we
-    // have assumed 3D and handled 2D by setting the length of k to 1.
-    rho_face[4] = rho_matrix(i, j, k) + rho_matrix(i, j, k - 1) * 0.5;
-    rho_face[4] = rho_matrix(i, j, k + 1) + rho_matrix(i, j, k) * 0.5;
-
-    for (int signed_axis = 0; signed_axis < 6; ++signed_axis)
-        coefficients[signed_axis] *= rho / rho_face[signed_axis] * weights[signed_axis];
-
+    // Correct Laplacian coefficients to obtain: rho * div(1/rho * grad(P))
+    for (size_t face = 0; face < coefficients.size(); face++)
+    {
+        coefficients[face] = coefficients[face] * rho_centre / rho_face[face];
+    }
     return coefficients;
+}
+
+double PhysicsBasedPreconditioner::coefSum(const DirectionalArray<double>& coefficients)
+{
+    // Make sure to add the two directions of an axis first to reduce catastrophic cancellations between axes
+    double sum = 0.0;
+    for (unsigned int axis = 0; axis < 3; axis++)
+    {
+        sum += coefficients.get(axis, Direction::NEGATIVE) + coefficients.get(axis, Direction::POSITIVE);
+    }
+    return sum;
+}
+
+long long PhysicsBasedPreconditioner::globalVarIndex(const std::array<int, 3>& position,
+                                                     const unsigned int var_index,
+                                                     const Slab& global_slab) const
+{
+    for (unsigned int axis = 0; axis < 3; axis++)
+    {
+        if (position[axis] < 0) { return -1; }
+    }
+    const long long ni = global_slab.extent(0), nj = global_slab.extent(1);
+    return static_cast<long long>(var_index) +
+           static_cast<long long>(m_prec_nvar) * (position[0] + ni * (position[1] + nj * static_cast<long long>(position[2])));
+}
+
+void PhysicsBasedPreconditioner::setElement(const long long column, const double value)
+{
+    if (column < 0) { return; }
+    m_global_pressure_column_indices.push_back(column);
+    m_pressure_matrix_for_solver.push_back(value);
 }

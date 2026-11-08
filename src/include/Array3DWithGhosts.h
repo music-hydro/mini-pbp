@@ -207,31 +207,34 @@ class Array3DWithGhosts : public Array3D<T>
     }
 
     /**
-     * @brief Get the weights associated with links to neighbouring cells.
+     * @brief Get the weights associated with links to neighbouring cells, as MUSIC `neighbor_links_weights`.
      *
-     * @details 0 for reflective boundaries, 1 otherwise.
+     * @details 1 along each of the first `ndim` axes, 0 along the others, and 0 on a face of the cells of this rank
+     *          with a REFLECTIVE boundary condition (the first cell along an axis for the negative face, the last cell
+     *          for the positive face).
      *
      * @param i - The cell index in the first dimension.
      * @param j - The cell index in the second dimension.
      * @param k - The cell index in the third dimension.
+     * @param ndim - The number of dimensions (2 or 3).
      *
      * @returns The weights in each direction
      */
-    DirectionalArray<T> neighbourLinkWeights(int i, int j, int k) const
+    DirectionalArray<T> neighbourLinkWeights(const int i, const int j, const int k, const unsigned int ndim) const
     {
+        const std::array<int, 3> index                        = {i, j, k};
+        const Slab slab                                       = this->cellSlab();
+        const DirectionalArray<BoundaryConditions> boundaries = m_plan.boundaryConditions();
         DirectionalArray<T> weights;
-        for (int axis = 0; axis < 3; axis++)
+        for (unsigned int axis = 0; axis < 3; axis++)
         {
-            weights.get(axis, Direction::NEGATIVE) =
-                (i == this->cellSlab().start(axis) &&
-                 m_plan.boundaryConditions().get(axis, Direction::NEGATIVE) == BoundaryConditions::REFLECTIVE) ?
-                    static_cast<T>(1.0) :
-                    static_cast<T>(0.0);
-            weights.get(axis, Direction::POSITIVE) =
-                (i == this->cellSlab().end(axis) &&
-                 m_plan.boundaryConditions().get(axis, Direction::POSITIVE) == BoundaryConditions::REFLECTIVE) ?
-                    static_cast<T>(1.0) :
-                    static_cast<T>(0.0);
+            const T used                           = (axis < ndim) ? static_cast<T>(1.0) : static_cast<T>(0.0);
+            weights.get(axis, Direction::NEGATIVE) = used;
+            weights.get(axis, Direction::POSITIVE) = used;
+            if (index[axis] == slab.start(axis) && boundaries.get(axis, Direction::NEGATIVE) == BoundaryConditions::REFLECTIVE)
+                weights.get(axis, Direction::NEGATIVE) = static_cast<T>(0.0);
+            if (index[axis] == slab.end(axis) - 1 && boundaries.get(axis, Direction::POSITIVE) == BoundaryConditions::REFLECTIVE)
+                weights.get(axis, Direction::POSITIVE) = static_cast<T>(0.0);
         }
         return weights;
     }
@@ -239,7 +242,7 @@ class Array3DWithGhosts : public Array3D<T>
     /**
      * @brief Get the ghost exchange plan used to define this array.
      */
-    GhostExchangePlan<T> plan()
+    const GhostExchangePlan<T>& plan() const
     { return m_plan; }
 
   private:
@@ -309,6 +312,9 @@ class Array3DWithGhosts : public Array3D<T>
         if (bc == BoundaryConditions::ZERO_VALUE)
             parity = -1.0;
         else if (bc == BoundaryConditions::ZERO_DERIVATIVE)
+            parity = 1.0;
+        else if (bc == BoundaryConditions::REFLECTIVE)
+            // A cell centred scalar (rho, P, ...) is mirrored at a reflective wall
             parity = 1.0;
         else
             throw std::runtime_error("Invalid boundary condition: " + std::to_string((int)bc));

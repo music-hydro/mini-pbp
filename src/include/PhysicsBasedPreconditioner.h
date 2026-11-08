@@ -11,6 +11,9 @@
 #include "Array3DWithGhosts.h"
 #include "DirectionalArray.h"
 #include "PackedVariables.h"
+#include "Slab.h"
+#include <array>
+#include <vector>
 
 class PhysicsBasedPreconditioner
 {
@@ -68,12 +71,61 @@ class PhysicsBasedPreconditioner
 
 
     /**
-     * @brief Assembles the pressure matrix ready for preconditioning
+     * @brief Assemble the rows of this rank of the preconditioner pressure matrix, as MUSIC `set_matrix`
+     *        (prec_nvar 1).
      *
-     * @param[in,out] pressure - The pressure matrix to be assembled.
+     * @details For each cell, with coef the grid Laplacian coefficients times rho / rho_face times the neighbour link
+     *          weight (0 on a reflective boundary face, else 1), J_PP = -dt c^2:
+     *          diagonal 1/dt - J_PP sum(coef), and J_PP coef for each neighbour that exists.
+     *
+     *          Unknowns are numbered as MUSIC `global_dof_idx0`: the cell position in the global domain, i fastest. A
+     *          neighbour across a periodic boundary is the cell at the other end of the domain; a neighbour outside a
+     *          non periodic boundary does not exist and gets no entry, but its face still counts in the diagonal.
+     *
+     *          The rows come in the local order of the cells (i fastest), the entries of a row in the order MUSIC sets
+     *          them (diagonal, then NEGATIVE and POSITIVE along each axis), as CSR arrays ready for the solver. Each
+     *          call replaces the previous matrix.
+     *
+     *          The density faces read rho one cell beyond the rank: the ghosts of `rho` are exchanged here, so every
+     *          rank of its plan must call this.
+     *
+     * @param[in] ndim - The number of dimensions (2 or 3).
+     * @param[in] dt - The time step.
+     * @param[in,out] rho - The density on the cells of this rank, with the plan of this rank (neighbours, boundary
+     *                conditions, global and local domains). Its ghosts are exchanged.
+     * @param[in] squared_sound_speed - The squared sound speed per cell of this rank.
+     * @param[in] laplacian_coefficients - The grid Laplacian coefficients (MUSIC `cell_centered_laplacian_coeffs`) of the
+     *            six faces of each cell of this rank.
      */
-    void assemblePressureMatrix(Array3DWithGhosts<double>& pressure,
+    void assemblePressureMatrix(const unsigned int ndim,
+                                const double dt,
+                                Array3DWithGhosts<double>& rho,
+                                const Array3D<double>& squared_sound_speed,
                                 const Array3D<DirectionalArray<double>>& laplacian_coefficients);
+
+    /**
+     * @brief Global indices of the rows of the pressure matrix of this rank, in the local order of the cells.
+     */
+    const std::vector<long long>& pressureMatrixRowGlobalIndices() const
+    { return m_global_pressure_row_indices; }
+
+    /**
+     * @brief CSR row offsets of the pressure matrix, of size number of local rows + 1.
+     */
+    const std::vector<size_t>& pressureMatrixRowOffsets() const
+    { return m_pressure_row_offsets; }
+
+    /**
+     * @brief Global column index of each entry of the pressure matrix.
+     */
+    const std::vector<long long>& pressureMatrixColumnGlobalIndices() const
+    { return m_global_pressure_column_indices; }
+
+    /**
+     * @brief Value of each entry of the pressure matrix.
+     */
+    const std::vector<double>& pressureMatrixValues() const
+    { return m_pressure_matrix_for_solver; }
 
     /**
      * @brief getter for density index
@@ -132,29 +184,45 @@ class PhysicsBasedPreconditioner
                               Array3D<double>& delta_energy);
 
     /**
-     * @brief Get the pressure coefficients for a given cell
+     * @brief Grid Laplacian coefficients times rho / rho_face for a given cell, as MUSIC `pressure_coeffs`.
      *
-     * @param i - The index in the first dimension.
-     * @param j - The index in the second dimension.
-     * @param k - The index in the third dimension.
+     * @param[in] ndim - The number of dimensions (2 or 3). Along k in 2D, rho_face is rho.
+     * @param[in] rho - The density with its ghosts exchanged.
+     * @param[in] laplacian_coefficients - The grid Laplacian coefficients of the cell.
+     * @param[in] i - The index in the first dimension.
+     * @param[in] j - The index in the second dimension.
+     * @param[in] k - The index in the third dimension.
      */
-    DirectionalArray<double> pressureCoefficients(const int& i,
-                                                  const int& j,
-                                                  const int& k,
-                                                  const DirectionalArray<double>& laplacian_coefficients,
-                                                  const DirectionalArray<double>& weights);
+    static DirectionalArray<double> pressureCoefficients(const unsigned int ndim,
+                                                         const Array3DWithGhosts<double>& rho,
+                                                         const DirectionalArray<double>& laplacian_coefficients,
+                                                         const int i,
+                                                         const int j,
+                                                         const int k);
 
     /**
-     * @brief Get the index of a variable value at a a specific cell centre.
-     *
-     * @param[in] i - The cell index in the first dimension.
-     * @param[in] j - The cell index in the second dimension.
-     * @param[in] k - The cell index in the third dimension.
-     * @param[in] var_index - The index of the variable to be accessed.
-     * @param[in] global_slab - Slab representing the global domain.
+     * @brief Sum of the coefficients, adding the two directions of an axis first to reduce cancellations between axes,
+     *        as MUSIC `coef_sum`.
      */
-    unsigned long long globalVarIndex(const int& i, const int& j, const int& k, const int& var_index, const Slab& global_slab)
-    { return i + global_slab.end(0) * (j + global_slab.end(1) * (k + global_slab.end(2) * var_index)); }
+    static double coefSum(const DirectionalArray<double>& coefficients);
+
+    /**
+     * @brief Get the global index of unknown `var_index` at a cell, as MUSIC `global_dof_idx0`: var_index fastest,
+     *        then the cell position in the global domain, i fastest.
+     *
+     * @param[in] position - The cell position, counted from the start of the global domain.
+     * @param[in] var_index - The index of the unknown within the cell (0 for the pressure).
+     * @param[in] global_slab - Slab representing the global domain.
+     *
+     * @returns The global index, or -1 if the cell does not exist (a position of -1 along an axis).
+     */
+    long long globalVarIndex(const std::array<int, 3>& position, const unsigned int var_index, const Slab& global_slab) const;
+
+    /**
+     * @brief Append an entry to the current row of the pressure matrix, skipped when the column does not exist, as
+     *        MUSIC `set_element`.
+     */
+    void setElement(const long long column, const double value);
 
     /// @brief Store of the solution
     PackedVariables m_solution;
@@ -166,8 +234,10 @@ class PhysicsBasedPreconditioner
     std::vector<double> m_pressure_matrix_for_solver;
     /// @brief Map of global column indices for m_pressure_matrix_for_solver
     std::vector<long long> m_global_pressure_column_indices;
-    /// @brief Map of global row indices for m_pressure_matrix_for_solver
+    /// @brief Map of global row indices for m_pressure_matrix_for_solver, one per row
     std::vector<long long> m_global_pressure_row_indices;
+    /// @brief CSR row offsets into m_pressure_matrix_for_solver and m_global_pressure_column_indices
+    std::vector<size_t> m_pressure_row_offsets;
     /// @brief Flag to indicate whether to precondition the pressure equation only (`prec_nvar=1`), or both pressure and energy equations (`prec_nvar=2`)
     unsigned int m_prec_nvar;
     /// Indices for each variable
