@@ -40,3 +40,21 @@ add_test(NAME mini_pbp_unit_tests COMMAND mini_pbp_unit_tests)
 
 add_executable(mini_pbp_benchmarks ${BENCHMARK_FILES} ${HEADER_FILES} ${IMPLEMENTATION_FILES})
 target_link_libraries(mini_pbp_benchmarks PRIVATE Catch2::Catch2WithMain)
+
+# Tests of the Trilinos pressure solver, run on 1 and 4 ranks
+if(TARGET mini_pbp_pressure_solver)
+    add_executable(mini_pbp_trilinos_tests
+        "${PROJ_TEST_DIR}/mainTrilinos.cxx"
+        "${PROJ_TEST_DIR}/testPressureSolver.cxx"
+    )
+    target_link_libraries(mini_pbp_trilinos_tests PRIVATE mini_pbp_pressure_solver Catch2::Catch2)
+    target_compile_definitions(mini_pbp_trilinos_tests PRIVATE
+        TEST_DATA_DIR="${PROJ_TEST_DIR}/data"
+    )
+    foreach(num_ranks 1 4)
+        add_test(NAME mini_pbp_trilinos_tests_${num_ranks}_ranks
+            COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${num_ranks} ${MPIEXEC_PREFLAGS}
+                $<TARGET_FILE:mini_pbp_trilinos_tests> ${MPIEXEC_POSTFLAGS}
+        )
+    endforeach()
+endif()

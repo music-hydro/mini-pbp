@@ -13,6 +13,21 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
+### Pressure solver tests (Trilinos)
+
+The pressure solver and its tests are only built when CMake finds Trilinos
+(Tpetra, Belos and MueLu). Point CMake at the Trilinos install and use the MPI
+compiler wrapper that Trilinos was built with:
+
+```sh
+cmake -B build -DCMAKE_PREFIX_PATH=<trilinos install prefix>
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+The tests run on 1 and 4 MPI ranks. For a CUDA build of Trilinos, the C++
+compiler must be Kokkos' `nvcc_wrapper` (for example through `OMPI_CXX`).
+
 ### Test data
 
 Some unit tests rely on the presence of test data which has been committed to
