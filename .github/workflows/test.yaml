@@ -31,6 +31,19 @@ jobs:
           path: build/_deps
           key: cache-${{ hashFiles('./test/CMakeLists.txt') }}
 
+      - name: Cache APT packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: /var/cache/apt/archives
+          key: cache-${{ hashFiles('.github/workflows/test.yaml') }}
+
+
+      - name: Install and setup MPI
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y g++ libopenmpi-dev openmpi-bin
+          printf 'CXX=%s\nOMPI_CXX=%s\n' "$(command -v mpic++)" "$(command -v g++)" >> "$GITHUB_ENV"
+
       - name: Build tests
         run:
           cmake -B build;

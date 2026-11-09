@@ -29,7 +29,7 @@ class Array2D : public Array3D<T>
     /**
      * @brief Copy constructor
      */
-    Array2D(Array2D<T>& parent) :
+    Array2D(const Array2D<T>& parent) :
         Array3D<T>(parent, parent.cellSlab())
     {
     }
