@@ -20,7 +20,7 @@ TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourCellPosition returns the 
     // Choose global slab so indices are on global boundaries
     Slab global_slab({0, 0, 0}, {n, n, n});
 
-    GhostExchangePlan<double> my_plan(global_slab, bcs, neighbours, m_cartesian_communicator);
+    GhostExchangePlan my_plan(global_slab, bcs, neighbours, m_cartesian_communicator);
 
     // i axis
     int axis                                       = 0;
@@ -86,6 +86,6 @@ TEST_CASE("GhostExchangePlan Constructor throws for boundary without a required 
                                   BoundaryConditions::ZERO_VALUE};
     }
 
-    REQUIRE_THROWS_WITH(GhostExchangePlan<double>(global_domain, global_bcs, neighbours, MPI_COMM_WORLD),
+    REQUIRE_THROWS_WITH(GhostExchangePlan(global_domain, global_bcs, neighbours, MPI_COMM_WORLD),
                         Catch::Matchers::ContainsSubstring(expected_error_message));
 }

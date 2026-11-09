@@ -57,7 +57,7 @@ namespace
         int ndim, nmom;
         std::array<int, 3> nc;
         size_t size;
-        GhostExchangePlan<double> plan;
+        GhostExchangePlan plan;
         std::vector<double> solution_raw;
         std::vector<double> solution_dPd_raw;
         std::vector<double> squared_sound_speed_raw;
@@ -104,7 +104,7 @@ namespace
                                       const int nmom,
                                       const bool mhd_enabled,
                                       const std::array<int, 3>& cell_counts,
-                                      const GhostExchangePlan<double>& exchange_plan,
+                                      const GhostExchangePlan& exchange_plan,
                                       const double primitive_initial_value = 0.0,
                                       const double conserved_initial_value = 1.0) :
             nc(cell_counts),
@@ -154,7 +154,7 @@ namespace
      * @param[in] file_prefix - The prefix of the files containing inputs and expected outputs.
      * @param[in] plan - The ghost exchange plan required for the chosen number opf ranks (should be periodic in all directions).
      */
-    void checkAgainstRobertsDynamo(const std::string& file_prefix, GhostExchangePlan<double>& plan)
+    void checkAgainstRobertsDynamo(const std::string& file_prefix, GhostExchangePlan& plan)
     {
         FILE* file = fopen((file_prefix + "_inputs.dat").c_str(), "r");
         REQUIRE(file != nullptr);
@@ -461,7 +461,7 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_t
     if (num_ranks != 1) { SKIP("Test requires exactly 1 rank"); }
 
     Slab global_domain({0, 0, 0}, {3, 3, 3});
-    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan(global_domain);
+    GhostExchangePlan plan = GhostExchangePlanTest::periodicPlan(global_domain);
     checkAgainstRobertsDynamo(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_1rank_rank0", plan);
 }
 
@@ -489,7 +489,7 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_t
     DirectionalArray<BoundaryConditions> inner;
     inner.fill(BoundaryConditions::INNER);
     Slab global_domain({0, 0, 0}, {16, 16, 16});
-    GhostExchangePlan<double> plan(global_domain, inner, neighbours, cartesian);
+    GhostExchangePlan plan(global_domain, inner, neighbours, cartesian);
     checkAgainstRobertsDynamo(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_4ranks_rank" + std::to_string(rank),
                               plan);
     MPI_Comm_free(&cartesian);
