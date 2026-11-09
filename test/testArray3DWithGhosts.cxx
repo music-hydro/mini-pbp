@@ -29,7 +29,7 @@ TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourLinkWeights returns the c
     // Global slab shouldn't matter here.
     Slab global_slab({0, 0, 0}, {n, n, n});
 
-    GhostExchangePlan my_plan(global_slab, bcs, neighbours, m_cartesian_communicator);
+    GhostExchangePlan my_plan(global_slab, bcs, neighbours, m_dimensions, m_cartesian_communicator);
     Array3DWithGhosts<double> my_array_with_ghosts(my_array, my_plan);
 
     DirectionalArray<double> inner_cell_weights = my_array_with_ghosts.neighbourLinkWeights(1, 1, 1);
@@ -219,7 +219,7 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     // If at a boundary, account for boundary conditions
     for (int idx = 0; idx < 6; idx++)
         if (m_neighbours[idx] == MPI_PROC_NULL)
-            expected_ghost_values[idx] = my_plan->boundaryConditions()[idx] == ZERO_VALUE ? -1 * my_rank : my_rank;
+            expected_ghost_values[idx] = my_plan->localBoundaryConditions()[idx] == ZERO_VALUE ? -1 * my_rank : my_rank;
 
     // axis i
     for (int k = k0; k < kn; k++)

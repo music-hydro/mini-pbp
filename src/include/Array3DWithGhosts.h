@@ -224,12 +224,12 @@ class Array3DWithGhosts : public Array3D<T>
         {
             weights.get(axis, Direction::NEGATIVE) =
                 (i == this->cellSlab().start(axis) &&
-                 m_plan.boundaryConditions().get(axis, Direction::NEGATIVE) == BoundaryConditions::REFLECTIVE) ?
+                 m_plan.localBoundaryConditions().get(axis, Direction::NEGATIVE) == BoundaryConditions::REFLECTIVE) ?
                     static_cast<T>(1.0) :
                     static_cast<T>(0.0);
             weights.get(axis, Direction::POSITIVE) =
                 (i == this->cellSlab().end(axis) &&
-                 m_plan.boundaryConditions().get(axis, Direction::POSITIVE) == BoundaryConditions::REFLECTIVE) ?
+                 m_plan.localBoundaryConditions().get(axis, Direction::POSITIVE) == BoundaryConditions::REFLECTIVE) ?
                     static_cast<T>(1.0) :
                     static_cast<T>(0.0);
         }
@@ -239,7 +239,7 @@ class Array3DWithGhosts : public Array3D<T>
     /**
      * @brief Get the ghost exchange plan used to define this array.
      */
-    GhostExchangePlan<T> plan()
+    GhostExchangePlan plan()
     { return m_plan; }
 
   private:
@@ -303,7 +303,7 @@ class Array3DWithGhosts : public Array3D<T>
     {
         Array2D<T> ghost_plane    = m_ghosts.get(axis, direction);
         Array2D<T> boundary_plane = m_boundaries.get(axis, direction);
-        BoundaryConditions bc     = m_plan.boundaryConditions().get(axis, direction);
+        BoundaryConditions bc     = m_plan.localBoundaryConditions().get(axis, direction);
 
         T parity;
         if (bc == BoundaryConditions::ZERO_VALUE)

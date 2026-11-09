@@ -20,7 +20,7 @@ TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourCellPosition returns the 
     // Choose global slab so indices are on global boundaries
     Slab global_slab({0, 0, 0}, {n, n, n});
 
-    GhostExchangePlan my_plan(global_slab, bcs, neighbours, m_cartesian_communicator);
+    GhostExchangePlan my_plan(global_slab, bcs, neighbours, m_dimensions, m_cartesian_communicator);
 
     // i axis
     int axis                                       = 0;
@@ -56,36 +56,36 @@ TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourCellPosition returns the 
     REQUIRE(positive_neighbour_position[2] == -1);
 }
 
-TEST_CASE("GhostExchangePlan Constructor throws for boundary without a required neighbour",
-          "[boundary_conditions][expected_error_message]")
+TEST_CASE_METHOD(MpiTest, "GhostExchangePlan::determineLocalBCs throws for invalid neighbours")
 {
-    DirectionalArray<int> neighbours = {MPI_PROC_NULL, 1, 2, 3, 4, 5};
-    Slab global_domain({0, 0, 0}, {3, 3, 3});
+    DirectionalArray<int> invalid_neighbours(
+        {MPI_PROC_NULL, MPI_PROC_NULL, MPI_PROC_NULL, MPI_PROC_NULL, MPI_PROC_NULL, MPI_PROC_NULL});
     DirectionalArray<BoundaryConditions> global_bcs;
-    std::string expected_error_message;
+    std::string error_msg;
 
-    SECTION("PERIODIC boundary without neighbour")
+    SECTION("No neighbour for PERIODIC boundary")
     {
-        expected_error_message = "No neighbour found at periodic boundary";
-        global_bcs             = {BoundaryConditions::PERIODIC,
-                                  BoundaryConditions::PERIODIC,
-                                  BoundaryConditions::ZERO_DERIVATIVE,
-                                  BoundaryConditions::ZERO_DERIVATIVE,
-                                  BoundaryConditions::ZERO_VALUE,
-                                  BoundaryConditions::ZERO_VALUE};
+        global_bcs = {BoundaryConditions::PERIODIC,
+                      BoundaryConditions::PERIODIC,
+                      BoundaryConditions::ZERO_VALUE,
+                      BoundaryConditions::ZERO_VALUE,
+                      BoundaryConditions::ZERO_DERIVATIVE,
+                      BoundaryConditions::ZERO_DERIVATIVE};
+        error_msg  = "No neighbour found at periodic boundary";
     }
 
-    SECTION("INNER boundary without neighbour")
+    SECTION("No neighbour for INNER boundary")
     {
-        expected_error_message = "No neighbour found at inner boundary";
-        global_bcs             = {BoundaryConditions::INNER,
-                                  BoundaryConditions::ZERO_VALUE,
-                                  BoundaryConditions::ZERO_DERIVATIVE,
-                                  BoundaryConditions::ZERO_DERIVATIVE,
-                                  BoundaryConditions::ZERO_VALUE,
-                                  BoundaryConditions::ZERO_VALUE};
+        global_bcs = {BoundaryConditions::INNER,
+                      BoundaryConditions::INNER,
+                      BoundaryConditions::ZERO_VALUE,
+                      BoundaryConditions::ZERO_VALUE,
+                      BoundaryConditions::ZERO_DERIVATIVE,
+                      BoundaryConditions::ZERO_DERIVATIVE};
+        error_msg  = "No neighbour found at inner boundary";
     }
 
-    REQUIRE_THROWS_WITH(GhostExchangePlan<double>(global_domain, global_bcs, neighbours, MPI_COMM_WORLD),
-                        Catch::Matchers::ContainsSubstring(expected_error_message));
+    REQUIRE_THROWS_WITH(
+        GhostExchangePlan::determineLocalBCs(m_cartesian_communicator, m_dimensions, global_bcs, invalid_neighbours),
+        Catch::Matchers::ContainsSubstring(error_msg));
 }
