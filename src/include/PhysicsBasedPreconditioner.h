@@ -12,6 +12,19 @@
 #include "DirectionalArray.h"
 #include "PackedVariables.h"
 
+enum SolutionVariableIndices
+{
+  RHO,
+  PRESSURE,
+  ENERGY
+};
+
+enum SolutionDpdVariableIndices
+{
+  DPDRHO,
+  DPDENERGY
+};
+
 class PhysicsBasedPreconditioner
 {
   public:
@@ -74,36 +87,6 @@ class PhysicsBasedPreconditioner
      */
     void assemblePressureMatrix(Array3DWithGhosts<double>& pressure,
                                 const Array3D<DirectionalArray<double>>& laplacian_coefficients);
-
-    /**
-     * @brief getter for density index
-     */
-    unsigned int n_rho() const
-    { return m_n_rho; }
-
-    /**
-     * @brief getter for pressure index
-     */
-    unsigned int n_pressure() const
-    { return m_n_pressure; }
-
-    /**
-     * @brief getter for energy index
-     */
-    unsigned int n_energy() const
-    { return m_n_energy; }
-
-    /**
-     * @brief getter for density gradient index
-     */
-    unsigned int n_dPdrho() const
-    { return m_n_dPdrho; }
-
-    /**
-     * @brief getter for energy gradient index
-     */
-    unsigned int n_dPdenergy() const
-    { return m_n_dPdenergy; }
 
     PackedVariables solution() const
     { return m_solution; }
@@ -170,12 +153,6 @@ class PhysicsBasedPreconditioner
     std::vector<long long> m_global_pressure_row_indices;
     /// @brief Flag to indicate whether to precondition the pressure equation only (`prec_nvar=1`), or both pressure and energy equations (`prec_nvar=2`)
     unsigned int m_prec_nvar;
-    /// Indices for each variable
-    unsigned int m_n_rho;
-    unsigned int m_n_pressure;
-    unsigned int m_n_energy;
-    unsigned int m_n_dPdrho;
-    unsigned int m_n_dPdenergy;
     // This is a temporary solution. The value has been taken from a run of music and should be calculated instead.
     double m_dt = 1.0917241379310345E-004; /** timestep */
 };

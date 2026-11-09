@@ -87,8 +87,8 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::re
     int prec_nvar = 1;
     PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
-    int n_dPdenergy = pbp.n_dPdenergy();
-    int n_dPdrho    = pbp.n_dPdrho();
+    int n_dPdenergy = SolutionDpdVariableIndices::DPDENERGY;
+    int n_dPdrho    = SolutionDpdVariableIndices::DPDRHO;
 
     // Read input data from file
     FILE* inputs_file = fopen(TEST_DATA_DIR "/reconstruct_density_delta_roberts_dynamo_inputs.dat", "r");

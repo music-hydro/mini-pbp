@@ -61,8 +61,8 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
 
     PackedVariables new_solution = pbp.solution();
 
-    int n_rho      = pbp.n_rho();
-    int n_pressure = pbp.n_pressure();
+    int n_rho      = SolutionVariableIndices::RHO;
+    int n_pressure = SolutionVariableIndices::PRESSURE;
 
     Array3D<double> solution_press     = (*solution).singleVariableView(n_pressure);
     Array3D<double> solution_rho       = (*solution).singleVariableView(n_rho);
@@ -193,8 +193,8 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::re
     int prec_nvar = 1;
     PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
-    int n_rho      = pbp.n_rho();
-    int n_pressure = pbp.n_pressure();
+    int n_rho      = SolutionDpdVariableIndices::DPDRHO;
+    int n_pressure = SolutionVariableIndices::PRESSURE;
 
     // Read input data from file
     FILE* inputs_file = fopen(TEST_DATA_DIR "/reconstruct_energy_delta_roberts_dynamo_inputs.dat", "r");
