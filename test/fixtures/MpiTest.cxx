@@ -112,18 +112,18 @@ class MpiTest
         MPI_Cart_shift(cartesian_communicator,
                        Axis::X,
                        1,
-                       &neighbours.get(Axis::X, Direction::NEGATIVE),
-                       &neighbours.get(Axis::X, Direction::POSITIVE));
+                       &neighbours.get(Axis::X, Direction::POSITIVE),
+                       &neighbours.get(Axis::X, Direction::NEGATIVE));
         MPI_Cart_shift(cartesian_communicator,
                        Axis::Y,
                        1,
-                       &neighbours.get(Axis::Y, Direction::NEGATIVE),
-                       &neighbours.get(Axis::Y, Direction::POSITIVE));
+                       &neighbours.get(Axis::Y, Direction::POSITIVE),
+                       &neighbours.get(Axis::Y, Direction::NEGATIVE));
         MPI_Cart_shift(cartesian_communicator,
                        Axis::Z,
                        1,
-                       &neighbours.get(Axis::Z, Direction::NEGATIVE),
-                       &neighbours.get(Axis::Z, Direction::POSITIVE));
+                       &neighbours.get(Axis::Z, Direction::POSITIVE),
+                       &neighbours.get(Axis::Z, Direction::NEGATIVE));
         return neighbours;
     }
 
