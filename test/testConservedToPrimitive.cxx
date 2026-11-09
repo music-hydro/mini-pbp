@@ -460,8 +460,8 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_t
     MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
     if (num_ranks != 1) { SKIP("Test requires exactly 1 rank"); }
 
-    Slab global_domain({0, 0, 0}, {3, 3, 3});
-    GhostExchangePlan plan = GhostExchangePlanTest::periodicPlan(global_domain);
+    Slab global_domain({0, 0, 0}, {16, 16, 16});
+    GhostExchangePlan plan  = GhostExchangePlanTest::periodicPlan(global_domain);
     checkAgainstRobertsDynamo(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_1rank_rank0", plan);
 }
 
@@ -473,24 +473,26 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_t
 
     // MUSIC splits the periodic 16^3 domain 2 x 2 x 1 with rank = 2 * (x block) + (y block), which is the order of a
     // cartesian communicator of dims {2, 2, 1} without reordering
+    Slab global_domain({0 ,0, 0}, {16, 16, 16});
     std::array<int, 3> dims    = {2, 2, 1};
     std::array<int, 3> periods = {1, 1, 1};
-    MPI_Comm cartesian;
-    MPI_Cart_create(MPI_COMM_WORLD, 3, dims.data(), periods.data(), false, &cartesian);
+    MPI_Comm cartesian_communicator;
+    MPI_Cart_create(MPI_COMM_WORLD, 3, dims.data(), periods.data(), false, &cartesian_communicator);
+    
     int rank;
-    MPI_Comm_rank(cartesian, &rank);
+    MPI_Comm_rank(cartesian_communicator, &rank);
 
     DirectionalArray<int> neighbours;
     for (int axis = 0; axis < 3; axis++)
     {
         MPI_Cart_shift(
-            cartesian, axis, 1, &neighbours.get(axis, Direction::NEGATIVE), &neighbours.get(axis, Direction::POSITIVE));
+            cartesian_communicator, axis, 1, &neighbours.get(axis, Direction::NEGATIVE), &neighbours.get(axis, Direction::POSITIVE));
     }
-    DirectionalArray<BoundaryConditions> inner;
-    inner.fill(BoundaryConditions::INNER);
-    Slab global_domain({0, 0, 0}, {16, 16, 16});
-    GhostExchangePlan plan(global_domain, inner, neighbours, cartesian);
+    DirectionalArray<BoundaryConditions> global_bcs;
+    global_bcs.fill(BoundaryConditions::PERIODIC);
+
+    GhostExchangePlan plan(global_domain, global_bcs, neighbours, dims, cartesian_communicator);
     checkAgainstRobertsDynamo(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_4ranks_rank" + std::to_string(rank),
                               plan);
-    MPI_Comm_free(&cartesian);
+    MPI_Comm_free(&cartesian_communicator);
 }
