@@ -14,15 +14,15 @@ class PackedVariables
     /**
      * @brief Constructor
      *
-     * @param packed_array_pointer - Pointer to the full 1D array containing all variables
-     * @param ni - The number of physical cells in the first direction.
-     * @param nj - The number of physical cells in the second direction.
-     * @param nk - The number of physical cells in the third direction.
+     * @param[in] packed_array_pointer - Pointer to the full 1D array containing all variables
+     * @param[in] ni - The number of physical cells in the first direction.
+     * @param[in] nj - The number of physical cells in the second direction.
+     * @param[in] nk - The number of physical cells in the third direction.
      */
     PackedVariables(std::vector<double>& packed_array_pointer,
-                    const unsigned int ni,
-                    const unsigned int nj,
-                    const unsigned int nk);
+                    const unsigned int& ni,
+                    const unsigned int& nj,
+                    const unsigned int& nk);
 
     /**
      * @brief Return the full 3D array view for a chosen variable

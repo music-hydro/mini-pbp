@@ -4,9 +4,9 @@
 #include <string>
 
 PackedVariables::PackedVariables(std::vector<double>& packed_array_pointer,
-                                 const unsigned int ni,
-                                 const unsigned int nj,
-                                 const unsigned int nk) :
+                                 const unsigned int& ni,
+                                 const unsigned int& nj,
+                                 const unsigned int& nk) :
     m_packed_array(&packed_array_pointer[0]),
     m_ni(ni),
     m_nj(nj),
