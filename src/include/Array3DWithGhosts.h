@@ -32,7 +32,7 @@ class Array3DWithGhosts : public Array3D<T>
      * @param[in] inner_array - The 3D view of the array without ghost cells.
      * @param[in] plan - The plan defining how ghost cells should be exchanged.
      */
-    Array3DWithGhosts(const Array3D<T>& inner_array, GhostExchangePlan<T>& plan) :
+    Array3DWithGhosts(const Array3D<T>& inner_array, GhostExchangePlan& plan) :
         Array3D<T>(inner_array),
         m_plan(plan),
         m_ni(this->m_slab.extent(0)),
@@ -316,7 +316,7 @@ class Array3DWithGhosts : public Array3D<T>
         boundary_plane.deepCopy(ghost_plane, parity);
     }
 
-    const GhostExchangePlan<T> m_plan;
+    const GhostExchangePlan m_plan;
     const unsigned int m_ni;
     const unsigned int m_nj;
     unsigned int m_nk;

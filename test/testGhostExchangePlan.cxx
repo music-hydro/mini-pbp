@@ -20,7 +20,7 @@ TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourCellPosition returns the 
     // Choose global slab so indices are on global boundaries
     Slab global_slab({0, 0, 0}, {n, n, n});
 
-    GhostExchangePlan<double> my_plan(global_slab, bcs, neighbours, m_cartesian_communicator);
+    GhostExchangePlan my_plan(global_slab, bcs, neighbours, m_cartesian_communicator);
 
     // i axis
     int axis                                       = 0;
