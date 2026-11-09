@@ -24,10 +24,12 @@ set(HEADER_FILES
     "${INCLUDE_DIRS}/PackedVariables.h"
     "${INCLUDE_DIRS}/Slab.h"
     "${INCLUDE_DIRS}/PhysicsBasedPreconditioner.h"
+    "${INCLUDE_DIRS}/VelocityCorrection.h"
 )
 set(IMPLEMENTATION_FILES
     "${SRC_DIR}/PackedVariables.cxx"
     "${SRC_DIR}/PhysicsBasedPreconditioner.cxx"
+    "${SRC_DIR}/VelocityCorrection.cxx"
 )
 
 add_library("${PROJECT_NAME}_lib" ${HEADER_FILES} ${IMPLEMENTATION_FILES})
