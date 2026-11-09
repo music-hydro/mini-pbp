@@ -8,10 +8,11 @@
 #define GhostExchangePlanTest_H
 
 #include "GhostExchangePlan.h"
-
 #include "DirectionalArray.h"
+#include "MpiTest.cxx"
+#include <mpi.h>
 
-class GhostExchangePlanTest
+class GhostExchangePlanTest : public MpiTest
 {
   public:
     /**
@@ -26,7 +27,9 @@ class GhostExchangePlanTest
         bcs.fill(BoundaryConditions::INNER);
         DirectionalArray<int> neighbours;
         neighbours.fill(0);
-        GhostExchangePlan plan(global_domain, bcs, neighbours, MPI_COMM_WORLD);
+        // Equivalent to one rank
+        std::array<int, 3> dims = createCartesianDimensions();
+        GhostExchangePlan plan(global_domain, bcs, neighbours, dims, createCartesianTopology(dims, bcs));
         return plan;
     }
     static GhostExchangePlan arbitraryPlan()
@@ -42,11 +45,12 @@ class GhostExchangePlanTest
      */
     static GhostExchangePlan periodicPlan(const Slab& global_domain)
     {
-        DirectionalArray<BoundaryConditions> bcs;
-        bcs.fill(BoundaryConditions::PERIODIC);
-        DirectionalArray<int> neighbours;
-        neighbours.fill(0);
-        return GhostExchangePlan(global_domain, bcs, neighbours, MPI_COMM_SELF);
+        DirectionalArray<BoundaryConditions> global_bcs;
+        global_bcs.fill(BoundaryConditions::PERIODIC);
+        std::array<int, 3> communicator_dimensions(createCartesianDimensions());
+        MPI_Comm communicator(createCartesianTopology(communicator_dimensions, global_bcs));
+        DirectionalArray<int> nghbrs(neighbours(communicator));
+        return GhostExchangePlan(global_domain, global_bcs, nghbrs, communicator_dimensions, communicator);
     }
 };
 
