@@ -7,7 +7,11 @@
 #ifndef PhysicsBasedPreconditioner_H
 #define PhysicsBasedPreconditioner_H
 
+#include "Array3DWithGhosts.h"
+#include "GhostExchangePlan.h"
 #include "PackedVariables.h"
+#include <array>
+#include <vector>
 
 class PhysicsBasedPreconditioner
 {
@@ -62,6 +66,61 @@ class PhysicsBasedPreconditioner
     void reconstructDensityDelta(const Array3D<double>& delta_pressure,
                                  const Array3D<double>& delta_energy,
                                  Array3D<double>& delta_rho);
+
+    /**
+     * @brief Convert the residual from conserved to primitive variables, the first step of the preconditioner (MUSIC
+     * `cons_to_prim` in `src/solvers/preconditioner.f90`).
+     *
+     * @details rho and e are read from the stored solution.
+     * - delta_rho = delta_cons_rho
+     * - delta_e = (delta_rho_e - e delta_rho) / rho
+     * - each active scalar: delta_phi = (delta_rho_phi - phi delta_rho) / rho
+     * - each velocity component lives on the faces along its own axis: delta_v = (delta_rho_v - v delta_rho_f) / rho_f,
+     *   with rho_f and delta_rho_f the average of the two cells next to the face. In 2D the third component is
+     *   invariant along k and uses the cell values.
+     * - each magnetic field component is copied unchanged.
+     *
+     * A field staggered along an axis holds at (i, j, k) the face on the negative side of cell (i, j, k). Its cellSlab()
+     * is the faces solved on the rank (MUSIC `solved_local_domain_nodes`), so it may start at 1 or end at n + 1. Every
+     * loop runs over the slab of the primitive delta it writes. The face averages read rho and delta rho one cell
+     * beyond the rank, so both are exchanged on `plan`; this is collective over the neighbours in the plan.
+     *
+     * @param[in] ndim - The number of dimensions (2 or 3).
+     * @param[in] nmom - The number of velocity components (2 or 3, at least ndim).
+     * @param[in] mhd_enabled - Whether the magnetic field components are present.
+     * @param[in] plan - The ghost exchange plan of the cells of this rank (MUSIC `rho_plans`).
+     * @param[in] vel - The solution velocity on the same faces as delta_prim_vel (only the first nmom are read).
+     * @param[in] active_scalars - The solution active scalars phi on the cells.
+     * @param[in] delta_cons_rho - delta rho on all the cells of the rank.
+     * @param[in] delta_cons_rho_e - delta (rho e).
+     * @param[in] delta_cons_rho_vel - delta (rho v) of each velocity component (only the first nmom are read).
+     * @param[in] delta_cons_rho_scalars - delta (rho phi) of each active scalar.
+     * @param[in] delta_cons_magnetic_field - delta B of each component (only read with MHD).
+     * @param[out] delta_prim_rho - delta rho.
+     * @param[out] delta_prim_e - delta e.
+     * @param[out] delta_prim_vel - delta v of each velocity component (only the first nmom are written).
+     * @param[out] delta_prim_scalars - delta phi of each active scalar.
+     * @param[out] delta_prim_magnetic_field - delta B of each component (only written with MHD).
+     */
+    void consToPrim(const unsigned int ndim,
+                    const unsigned int nmom,
+                    const bool mhd_enabled,
+                    GhostExchangePlan<double>& plan,
+
+                    const std::array<const Array3D<double>*, 3>& vel,
+                    const std::vector<const Array3D<double>*>& active_scalars,
+
+                    const Array3D<double>& delta_cons_rho,
+                    const Array3D<double>& delta_cons_rho_e,
+                    const std::array<const Array3D<double>*, 3>& delta_cons_rho_vel,
+                    const std::vector<const Array3D<double>*>& delta_cons_rho_scalars,
+                    const std::array<const Array3D<double>*, 3>& delta_cons_magnetic_field,
+
+                    Array3D<double>& delta_prim_rho,
+                    Array3D<double>& delta_prim_e,
+                    const std::array<Array3D<double>*, 3>& delta_prim_vel,
+                    const std::vector<Array3D<double>*>& delta_prim_scalars,
+                    const std::array<Array3D<double>*, 3>& delta_prim_magnetic_field);
 
     /**
      * @brief getter for density index

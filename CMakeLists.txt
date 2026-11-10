@@ -19,7 +19,6 @@ set(HEADER_FILES
     "${INCLUDE_DIRS}/Array3D.h"
     "${INCLUDE_DIRS}/Array2D.h"
     "${INCLUDE_DIRS}/Array3DWithGhosts.h"
-    "${INCLUDE_DIRS}/ConsToPrim.h"
     "${INCLUDE_DIRS}/GhostExchangePlan.h"
     "${INCLUDE_DIRS}/MpiType.h"
     "${INCLUDE_DIRS}/PackedVariables.h"
@@ -27,7 +26,6 @@ set(HEADER_FILES
     "${INCLUDE_DIRS}/PhysicsBasedPreconditioner.h"
 )
 set(IMPLEMENTATION_FILES
-    "${SRC_DIR}/ConsToPrim.cxx"
     "${SRC_DIR}/PackedVariables.cxx"
     "${SRC_DIR}/PhysicsBasedPreconditioner.cxx"
 )
