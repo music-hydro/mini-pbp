@@ -81,7 +81,7 @@ void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double>& pre
                                                       Array3D<double>& delta_energy)
 {
     const Array3D<double> solution_pressure = m_solution.singleVariableView(SolutionVariableIndices::PRESSURE);
-    const Array3D<double> solution_rho      = m_solution.singleVariableView(SolutionVariableIndices::PRESSURE);
+    const Array3D<double> solution_rho      = m_solution.singleVariableView(SolutionVariableIndices::RHO);
 
     Slab delta_e_slab = delta_energy.cellSlab();
     for (int k = delta_e_slab.start(2); k < delta_e_slab.end(2); k++)

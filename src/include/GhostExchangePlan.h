@@ -93,7 +93,7 @@ class GhostExchangePlan
             if (coordinates[axis] == 0)
                 local_bcs.get(axis, Direction::NEGATIVE) = global_bcs.get(axis, Direction::NEGATIVE);
             else if (coordinates[axis] == communicator_dimensions[axis] - 1)
-                local_bcs.get(axis, Direction::POSITIVE) = global_bcs.get(axis, Direction::NEGATIVE);
+                local_bcs.get(axis, Direction::POSITIVE) = global_bcs.get(axis, Direction::POSITIVE);
             else
             {
                 local_bcs.get(axis, Direction::NEGATIVE) = BoundaryConditions::INNER;
