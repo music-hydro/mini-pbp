@@ -15,8 +15,8 @@
 
 enum SolutionVariableIndices
 {
-  RHO,
   PRESSURE,
+  RHO,
   ENERGY,
   VELOCITY_I,
   VELOCITY_J,
@@ -25,8 +25,8 @@ enum SolutionVariableIndices
 
 enum SolutionDpdVariableIndices
 {
-  DPDRHO,
-  DPDENERGY
+    DPDRHO,
+    DPDENERGY
 };
 
 class PhysicsBasedPreconditioner
@@ -93,7 +93,8 @@ class PhysicsBasedPreconditioner
     /**
      * @brief Assembles the pressure matrix ready for preconditioning
      *
-     * @param[in,out] pressure - The pressure matrix to be assembled.
+     * @param[in] pressure - The pressure matrix to be assembled.
+     * @param[in] laplacian_coefficients
      */
     void assemblePressureMatrix(Array3DWithGhosts<double>& pressure,
                                 const Array3D<DirectionalArray<double>>& laplacian_coefficients);
@@ -150,6 +151,25 @@ class PhysicsBasedPreconditioner
     PackedVariablesWithGhosts solution() const
     { return m_solution; }
 
+    /**
+     * @brief Get a read-only version of the pressure matrix to be sent to the solver.
+     */
+    const std::vector<double>& pressureMatrixForSolver() const
+    { return m_pressure_matrix_for_solver; }
+
+    /**
+     * @brief Get a read-only version of the pressure column indices to be sent to the solver.
+     */
+    const std::vector<long long>& globalPressureColumnIndices() const
+    { return m_global_pressure_column_indices; }
+
+    /**
+     * @brief Get a read-only version of the pressure row indices to be sent to the solver.
+     */
+    const std::vector<long long>& globalPressureRowIndices() const
+    { return m_global_pressure_row_indices; }
+
+
   private:
     /**
      * @brief Compute squared sound speed from the solution variables.
@@ -183,6 +203,7 @@ class PhysicsBasedPreconditioner
     DirectionalArray<double> pressureCoefficients(const int& i,
                                                   const int& j,
                                                   const int& k,
+                                                  const Array3DWithGhosts<double>& solution_rho,
                                                   const DirectionalArray<double>& laplacian_coefficients,
                                                   const DirectionalArray<double>& weights);
 
@@ -224,7 +245,7 @@ class PhysicsBasedPreconditioner
     /// @brief The number of packed variables that must be present in the solution gradients
     static const unsigned int m_num_sol_dPd_vars = 2;
     // This is a temporary solution. The value has been taken from a run of music and should be calculated instead.
-    double m_dt = 1.0917241379310345E-004; /** timestep */
+    double m_dt = 4.5228571428571426E-004;  // 1.0917241379310345E-004; /** timestep */
 };
 
 #endif  // PhysicsBasedPreconditioner_H
