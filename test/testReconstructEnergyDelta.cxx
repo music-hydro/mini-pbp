@@ -193,7 +193,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::re
     int prec_nvar = 1;
     PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
-    int n_rho      = SolutionDpdVariableIndices::DPDRHO;
+    int n_rho      = SolutionVariableIndices::RHO;
     int n_pressure = SolutionVariableIndices::PRESSURE;
 
     // Read input data from file
