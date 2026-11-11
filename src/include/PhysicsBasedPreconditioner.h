@@ -14,15 +14,15 @@
 
 enum SolutionVariableIndices
 {
-  RHO,
-  PRESSURE,
-  ENERGY
+    PRESSURE,
+    RHO,
+    ENERGY
 };
 
 enum SolutionDpdVariableIndices
 {
-  DPDRHO,
-  DPDENERGY
+    DPDRHO,
+    DPDENERGY
 };
 
 class PhysicsBasedPreconditioner
@@ -83,13 +83,33 @@ class PhysicsBasedPreconditioner
     /**
      * @brief Assembles the pressure matrix ready for preconditioning
      *
-     * @param[in,out] pressure - The pressure matrix to be assembled.
+     * @param[in] pressure - The pressure matrix to be assembled.
+     * @param[in] laplacian_coefficients
      */
     void assemblePressureMatrix(Array3DWithGhosts<double>& pressure,
                                 const Array3D<DirectionalArray<double>>& laplacian_coefficients);
 
     PackedVariables solution() const
     { return m_solution; }
+
+    /**
+     * @brief Get a read-only version of the pressure matrix to be sent to the solver.
+     */
+    const std::vector<double>& pressureMatrixForSolver() const
+    { return m_pressure_matrix_for_solver; }
+
+    /**
+     * @brief Get a read-only version of the pressure column indices to be sent to the solver.
+     */
+    const std::vector<long long>& globalPressureColumnIndices() const
+    { return m_global_pressure_column_indices; }
+
+    /**
+     * @brief Get a read-only version of the pressure row indices to be sent to the solver.
+     */
+    const std::vector<long long>& globalPressureRowIndices() const
+    { return m_global_pressure_row_indices; }
+
 
   private:
     /**
@@ -124,6 +144,7 @@ class PhysicsBasedPreconditioner
     DirectionalArray<double> pressureCoefficients(const int& i,
                                                   const int& j,
                                                   const int& k,
+                                                  const Array3DWithGhosts<double>& solution_rho,
                                                   const DirectionalArray<double>& laplacian_coefficients,
                                                   const DirectionalArray<double>& weights);
 
@@ -154,7 +175,7 @@ class PhysicsBasedPreconditioner
     /// @brief Flag to indicate whether to precondition the pressure equation only (`prec_nvar=1`), or both pressure and energy equations (`prec_nvar=2`)
     unsigned int m_prec_nvar;
     // This is a temporary solution. The value has been taken from a run of music and should be calculated instead.
-    double m_dt = 1.0917241379310345E-004; /** timestep */
+    double m_dt = 4.5228571428571426E-004;  // 1.0917241379310345E-004; /** timestep */
 };
 
 #endif  // PhysicsBasedPreconditioner_H

@@ -220,18 +220,19 @@ class Array3DWithGhosts : public Array3D<T>
     DirectionalArray<T> neighbourLinkWeights(int i, int j, int k) const
     {
         DirectionalArray<T> weights;
+        std::array<int, 3> indices = {i, j, k};
         for (int axis = 0; axis < 3; axis++)
         {
             weights.get(axis, Direction::NEGATIVE) =
-                (i == this->cellSlab().start(axis) &&
+                (indices[axis] == this->cellSlab().start(axis) &&
                  m_plan.localBoundaryConditions().get(axis, Direction::NEGATIVE) == BoundaryConditions::REFLECTIVE) ?
-                    static_cast<T>(1.0) :
-                    static_cast<T>(0.0);
+                    static_cast<T>(0.0) :
+                    static_cast<T>(1.0);
             weights.get(axis, Direction::POSITIVE) =
-                (i == this->cellSlab().end(axis) &&
+                (indices[axis] == this->cellSlab().end(axis) - 1 &&
                  m_plan.localBoundaryConditions().get(axis, Direction::POSITIVE) == BoundaryConditions::REFLECTIVE) ?
-                    static_cast<T>(1.0) :
-                    static_cast<T>(0.0);
+                    static_cast<T>(0.0) :
+                    static_cast<T>(1.0);
         }
         return weights;
     }
