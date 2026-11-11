@@ -47,6 +47,7 @@ set(MULTI_RANK_TEST_FILES
     "${PROJ_TEST_DIR}/testArray3DWithGhosts.cxx"
     "${PROJ_TEST_DIR}/testConservedToPrimitive.cxx"
     "${PROJ_TEST_DIR}/testGhostExchangePlan.cxx"
+    "${PROJ_TEST_DIR}/testAssemblePressureMatrix.cxx"
 )
 
 add_executable(mini_pbp_multi_rank_unit_tests ${TEST_FIXTURES} ${MULTI_RANK_TEST_FILES})

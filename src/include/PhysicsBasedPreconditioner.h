@@ -79,7 +79,8 @@ class PhysicsBasedPreconditioner
     /**
      * @brief Assembles the pressure matrix ready for preconditioning
      *
-     * @param[in,out] pressure - The pressure matrix to be assembled.
+     * @param[in] pressure - The pressure matrix to be assembled.
+     * @param[in] laplacian_coefficients
      */
     void assemblePressureMatrix(Array3DWithGhosts<double>& pressure,
                                 const Array3D<DirectionalArray<double>>& laplacian_coefficients);
@@ -184,6 +185,25 @@ class PhysicsBasedPreconditioner
     PackedVariablesWithGhosts solution() const
     { return m_solution; }
 
+    /**
+     * @brief Get a read-only version of the pressure matrix to be sent to the solver.
+     */
+    const std::vector<double>& pressureMatrixForSolver() const
+    { return m_pressure_matrix_for_solver; }
+
+    /**
+     * @brief Get a read-only version of the pressure column indices to be sent to the solver.
+     */
+    const std::vector<long long>& globalPressureColumnIndices() const
+    { return m_global_pressure_column_indices; }
+
+    /**
+     * @brief Get a read-only version of the pressure row indices to be sent to the solver.
+     */
+    const std::vector<long long>& globalPressureRowIndices() const
+    { return m_global_pressure_row_indices; }
+
+
   private:
     /**
      * @brief Compute squared sound speed from the solution variables.
@@ -217,6 +237,7 @@ class PhysicsBasedPreconditioner
     DirectionalArray<double> pressureCoefficients(const int& i,
                                                   const int& j,
                                                   const int& k,
+                                                  const Array3DWithGhosts<double>& solution_rho,
                                                   const DirectionalArray<double>& laplacian_coefficients,
                                                   const DirectionalArray<double>& weights);
 
