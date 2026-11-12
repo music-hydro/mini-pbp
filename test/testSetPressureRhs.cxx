@@ -40,8 +40,8 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
 
     REQUIRE_NOTHROW(pbp.setPressureRHS(delta_rho, delta_energy, rhs_pressure, rhs_energy));
 
-    int n_dPdrho    = pbp.n_dPdrho();
-    int n_dPdenergy = pbp.n_dPdenergy();
+    int n_dPdrho    = SolutionDpdVariableIndices::DPDRHO;
+    int n_dPdenergy = SolutionDpdVariableIndices::DPDENERGY;
 
     Array3D<double> solution_dPdrho    = (*solution_dPd).singleVariableView(n_dPdrho);
     Array3D<double> solution_dPdenergy = (*solution_dPd).singleVariableView(n_dPdenergy);
@@ -192,8 +192,8 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::se
     int prec_nvar = 1;
     PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
-    int n_dPdrho    = pbp.n_dPdrho();
-    int n_dPdenergy = pbp.n_dPdenergy();
+    int n_dPdrho    = SolutionDpdVariableIndices::DPDRHO;
+    int n_dPdenergy = SolutionDpdVariableIndices::DPDENERGY;
 
     // Read input data from file
     FILE* inputs_file = fopen(TEST_DATA_DIR "/set_pressure_rhs_roberts_dynamo_inputs.dat", "r");
