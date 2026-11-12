@@ -203,6 +203,9 @@ class PhysicsBasedPreconditioner
     const std::vector<long long>& globalPressureRowIndices() const
     { return m_global_pressure_row_indices; }
 
+    const std::vector<long long>& globalPressureRowOffsets() const
+    { return m_global_pressure_row_offsets; }
+
 
   private:
     /**
@@ -274,6 +277,7 @@ class PhysicsBasedPreconditioner
     std::vector<long long> m_global_pressure_column_indices;
     /// @brief Map of global row indices for m_pressure_matrix_for_solver
     std::vector<long long> m_global_pressure_row_indices;
+    std::vector<long long> m_global_pressure_row_offsets;
     /// @brief Flag to indicate whether to precondition the pressure equation only (`prec_nvar=1`), or both pressure and energy equations (`prec_nvar=2`)
     unsigned int m_prec_nvar;
     /// @brief The number of packed variables that must be present in the solution
