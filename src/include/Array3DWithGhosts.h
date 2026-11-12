@@ -9,9 +9,9 @@
 
 #include "Array2D.h"
 #include "Array3D.h"
+#include "DirectionalArray.h"
 #include "GhostExchangePlan.h"
 #include "MpiType.h"
-#include "DirectionalArray.h"
 #include "Slab.h"
 #include <array>
 #include <mpi.h>
