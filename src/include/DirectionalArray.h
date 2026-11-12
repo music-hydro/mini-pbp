@@ -24,9 +24,6 @@ class DirectionalArray : public std::array<T, 6>
     /**
      * @brief Consistent definition of how to index a DirectionalArray
      *
-     * @details The underlining data is stored contiguously in the order
-     *          {-x, +x, -y, +y, -z, +z}.
-     *
      * @param[in] axis - The axis to be indexed should be indexed.
      * @param[in] direction - The direction of the axis to be indexed.
      *
