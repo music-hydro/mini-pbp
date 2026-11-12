@@ -170,25 +170,26 @@ namespace
             return result;
         }
 
-        /// Run consToPrim, optionally with another delta_prim e or without the primitive deltas of the active scalars
-        void run(const bool mhd, Array3D<double>* prim_e = nullptr, const bool with_prim_scalars = true)
+        /// Run conservedToPrimitive, optionally with another delta_primitive e or without the primitive deltas of the active scalars
+        void run(const bool mhd, Array3D<double>* primitive_e = nullptr, const bool with_primitive_scalars = true)
         {
-            preconditioner.pbp.consToPrim(ndim,
-                                          nmom,
-                                          mhd,
-                                          plan,
-                                          three<const Array3D<double>>(sol_vel),
-                                          all<const Array3D<double>>(sol_phi),
-                                          *cv_rho.view,
-                                          *cv_e.view,
-                                          three<const Array3D<double>>(cv_vel),
-                                          all<const Array3D<double>>(cv_phi),
-                                          three<const Array3D<double>>(cv_b),
-                                          *pv_rho.view,
-                                          prim_e ? *prim_e : *pv_e.view,
-                                          three<Array3D<double>>(pv_vel),
-                                          with_prim_scalars ? all<Array3D<double>>(pv_phi) : std::vector<Array3D<double>*> {},
-                                          three<Array3D<double>>(pv_b));
+            preconditioner.pbp.conservedToPrimitive(ndim,
+                                                    nmom,
+                                                    mhd,
+                                                    plan,
+                                                    three<const Array3D<double>>(sol_vel),
+                                                    all<const Array3D<double>>(sol_phi),
+                                                    *cv_rho.view,
+                                                    *cv_e.view,
+                                                    three<const Array3D<double>>(cv_vel),
+                                                    all<const Array3D<double>>(cv_phi),
+                                                    three<const Array3D<double>>(cv_b),
+                                                    *pv_rho.view,
+                                                    primitive_e ? *primitive_e : *pv_e.view,
+                                                    three<Array3D<double>>(pv_vel),
+                                                    with_primitive_scalars ? all<Array3D<double>>(pv_phi) :
+                                                                             std::vector<Array3D<double>*> {},
+                                                    three<Array3D<double>>(pv_b));
         }
 
         unsigned int ndim, nmom;
@@ -199,7 +200,7 @@ namespace
     };
 }  // namespace
 
-TEST_CASE("PhysicsBasedPreconditioner::consToPrim rejects invalid input")
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive rejects invalid input")
 {
     const std::array<int, 3> nc = {3, 3, 3};
     for (const auto& [ndim, nmom] : std::vector<std::pair<unsigned int, unsigned int>> {
@@ -215,21 +216,21 @@ TEST_CASE("PhysicsBasedPreconditioner::consToPrim rejects invalid input")
         REQUIRE_THROWS_AS(p.run(true), std::invalid_argument);
     }
 
-    SECTION("delta_prim e on other nodes than delta_cons rho")
+    SECTION("delta_primitive e on other nodes than delta_conserved rho")
     {
         ConstantProblem p(3, 3, nc, 0);
         Field smaller({0, 0, 0}, {2, 3, 3});
         REQUIRE_THROWS_AS(p.run(true, smaller.view.get()), std::invalid_argument);
     }
 
-    SECTION("active scalars missing in delta_prim")
+    SECTION("active scalars missing in delta_primitive")
     {
         ConstantProblem p(3, 3, nc, 1);
         REQUIRE_THROWS_AS(p.run(true, nullptr, false), std::invalid_argument);
     }
 }
 
-TEST_CASE("PhysicsBasedPreconditioner::consToPrim 3D with active scalars and MHD")
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 3D with active scalars and MHD")
 {
     ConstantProblem p(3, 3, {3, 4, 5}, 2);
     p.run(true);
@@ -248,7 +249,7 @@ TEST_CASE("PhysicsBasedPreconditioner::consToPrim 3D with active scalars and MHD
     }
 }
 
-TEST_CASE("PhysicsBasedPreconditioner::consToPrim 2D with two velocity components and no MHD leaves the rest untouched")
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity components and no MHD leaves the rest untouched")
 {
     ConstantProblem p(2, 2, {3, 3, 1}, 0);
     p.run(false);
@@ -262,7 +263,7 @@ TEST_CASE("PhysicsBasedPreconditioner::consToPrim 2D with two velocity component
     }
 }
 
-TEST_CASE("PhysicsBasedPreconditioner::consToPrim converts each velocity over its own solved faces")
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive converts each velocity over its own solved faces")
 {
     // Along x the negative boundary face is not solved (faces start at 1) and the positive one is (faces end at n + 1),
     // as MUSIC `solved_local_domain_nodes` gives on a rank touching both boundaries
@@ -285,7 +286,7 @@ TEST_CASE("PhysicsBasedPreconditioner::consToPrim converts each velocity over it
 namespace
 {
     /**
-     * @brief Run PhysicsBasedPreconditioner::consToPrim on the MUSIC data of one rank (rho, e and the velocity components, written by the MUSIC diff
+     * @brief Run PhysicsBasedPreconditioner::conservedToPrimitive on the MUSIC data of one rank (rho, e and the velocity components, written by the MUSIC diff
      * given in the pull request; MUSIC indices start at 1) and compare with the MUSIC outputs. Also check that the
      * exchange of delta rho on the plan gives the halo MUSIC read.
      */
@@ -325,7 +326,7 @@ namespace
         const auto music = [&](unsigned int v)
         { return [&, v](int i, int j, int k) { return values[(i + 1) + gi * ((j + 1) + gj * (k + kg))][v]; }; };
         Preconditioner preconditioner(nc, music(0), music(1));
-        std::vector<std::unique_ptr<Field>> vel, cons, expected, prim;
+        std::vector<std::unique_ptr<Field>> vel, conserved, expected, primitive;
         for (unsigned int v = 2; v < 5; v++)
         {
             vel.push_back(v < nvar ? std::make_unique<Field>(slabs[v][0], slabs[v][1]) :
@@ -334,16 +335,16 @@ namespace
             Field::forEach(s, [&](int i, int j, int k) { s(i, j, k) = music(v)(i, j, k); });
         }
 
-        // delta_cons over the slab of each variable, i fastest
+        // delta_conserved over the slab of each variable, i fastest
         for (unsigned int v = 0; v < nvar; v++)
         {
-            cons.push_back(std::make_unique<Field>(slabs[v][0], slabs[v][1]));
-            Array3D<double>& c = *cons[v]->view;
+            conserved.push_back(std::make_unique<Field>(slabs[v][0], slabs[v][1]));
+            Array3D<double>& c = *conserved[v]->view;
             Field::forEach(c, [&](int i, int j, int k) { REQUIRE(fscanf(file, " %lf", &c(i, j, k)) == 1); });
         }
 
         // The delta rho halo MUSIC read outside the rank equals the ghosts after the exchange on the plan
-        Array3DWithGhosts<double> delta_rho_g(*cons[0]->view, plan);
+        Array3DWithGhosts<double> delta_rho_g(*conserved[0]->view, plan);
         delta_rho_g.exchangeGhosts();
         for (unsigned int ax = 0; ax < ndim; ax++)
         {
@@ -362,35 +363,35 @@ namespace
         }
         fclose(file);
 
-        // Expected delta_prim over the slab of each variable, i fastest
+        // Expected delta_primitive over the slab of each variable, i fastest
         file = fopen((prefix + "_expected_outputs.dat").c_str(), "r");
         REQUIRE(file != nullptr);
         for (unsigned int v = 0; v < nvar; v++)
         {
             expected.push_back(std::make_unique<Field>(slabs[v][0], slabs[v][1]));
-            prim.push_back(std::make_unique<Field>(slabs[v][0], slabs[v][1]));
+            primitive.push_back(std::make_unique<Field>(slabs[v][0], slabs[v][1]));
             Array3D<double>& e = *expected[v]->view;
             Field::forEach(e, [&](int i, int j, int k) { REQUIRE(fscanf(file, " %lf", &e(i, j, k)) == 1); });
         }
         fclose(file);
 
         // The magnetic field is a copy and is not in the data; it is covered by the cases above
-        preconditioner.pbp.consToPrim(ndim,
-                                      nmom,
-                                      false,
-                                      plan,
-                                      {vel[0]->view.get(), vel[1]->view.get(), vel[2]->view.get()},
-                                      {},
-                                      *cons[0]->view,
-                                      *cons[1]->view,
-                                      {cons[2]->view.get(), cons[3]->view.get(), cons[4]->view.get()},
-                                      {},
-                                      {},
-                                      *prim[0]->view,
-                                      *prim[1]->view,
-                                      {prim[2]->view.get(), prim[3]->view.get(), prim[4]->view.get()},
-                                      {},
-                                      {});
+        preconditioner.pbp.conservedToPrimitive(ndim,
+                                                nmom,
+                                                false,
+                                                plan,
+                                                {vel[0]->view.get(), vel[1]->view.get(), vel[2]->view.get()},
+                                                {},
+                                                *conserved[0]->view,
+                                                *conserved[1]->view,
+                                                {conserved[2]->view.get(), conserved[3]->view.get(), conserved[4]->view.get()},
+                                                {},
+                                                {},
+                                                *primitive[0]->view,
+                                                *primitive[1]->view,
+                                                {primitive[2]->view.get(), primitive[3]->view.get(), primitive[4]->view.get()},
+                                                {},
+                                                {});
 
         // The velocity terms v delta_rho_f and delta_rho_v nearly cancel at some faces, so the round-off of the two
         // compilers is compared with the size of each field rather than with each value
@@ -405,19 +406,20 @@ namespace
                            [&](int i, int j, int k)
                            {
                                CAPTURE(i, j, k);
-                               REQUIRE_THAT((*prim[v]->view)(i, j, k), Catch::Matchers::WithinAbs(e(i, j, k), 1e-14 * scale));
+                               REQUIRE_THAT((*primitive[v]->view)(i, j, k),
+                                            Catch::Matchers::WithinAbs(e(i, j, k), 1e-14 * scale));
                            });
         }
     }
 }  // namespace
 
-TEST_CASE("PhysicsBasedPreconditioner::consToPrim matches MUSIC cons_to_prim on the Roberts dynamo test on 1 rank")
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_to_prim on the Roberts dynamo test on 1 rank")
 {
     GhostExchangePlan<double> plan = periodicPlan();
     checkAgainstMusic(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_1rank_rank0", plan);
 }
 
-TEST_CASE("PhysicsBasedPreconditioner::consToPrim matches MUSIC cons_to_prim on the Roberts dynamo test on 4 ranks")
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_to_prim on the Roberts dynamo test on 4 ranks")
 {
     int num_ranks;
     MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);

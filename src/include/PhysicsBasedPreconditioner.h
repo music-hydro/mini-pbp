@@ -72,7 +72,7 @@ class PhysicsBasedPreconditioner
      * `cons_to_prim` in `src/solvers/preconditioner.f90`).
      *
      * @details rho and e are read from the stored solution.
-     * - delta_rho = delta_cons_rho
+     * - delta_rho = delta_conserved_rho
      * - delta_e = (delta_rho_e - e delta_rho) / rho
      * - each active scalar: delta_phi = (delta_rho_phi - phi delta_rho) / rho
      * - each velocity component lives on the faces along its own axis: delta_v = (delta_rho_v - v delta_rho_f) / rho_f,
@@ -89,38 +89,38 @@ class PhysicsBasedPreconditioner
      * @param[in] nmom - The number of velocity components (2 or 3, at least ndim).
      * @param[in] mhd_enabled - Whether the magnetic field components are present.
      * @param[in] plan - The ghost exchange plan of the cells of this rank (MUSIC `rho_plans`).
-     * @param[in] vel - The solution velocity on the same faces as delta_prim_vel (only the first nmom are read).
+     * @param[in] vel - The solution velocity on the same faces as delta_primitive_vel (only the first nmom are read).
      * @param[in] active_scalars - The solution active scalars phi on the cells.
-     * @param[in] delta_cons_rho - delta rho on all the cells of the rank.
-     * @param[in] delta_cons_rho_e - delta (rho e).
-     * @param[in] delta_cons_rho_vel - delta (rho v) of each velocity component (only the first nmom are read).
-     * @param[in] delta_cons_rho_scalars - delta (rho phi) of each active scalar.
-     * @param[in] delta_cons_magnetic_field - delta B of each component (only read with MHD).
-     * @param[out] delta_prim_rho - delta rho.
-     * @param[out] delta_prim_e - delta e.
-     * @param[out] delta_prim_vel - delta v of each velocity component (only the first nmom are written).
-     * @param[out] delta_prim_scalars - delta phi of each active scalar.
-     * @param[out] delta_prim_magnetic_field - delta B of each component (only written with MHD).
+     * @param[in] delta_conserved_rho - delta rho on all the cells of the rank.
+     * @param[in] delta_conserved_rho_e - delta (rho e).
+     * @param[in] delta_conserved_rho_vel - delta (rho v) of each velocity component (only the first nmom are read).
+     * @param[in] delta_conserved_rho_scalars - delta (rho phi) of each active scalar.
+     * @param[in] delta_conserved_magnetic_field - delta B of each component (only read with MHD).
+     * @param[out] delta_primitive_rho - delta rho.
+     * @param[out] delta_primitive_e - delta e.
+     * @param[out] delta_primitive_vel - delta v of each velocity component (only the first nmom are written).
+     * @param[out] delta_primitive_scalars - delta phi of each active scalar.
+     * @param[out] delta_primitive_magnetic_field - delta B of each component (only written with MHD).
      */
-    void consToPrim(const unsigned int ndim,
-                    const unsigned int nmom,
-                    const bool mhd_enabled,
-                    GhostExchangePlan<double>& plan,
+    void conservedToPrimitive(const unsigned int ndim,
+                              const unsigned int nmom,
+                              const bool mhd_enabled,
+                              GhostExchangePlan<double>& plan,
 
-                    const std::array<const Array3D<double>*, 3>& vel,
-                    const std::vector<const Array3D<double>*>& active_scalars,
+                              const std::array<const Array3D<double>*, 3>& vel,
+                              const std::vector<const Array3D<double>*>& active_scalars,
 
-                    const Array3D<double>& delta_cons_rho,
-                    const Array3D<double>& delta_cons_rho_e,
-                    const std::array<const Array3D<double>*, 3>& delta_cons_rho_vel,
-                    const std::vector<const Array3D<double>*>& delta_cons_rho_scalars,
-                    const std::array<const Array3D<double>*, 3>& delta_cons_magnetic_field,
+                              const Array3D<double>& delta_conserved_rho,
+                              const Array3D<double>& delta_conserved_rho_e,
+                              const std::array<const Array3D<double>*, 3>& delta_conserved_rho_vel,
+                              const std::vector<const Array3D<double>*>& delta_conserved_rho_scalars,
+                              const std::array<const Array3D<double>*, 3>& delta_conserved_magnetic_field,
 
-                    Array3D<double>& delta_prim_rho,
-                    Array3D<double>& delta_prim_e,
-                    const std::array<Array3D<double>*, 3>& delta_prim_vel,
-                    const std::vector<Array3D<double>*>& delta_prim_scalars,
-                    const std::array<Array3D<double>*, 3>& delta_prim_magnetic_field);
+                              Array3D<double>& delta_primitive_rho,
+                              Array3D<double>& delta_primitive_e,
+                              const std::array<Array3D<double>*, 3>& delta_primitive_vel,
+                              const std::vector<Array3D<double>*>& delta_primitive_scalars,
+                              const std::array<Array3D<double>*, 3>& delta_primitive_magnetic_field);
 
     /**
      * @brief getter for density index
