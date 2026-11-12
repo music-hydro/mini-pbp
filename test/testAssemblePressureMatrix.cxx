@@ -88,6 +88,7 @@ TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix")
     const std::vector<double>& actual_pressure_matrix_for_solver        = pbp.pressureMatrixForSolver();
     const std::vector<long long>& actual_global_pressure_column_indices = pbp.globalPressureColumnIndices();
     const std::vector<long long>& actual_global_pressure_row_indices    = pbp.globalPressureRowIndices();
+    const std::vector<long long>& actual_global_pressure_row_offsets    = pbp.globalPressureRowOffsets();
 
     // MUSIC matrix rows of this rank (before the D A D scaling): global row, global column, value
     std::string expected_output_file = TEST_DATA_DIR "/assemble_pressure_matrix_roberts_dynamo_" + std::to_string(num_ranks) +
@@ -100,7 +101,7 @@ TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix")
     while (fscanf(file, "%lld %lld %lf", &row, &column, &value) == 3)
     {
         REQUIRE(entry < actual_pressure_matrix_for_solver.size());
-        while (actual_global_pressure_row_indices[local_row_index + 1] <= entry)
+        while (actual_global_pressure_row_offsets[local_row_index + 1] <= entry)
         {
             local_row_index++;
         }

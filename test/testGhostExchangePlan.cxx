@@ -6,7 +6,7 @@
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <mpi.h>
 
-TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourCellPosition returns the correct weights")
+TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourCellPosition returns the correct positions")
 {
     int n = 3;
     // The neighbouring ranks shouldn't matter

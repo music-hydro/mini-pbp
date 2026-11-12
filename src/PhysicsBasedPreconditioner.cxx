@@ -131,6 +131,13 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
     // Compute squared sound speed
     calculateSquaredSoundSpeed();
 
+    m_global_pressure_column_indices.clear();
+    m_global_pressure_row_indices.clear();
+    m_global_pressure_row_offsets.clear();
+    m_pressure_matrix_for_solver.clear();
+
+    m_global_pressure_row_offsets.push_back(0);
+
     // Fill pressure
     Slab global_slab = solution_rho.plan().globalDomain();
     Slab cell_slab   = solution_rho.cellSlab();
@@ -186,7 +193,7 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
                     m_pressure_matrix_for_solver.push_back(J_PP * pressure_coefficients.get(axis, Direction::NEGATIVE));
                     m_pressure_matrix_for_solver.push_back(J_PP * pressure_coefficients.get(axis, Direction::POSITIVE));
                 }
-                m_global_pressure_row_indices.push_back(m_pressure_matrix_for_solver.size());
+                m_global_pressure_row_offsets.push_back(m_pressure_matrix_for_solver.size());
             }
         }
     }

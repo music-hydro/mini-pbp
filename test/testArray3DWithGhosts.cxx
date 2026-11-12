@@ -37,6 +37,7 @@ TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourLinkWeights returns the c
     for (int idx = 0; idx < 6; idx++)
         REQUIRE(inner_cell_weights[idx] == 1.0);
 
+    // TODO: The expected values should be different for REFLECTIVE boundaries.
     std::array<int, 3> coords = {1, 1, 1};
     for (int axis = 0; axis < 3; axis++)
     {
