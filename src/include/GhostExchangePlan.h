@@ -7,6 +7,7 @@
 #ifndef GhostExchangePlan_H
 #define GhostExchangePlan_H
 
+#include "DirectionalArray.h"
 #include <array>
 #include <mpi.h>
 #include <stdexcept>
@@ -46,8 +47,8 @@ class GhostExchangePlan
      * @param[in] neighbours - The neighbouring MPI ranks for the current process.
      * @param[in] communicator - The MPI communicator for this plan.
      */
-    GhostExchangePlan(const std::array<BoundaryConditions, 6>& boundary_conditions,
-                      const std::array<int, 6>& neighbours,
+    GhostExchangePlan(const DirectionalArray<BoundaryConditions>& boundary_conditions,
+                      const DirectionalArray<int>& neighbours,
                       const MPI_Comm& communicator) :
         m_boundary_conditions(boundary_conditions),
         m_neighbours(neighbours),
@@ -74,7 +75,7 @@ class GhostExchangePlan
      * @return An array of boundary conditions with the following structure:
      *              {-x, +x, -y, +y, -z, +z}
      */
-    std::array<BoundaryConditions, 6> boundaryConditions() const
+    DirectionalArray<BoundaryConditions> boundaryConditions() const
     { return m_boundary_conditions; }
 
     /**
@@ -83,7 +84,7 @@ class GhostExchangePlan
      * @details `neighbours` should have the following structure:
      *              {-x, +x, -y, +y, -z, +z}
      */
-    std::array<int, 6> neighbours() const
+    DirectionalArray<int> neighbours() const
     { return m_neighbours; }
 
     /**
@@ -93,8 +94,8 @@ class GhostExchangePlan
     { return m_communicator; }
 
   private:
-    const std::array<BoundaryConditions, 6> m_boundary_conditions;
-    const std::array<int, 6> m_neighbours;
+    const DirectionalArray<BoundaryConditions> m_boundary_conditions;
+    const DirectionalArray<int> m_neighbours;
     const MPI_Comm m_communicator;
     int m_my_rank;
 };

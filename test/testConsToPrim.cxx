@@ -1,5 +1,6 @@
 #include "Array3D.h"
 #include "Array3DWithGhosts.h"
+#include "DirectionalArray.h"
 #include "GhostExchangePlan.h"
 #include "PackedVariables.h"
 #include "PhysicsBasedPreconditioner.h"
@@ -71,9 +72,11 @@ namespace
     /// Ghost exchange plan of a periodic domain held by this rank alone, which is then its own neighbour
     GhostExchangePlan<double> periodicPlan()
     {
-        std::array<BoundaryConditions, 6> bcs;
+        DirectionalArray<BoundaryConditions> bcs;
         bcs.fill(BoundaryConditions::PERIODIC);
-        return GhostExchangePlan<double>(bcs, {0, 0, 0, 0, 0, 0}, MPI_COMM_SELF);
+        DirectionalArray<int> neighbours;
+        neighbours.fill(0);
+        return GhostExchangePlan<double>(bcs, neighbours, MPI_COMM_SELF);
     }
 
     /// A PhysicsBasedPreconditioner on nc cells whose stored solution holds the given rho and e
@@ -427,12 +430,13 @@ TEST_CASE("PhysicsBasedPreconditioner::consToPrim matches MUSIC cons_to_prim on 
     MPI_Cart_create(MPI_COMM_WORLD, 3, dims.data(), periods.data(), false, &cartesian);
     int rank;
     MPI_Comm_rank(cartesian, &rank);
-    std::array<int, 6> neighbours;
+    DirectionalArray<int> neighbours;
     for (int axis = 0; axis < 3; axis++)
     {
-        MPI_Cart_shift(cartesian, axis, 1, &neighbours[axis * 2], &neighbours[axis * 2 + 1]);
+        MPI_Cart_shift(
+            cartesian, axis, 1, &neighbours.get(axis, Direction::NEGATIVE), &neighbours.get(axis, Direction::POSITIVE));
     }
-    std::array<BoundaryConditions, 6> inner;
+    DirectionalArray<BoundaryConditions> inner;
     inner.fill(BoundaryConditions::INNER);
     GhostExchangePlan<double> plan(inner, neighbours, cartesian);
     checkAgainstMusic(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_4ranks_rank" + std::to_string(rank), plan);
