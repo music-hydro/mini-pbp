@@ -62,7 +62,7 @@ TEST_CASE("PackedVariables::singleVariableView stores contiguously without copie
 TEST_CASE("PackedVariablesWithGhosts::singleVariableView stores contiguously without copies")
 {
     auto packed_variable_constructor = [](std::vector<double>& input_array, int ni, int nj, int nk)
-    { return PackedVariablesWithGhosts(input_array, ni, nj, nk, arbitraryPlan()); };
+    { return PackedVariablesWithGhosts(input_array, ni, nj, nk, GhostExchangePlanTest::arbitraryPlan()); };
     verifySingleVariableViewIsContiguous<PackedVariablesWithGhosts>(packed_variable_constructor);
 }
 
@@ -85,7 +85,7 @@ TEST_CASE("PackedVariables::PackedVariables fails for incorrect array size")
 TEST_CASE("PackedVariablesWithGhosts::PackedVariables fails for incorrect array size")
 {
     auto packed_variable_constructor = [](std::vector<double>& input_array, int ni, int nj, int nk)
-    { return PackedVariablesWithGhosts(input_array, ni, nj, nk, arbitraryPlan()); };
+    { return PackedVariablesWithGhosts(input_array, ni, nj, nk, GhostExchangePlanTest::arbitraryPlan()); };
     verifyPackedVariablesFailsForIncorrectSize<PackedVariablesWithGhosts>(packed_variable_constructor);
 }
 
@@ -119,6 +119,6 @@ TEST_CASE("PackedVariables::singleVariableView fails for invalid variable_index"
 TEST_CASE("PackedVariablesWithGhosts::singleVariableView fails for invalid variable_index")
 {
     auto packed_variable_constructor = [](std::vector<double>& input_array, int ni, int nj, int nk)
-    { return PackedVariablesWithGhosts(input_array, ni, nj, nk, arbitraryPlan()); };
+    { return PackedVariablesWithGhosts(input_array, ni, nj, nk, GhostExchangePlanTest::arbitraryPlan()); };
     verifySingleVariableViewFailsInvalidIndex<PackedVariablesWithGhosts>(packed_variable_constructor);
 }

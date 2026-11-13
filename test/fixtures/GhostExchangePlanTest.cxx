@@ -1,5 +1,7 @@
 /**
- * @file Functions and classes required for test which utilise the class GhostExchangePlan
+ * @class GhostExchangePlanTest
+ *
+ * @brief Convenience functions for tests that utilise GhostExchangePlan
  */
 
 #ifndef GhostExchangePlanTest_H
@@ -9,12 +11,15 @@
 
 #include "DirectionalArray.h"
 
-namespace
+class GhostExchangePlanTest
 {
+  public:
     /**
      * @brief Create an arbitrary plan for tests which require one to exist but don't care about its state.
+     *
+     * @returns The arbitrary GhostExchangePlan
      */
-    GhostExchangePlan<double> arbitraryPlan()
+    static GhostExchangePlan<double> arbitraryPlan()
     {
         // The plan shouldn't matter here
         DirectionalArray<BoundaryConditions> bcs;

@@ -50,7 +50,7 @@ class PhysicsBasedPreconditionerTest
             }
         }
 
-        solution            = std::make_unique<PackedVariablesWithGhosts>(*solution_raw, ni, nj, nk, arbitraryPlan());
+        solution = std::make_unique<PackedVariablesWithGhosts>(*solution_raw, ni, nj, nk, GhostExchangePlanTest::arbitraryPlan());
         solution_dPd        = std::make_unique<PackedVariables>(*solution_dPd_raw, ni, nj, nk);
         squared_sound_speed = std::make_unique<Array3D<double>>(ni, nj, nk, *squared_sound_speed_raw);
     }
