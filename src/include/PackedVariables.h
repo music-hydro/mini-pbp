@@ -2,9 +2,10 @@
  * @file  PackedVariables
  *
  * @details Classes for storing packed variables arrays, i.e. a single contiguous 1D array
- *          where the values for each variable is stored contiguously in (i, j, k). i.e.
- *          Iterating through the 1D array would consume a single variable in its entire first.
- *          Once this variable has been consumed the next variable begins in an unbroken chain.
+ *          where the values for each variable is stored contiguously in (i, j, k), i being
+ *          fastest. i.e. Iterating through the 1D array would consume a single variable in
+ *          its entirety. Once this variable has been consumed the next variable begins in
+ *          an unbroken chain.
  */
 
 #ifndef PackedVariables_H

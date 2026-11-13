@@ -12,7 +12,7 @@ TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner throws if solu
     std::vector<double> solution_raw(size);             // invalid
     std::vector<double> solution_dPd_raw(size * 2);     // valid
     std::vector<double> squared_sound_speed_raw(size);  // valid
-    PackedVariablesWithGhosts solution(solution_raw, n, n, n, arbitraryPlan());
+    PackedVariablesWithGhosts solution(solution_raw, n, n, n, GhostExchangePlanTest::arbitraryPlan());
     PackedVariables solution_dPd(solution_dPd_raw, n, n, n);
     Array3D<double> squared_sound_speed(n, n, n, squared_sound_speed_raw);
 
@@ -27,7 +27,7 @@ TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner throws if solu
     std::vector<double> solution_raw(size * 3);         // valid
     std::vector<double> solution_dPd_raw(size);         // invalid
     std::vector<double> squared_sound_speed_raw(size);  // valid
-    PackedVariablesWithGhosts solution(solution_raw, n, n, n, arbitraryPlan());
+    PackedVariablesWithGhosts solution(solution_raw, n, n, n, GhostExchangePlanTest::arbitraryPlan());
     PackedVariables solution_dPd(solution_dPd_raw, n, n, n);
     Array3D<double> squared_sound_speed(n, n, n, squared_sound_speed_raw);
 
