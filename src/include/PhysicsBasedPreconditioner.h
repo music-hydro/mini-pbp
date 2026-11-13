@@ -106,19 +106,11 @@ class PhysicsBasedPreconditioner
                               const unsigned int nmom,
                               const bool mhd_enabled,
                               GhostExchangePlan<double>& plan,
-
-                              const std::array<const Array3D<double>*, 3>& vel,
                               const std::vector<const Array3D<double>*>& active_scalars,
-
-                              const Array3D<double>& delta_conserved_rho,
-                              const Array3D<double>& delta_conserved_rho_e,
-                              const std::array<const Array3D<double>*, 3>& delta_conserved_rho_vel,
+                              PackedVariables delta_conserved,
                               const std::vector<const Array3D<double>*>& delta_conserved_rho_scalars,
                               const std::array<const Array3D<double>*, 3>& delta_conserved_magnetic_field,
-
-                              Array3D<double>& delta_primitive_rho,
-                              Array3D<double>& delta_primitive_e,
-                              const std::array<Array3D<double>*, 3>& delta_primitive_vel,
+                              PackedVariables delta_primitive,
                               const std::vector<Array3D<double>*>& delta_primitive_scalars,
                               const std::array<Array3D<double>*, 3>& delta_primitive_magnetic_field);
 
@@ -139,6 +131,24 @@ class PhysicsBasedPreconditioner
      */
     unsigned int n_energy() const
     { return m_n_energy; }
+
+    /**
+     * @brief Getter for the velocity in the ith direction variable index
+     */
+    unsigned int n_vel_i()
+    { return m_n_vel_i; }
+
+    /**
+     * @brief Getter for the velocity in the jth direction variable index
+     */
+    unsigned int n_vel_j()
+    { return m_n_vel_j; }
+
+    /**
+     * @brief Getter for the velocity in the kth direction variable index
+     */
+    unsigned int n_vel_k()
+    { return m_n_vel_k; }
 
     /**
      * @brief getter for density gradient index
@@ -190,6 +200,9 @@ class PhysicsBasedPreconditioner
     unsigned int m_n_rho;
     unsigned int m_n_pressure;
     unsigned int m_n_energy;
+    unsigned int m_n_vel_i;
+    unsigned int m_n_vel_j;
+    unsigned int m_n_vel_k;
     unsigned int m_n_dPdrho;
     unsigned int m_n_dPdenergy;
     // This is a temporary solution. The value has been taken from a run of music and should be calculated instead.

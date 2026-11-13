@@ -31,14 +31,17 @@ PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(PackedVariablesWithGhosts
     m_n_rho(0),
     m_n_pressure(1),
     m_n_energy(2),
+    m_n_vel_i(3),
+    m_n_vel_j(4),
+    m_n_vel_k(5),
     m_n_dPdrho(0),
     m_n_dPdenergy(1)
 {
     // Verify the size of solutions
     int num_solution_variables = m_solution.numVariables();
-    if (num_solution_variables != 3)
+    if (num_solution_variables != 6)
     {
-        throw std::invalid_argument("Solution should contain exactly 3 variables, found " +
+        throw std::invalid_argument("Solution should contain exactly 6 variables, found " +
                                     std::to_string(num_solution_variables));
     }
     int num_solution_dPd_variables = m_solution_dPd.numVariables();
@@ -146,19 +149,11 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(const unsigned int ndim,
                                                       const unsigned int nmom,
                                                       const bool mhd_enabled,
                                                       GhostExchangePlan<double>& plan,
-
-                                                      const std::array<const Array3D<double>*, 3>& vel,
                                                       const std::vector<const Array3D<double>*>& active_scalars,
-
-                                                      const Array3D<double>& delta_conserved_rho,
-                                                      const Array3D<double>& delta_conserved_rho_e,
-                                                      const std::array<const Array3D<double>*, 3>& delta_conserved_rho_vel,
+                                                      PackedVariables delta_conserved,
                                                       const std::vector<const Array3D<double>*>& delta_conserved_rho_scalars,
                                                       const std::array<const Array3D<double>*, 3>& delta_conserved_magnetic_field,
-
-                                                      Array3D<double>& delta_primitive_rho,
-                                                      Array3D<double>& delta_primitive_e,
-                                                      const std::array<Array3D<double>*, 3>& delta_primitive_vel,
+                                                      PackedVariables delta_primitive,
                                                       const std::vector<Array3D<double>*>& delta_primitive_scalars,
                                                       const std::array<Array3D<double>*, 3>& delta_primitive_magnetic_field)
 {
@@ -171,23 +166,26 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(const unsigned int ndim,
     }
 
     // rho and e from the stored solution, rho with its ghosts
-    Array3DWithGhosts<double> sol_rho(m_solution.singleVariableView(m_n_rho), plan);
-    const Array3D<double> sol_e   = m_solution.singleVariableView(m_n_energy);
-    const Array3D<double>& cv_rho = delta_conserved_rho;
+    Array3DWithGhosts<double> sol_rho = m_solution.singleVariableView(m_n_rho);
+    const Array3D<double> sol_e       = m_solution.singleVariableView(m_n_energy);
+    const Array3D<double>& cv_rho     = delta_conserved.singleVariableView(n_rho());
     requireSameSlab(sol_rho, cv_rho, "solution rho and delta_conserved rho");
 
     // rho one cell beyond the rank, read by the face averages
     sol_rho.exchangeGhosts();
 
-    // delta rho one cell beyond the rank: the halo from the neighbour ranks, or the boundary condition fill
+    // Exchange ghost cells for the conserved density
     Array3DWithGhosts<double> delta_rho_g(cv_rho, plan);
     delta_rho_g.exchangeGhosts();
 
     // Density
+    Array3D<double> delta_primitive_rho = delta_primitive.singleVariableView(n_rho());
     requireSameSlab(delta_primitive_rho, cv_rho, "delta_primitive rho and delta_conserved rho");
     cv_rho.deepCopy(delta_primitive_rho);
 
     // Energy
+    Array3D<double> delta_primitive_e     = delta_primitive.singleVariableView(n_energy());
+    Array3D<double> delta_conserved_rho_e = delta_conserved.singleVariableView(n_energy());
     requireSameSlab(delta_primitive_e, cv_rho, "delta_primitive e and delta_conserved rho");
     requireSameSlab(delta_primitive_e, delta_conserved_rho_e, "delta_primitive e and delta_conserved rho e");
     requireSameSlab(delta_primitive_e, sol_e, "delta_primitive e and solution e");
@@ -232,11 +230,24 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(const unsigned int ndim,
     // Velocity: each component lives on the faces along its own axis, so convert it over that component's own nodes
     // rather than over the cells slab, which may omit a solved boundary face. Averaging delta rho to the first face, or
     // to a solved positive boundary face, reads the NEGATIVE or POSITIVE ghost of rho and delta_rho_g.
+    std::array<Array3D<double>, 3> delta_conserved_rho_vel = {delta_conserved.singleVariableView(n_vel_i()),
+                                                              delta_conserved.singleVariableView(n_vel_j()),
+                                                              delta_conserved.singleVariableView(n_vel_k())};
+    std::array<Array3D<double>, 3> vel                     = {
+        m_solution.singleVariableView(n_vel_i()),
+        m_solution.singleVariableView(n_vel_j()),
+        m_solution.singleVariableView(n_vel_k()),
+    };
+    std::array<Array3D<double>, 3> delta_primitive_vel = {
+        delta_primitive.singleVariableView(n_vel_i()),
+        delta_primitive.singleVariableView(n_vel_j()),
+        delta_primitive.singleVariableView(n_vel_k()),
+    };
     for (unsigned int ax = 0; ax < nmom; ax++)
     {
-        Array3D<double>& delta_v           = *delta_primitive_vel[ax];
-        const Array3D<double>& delta_rho_v = *delta_conserved_rho_vel[ax];
-        const Array3D<double>& sol_v       = *vel[ax];
+        Array3D<double>& delta_v           = delta_primitive_vel[ax];
+        const Array3D<double>& delta_rho_v = delta_conserved_rho_vel[ax];
+        const Array3D<double>& sol_v       = vel[ax];
         requireSameSlab(delta_v, sol_v, "delta_primitive velocity and solution velocity");
         const Slab s = delta_v.cellSlab();
         // Neighbour cell on the negative side of the face along ax
