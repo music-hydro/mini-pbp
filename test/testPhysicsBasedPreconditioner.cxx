@@ -17,14 +17,14 @@ TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner throws if solu
     Array3D<double> squared_sound_speed(n, n, n, squared_sound_speed_raw);
 
     REQUIRE_THROWS_WITH(PhysicsBasedPreconditioner(solution, solution_dPd, squared_sound_speed),
-                        Catch::Matchers::ContainsSubstring("Solution should contain exactly 3 variables"));
+                        Catch::Matchers::ContainsSubstring("Solution should contain exactly 6 variables"));
 }
 
 TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner throws if solution_dPd is not a valid size")
 {
     int n    = 2;
     int size = n * n * n;
-    std::vector<double> solution_raw(size * 3);         // valid
+    std::vector<double> solution_raw(size * 6);         // valid
     std::vector<double> solution_dPd_raw(size);         // invalid
     std::vector<double> squared_sound_speed_raw(size);  // valid
     PackedVariablesWithGhosts solution(solution_raw, n, n, n, GhostExchangePlanTest::arbitraryPlan());
