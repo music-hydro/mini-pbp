@@ -26,7 +26,6 @@ set(HEADER_FILES
     "${INCLUDE_DIRS}/PhysicsBasedPreconditioner.h"
 )
 set(IMPLEMENTATION_FILES
-    "${SRC_DIR}/PackedVariables.cxx"
     "${SRC_DIR}/PhysicsBasedPreconditioner.cxx"
 )
 
