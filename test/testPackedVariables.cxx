@@ -43,8 +43,8 @@ void verifySingleVariableViewIsContiguous(std::function<T(std::vector<double>&, 
             {
                 for (int i = 0; i < ni; i++)
                 {
+                    REQUIRE(variable_array(i, j, k) == input_1d_pointer[counter + offset]);
                     REQUIRE(&variable_array(i, j, k) == &input_1d_pointer[counter + offset]);
-                    REQUIRE_THAT(variable_array(i, j, k), Catch::Matchers::WithinRel(input_1d_pointer[counter + offset], 1e-14));
                     counter++;
                 }
             }
