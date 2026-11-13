@@ -16,6 +16,7 @@ set(TEST_FILES
     "${PROJ_TEST_DIR}/fixtures/PhysicsBasedPreconditionerTest.cxx"
     "${PROJ_TEST_DIR}/fixtures/MpiTest.cxx"
     "${PROJ_TEST_DIR}/fixtures/Array3DWithGhostsTest.cxx"
+    "${PROJ_TEST_DIR}/fixtures/GhostExchangePlanTest.cxx"
     "${PROJ_TEST_DIR}/testArray3D.cxx"
     "${PROJ_TEST_DIR}/testArray2D.cxx"
     # "${PROJ_TEST_DIR}/testArray3DWithGhosts.cxx"
