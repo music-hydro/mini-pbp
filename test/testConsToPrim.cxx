@@ -89,7 +89,7 @@ namespace
             solution_raw(3 * size),
             solution_dPd_raw(2 * size),
             squared_sound_speed_raw(size),
-            solution(solution_raw, nc[0], nc[1], nc[2]),
+            solution(solution_raw, nc[0], nc[1], nc[2], periodicPlan()),
             solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]),
             squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw),
             pbp(solution, solution_dPd, squared_sound_speed)
@@ -106,7 +106,8 @@ namespace
 
         size_t size;
         std::vector<double> solution_raw, solution_dPd_raw, squared_sound_speed_raw;
-        PackedVariables solution, solution_dPd;
+        PackedVariablesWithGhosts solution;
+        PackedVariables solution_dPd;
         Array3D<double> squared_sound_speed;
         PhysicsBasedPreconditioner pbp;
     };

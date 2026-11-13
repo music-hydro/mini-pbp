@@ -24,7 +24,7 @@ class PhysicsBasedPreconditioner
      * @param[in] squared_sound_speed - 3D view of the squared sound speed within each each cell.
      * @param[in] prec_nvar - The number of variables to precondition (1: just pressure, 2: pressure and energy)
      */
-    PhysicsBasedPreconditioner(PackedVariables& solution,
+    PhysicsBasedPreconditioner(PackedVariablesWithGhosts& solution,
                                PackedVariables& solution_dPd,
                                Array3D<double>& squared_sound_speed,
                                const unsigned int prec_nvar = 1);
@@ -152,7 +152,7 @@ class PhysicsBasedPreconditioner
     unsigned int n_dPdenergy() const
     { return m_n_dPdenergy; }
 
-    PackedVariables solution() const
+    PackedVariablesWithGhosts solution() const
     { return m_solution; }
 
   private:
@@ -179,7 +179,7 @@ class PhysicsBasedPreconditioner
                               Array3D<double>& delta_energy);
 
     /// @brief Store of the solution
-    PackedVariables m_solution;
+    PackedVariablesWithGhosts m_solution;
     /// @brief Store of the solution gradients
     PackedVariables m_solution_dPd;
     /// @brief Squared sound speed

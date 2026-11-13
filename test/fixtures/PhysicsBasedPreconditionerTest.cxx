@@ -7,6 +7,7 @@
 
 #include "PhysicsBasedPreconditioner.h"
 
+#include "GhostExchangePlanTest.cxx"
 #include "PackedVariables.h"
 #include <memory>
 #include <vector>
@@ -17,7 +18,7 @@ class PhysicsBasedPreconditionerTest
     std::unique_ptr<std::vector<double>> solution_raw;
     std::unique_ptr<std::vector<double>> solution_dPd_raw;
     std::unique_ptr<std::vector<double>> squared_sound_speed_raw;
-    std::unique_ptr<PackedVariables> solution;
+    std::unique_ptr<PackedVariablesWithGhosts> solution;
     std::unique_ptr<PackedVariables> solution_dPd;
     std::unique_ptr<Array3D<double>> squared_sound_speed;
 
@@ -49,7 +50,7 @@ class PhysicsBasedPreconditionerTest
             }
         }
 
-        solution            = std::make_unique<PackedVariables>(*solution_raw, ni, nj, nk);
+        solution = std::make_unique<PackedVariablesWithGhosts>(*solution_raw, ni, nj, nk, GhostExchangePlanTest::arbitraryPlan());
         solution_dPd        = std::make_unique<PackedVariables>(*solution_dPd_raw, ni, nj, nk);
         squared_sound_speed = std::make_unique<Array3D<double>>(ni, nj, nk, *squared_sound_speed_raw);
     }

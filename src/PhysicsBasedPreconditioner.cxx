@@ -20,7 +20,7 @@ namespace
     }
 }  // namespace
 
-PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(PackedVariables& solution,
+PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(PackedVariablesWithGhosts& solution,
                                                        PackedVariables& solution_dPd,
                                                        Array3D<double>& squared_sound_speed,
                                                        const unsigned int prec_nvar) :
