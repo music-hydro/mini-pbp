@@ -226,6 +226,21 @@ class Array3D
     bool isSubArray() const
     { return m_is_sub_array; }
 
+    /**
+     * @brief Check if a this array's slab matches that of another.
+     *
+     * @param[in] other_array - The other array to compare slabs with.
+     * @param[in] error_info - Extra information to include in an error log, in the event the slabs do not match.
+     */
+    void requireSameSlab(const Array3D<T>& other_array, const std::string& error_info)
+    {
+        const Slab my_slab = cellSlab(), their_slab = other_array.cellSlab();
+        if (my_slab.start() != their_slab.start() || my_slab.end() != their_slab.end())
+        {
+            throw std::invalid_argument("Slabs do not cover the same nodes: " + error_info);
+        }
+    }
+
   protected:
     /// @brief Pointer to array memory origin.
     T* const m_data_origin;
