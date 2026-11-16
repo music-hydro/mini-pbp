@@ -8,6 +8,7 @@
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 #include <cmath>
 #include <cstdio>
 #include <limits>
@@ -70,247 +71,16 @@ namespace
             }
         }
     }
-}  // namespace
 
-TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive rejects invalid input")
-{
-    const std::array<int, 3> nc    = {3, 3, 3};
-    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
-    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
-    std::vector<double> solution_raw(6 * size);
-    std::vector<double> solution_dPd_raw(2 * size);
-    std::vector<double> squared_sound_speed_raw(size);
-    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
-    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
-    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
-    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
-    std::vector<double> conserved_raw(6 * size);
-    std::vector<double> primitive_raw(6 * size);
-    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
-    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
-    std::vector<double> no_variables_raw;
-    PackedVariables no_variables(no_variables_raw, nc[0], nc[1], nc[2]);
-
-    for (const auto [ndim, nmom] : std::array<std::pair<unsigned int, unsigned int>, 5> {
-             {{1, 3}, {4, 3}, {3, 1}, {3, 4}, {3, 2}}
-    })
-    {
-        REQUIRE_THROWS_AS(pbp.conservedToPrimitive(ndim,
-                                                   nmom,
-                                                   false,
-                                                   plan,
-                                                   no_variables,
-                                                   conserved,
-                                                   no_variables,
-                                                   no_variables,
-                                                   primitive,
-                                                   no_variables,
-                                                   no_variables),
-                          std::invalid_argument);
-    }
-
-    SECTION("active scalar inputs have matching counts")
-    {
-        std::vector<double> scalar_raw(size);
-        PackedVariables scalar(scalar_raw, nc[0], nc[1], nc[2]);
-        REQUIRE_THROWS_AS(
-            pbp.conservedToPrimitive(
-                3, 3, false, plan, scalar, conserved, no_variables, no_variables, primitive, no_variables, no_variables),
-            std::invalid_argument);
-    }
-}
-
-TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 3D with active scalars and MHD")
-{
-    const std::array<int, 3> nc    = {3, 4, 5};
-    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
-    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
-    std::vector<double> solution_raw(6 * size);
-    std::vector<double> solution_dPd_raw(2 * size);
-    std::vector<double> squared_sound_speed_raw(size);
-    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
-    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
-    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
-    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
-
-    initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {4.0, 5.0, 6.0});
-
-    std::vector<double> conserved_raw(6 * size, 1.0);
-    std::vector<double> primitive_raw(6 * size, NaN);
-    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
-    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
-    initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});
-
-    std::vector<double> scalar_solution_raw(2 * size);
-    std::vector<double> scalar_conserved_raw(2 * size);
-    std::vector<double> scalar_primitive_raw(2 * size, NaN);
-    PackedVariables scalar_solution(scalar_solution_raw, nc[0], nc[1], nc[2]);
-    PackedVariables scalar_conserved(scalar_conserved_raw, nc[0], nc[1], nc[2]);
-    PackedVariables scalar_primitive(scalar_primitive_raw, nc[0], nc[1], nc[2]);
-    for (unsigned int scalar = 0; scalar < 2; scalar++)
-    {
-        scalar_solution.singleVariableView(scalar).fill(7.0 + scalar);
-        scalar_conserved.singleVariableView(scalar).fill(50.0);
-    }
-
-    std::vector<double> magnetic_conserved_raw(3 * size);
-    std::vector<double> magnetic_primitive_raw(3 * size, NaN);
-    PackedVariables magnetic_conserved(magnetic_conserved_raw, nc[0], nc[1], nc[2]);
-    PackedVariables magnetic_primitive(magnetic_primitive_raw, nc[0], nc[1], nc[2]);
-    for (unsigned int axis = 0; axis < 3; axis++)
-    {
-        magnetic_conserved.singleVariableView(axis).fill(8.0 + axis);
-    }
-
-    pbp.conservedToPrimitive(3,
-                             3,
-                             true,
-                             plan,
-                             scalar_solution,
-                             conserved,
-                             scalar_conserved,
-                             magnetic_conserved,
-                             primitive,
-                             scalar_primitive,
-                             magnetic_primitive);
-
-    requireAll(primitive.singleVariableView(pbp.n_rho()), 1.0);
-    requireAll(primitive.singleVariableView(pbp.n_energy()), (10.0 - 3.0) / 2.0);
-    for (unsigned int scalar = 0; scalar < 2; scalar++)
-    {
-        requireAll(scalar_primitive.singleVariableView(scalar), (50.0 - (7.0 + scalar)) / 2.0);
-    }
-    const std::array<unsigned int, 3> velocity_indices = velocityIndices(pbp);
-    for (unsigned int axis = 0; axis < 3; axis++)
-    {
-        CAPTURE(axis);
-        requireAll(primitive.singleVariableView(velocity_indices[axis]), (20.0 + 10.0 * axis - (4.0 + axis)) / 2.0);
-        requireAll(magnetic_primitive.singleVariableView(axis), 8.0 + axis);
-    }
-}
-
-TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity components and no MHD leaves the rest untouched")
-{
-    const std::array<int, 3> nc    = {3, 3, 1};
-    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
-    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
-    std::vector<double> solution_raw(6 * size);
-    std::vector<double> solution_dPd_raw(2 * size);
-    std::vector<double> squared_sound_speed_raw(size);
-    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
-    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
-    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
-    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
-    initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {4.0, 5.0, 6.0});
-
-    std::vector<double> conserved_raw(6 * size, 1.0);
-    std::vector<double> primitive_raw(6 * size, NaN);
-    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
-    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
-    initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});
-
-    std::vector<double> magnetic_conserved_raw(3 * size);
-    std::vector<double> magnetic_primitive_raw(3 * size, NaN);
-    PackedVariables magnetic_conserved(magnetic_conserved_raw, nc[0], nc[1], nc[2]);
-    PackedVariables magnetic_primitive(magnetic_primitive_raw, nc[0], nc[1], nc[2]);
-    std::vector<double> no_variables_raw;
-    PackedVariables no_variables(no_variables_raw, nc[0], nc[1], nc[2]);
-
-    pbp.conservedToPrimitive(2,
-                             2,
-                             false,
-                             plan,
-                             no_variables,
-                             conserved,
-                             no_variables,
-                             magnetic_conserved,
-                             primitive,
-                             no_variables,
-                             magnetic_primitive);
-
-    requireAll(primitive.singleVariableView(pbp.n_rho()), 1.0);
-    requireAll(primitive.singleVariableView(pbp.n_energy()), (10.0 - 3.0) / 2.0);
-    requireAll(primitive.singleVariableView(pbp.n_vel_i()), (20.0 - 4.0) / 2.0);
-    requireAll(primitive.singleVariableView(pbp.n_vel_j()), (30.0 - 5.0) / 2.0);
-    requireAll(primitive.singleVariableView(pbp.n_vel_k()), NaN);
-    for (unsigned int axis = 0; axis < 3; axis++)
-    {
-        requireAll(magnetic_primitive.singleVariableView(axis), NaN);
-    }
-}
-
-TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive converts each velocity component")
-{
-    const std::array<int, 3> nc    = {4, 3, 3};
-    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
-    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
-    std::vector<double> solution_raw(6 * size);
-    std::vector<double> solution_dPd_raw(2 * size);
-    std::vector<double> squared_sound_speed_raw(size);
-    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
-    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
-    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
-    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
-    Array3DWithGhosts<double> solution_rho = solution.singleVariableView(pbp.n_rho());
-    initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {1.0, 2.0, 3.0});
-
-    std::vector<double> conserved_raw(6 * size, 1.0);
-    std::vector<double> primitive_raw(6 * size, NaN);
-    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
-    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
-    initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});
-    Array3D<double> conserved_rho = conserved.singleVariableView(pbp.n_rho());
-    for (int k = 0; k < nc[2]; k++)
-    {
-        for (int j = 0; j < nc[1]; j++)
-        {
-            for (int i = 0; i < nc[0]; i++)
-            {
-                solution_rho(i, j, k)  = 2.0 + i + 2.0 * j + 3.0 * k;
-                conserved_rho(i, j, k) = 1.0 + i + 2.0 * j + 3.0 * k;
-            }
-        }
-    }
-    std::vector<double> no_variables_raw;
-    PackedVariables no_variables(no_variables_raw, nc[0], nc[1], nc[2]);
-    pbp.conservedToPrimitive(
-        3, 3, false, plan, no_variables, conserved, no_variables, no_variables, primitive, no_variables, no_variables);
-
-    const std::array<unsigned int, 3> velocity_indices = velocityIndices(pbp);
-    for (unsigned int axis = 0; axis < 3; axis++)
-    {
-        Array3D<double> primitive_velocity = primitive.singleVariableView(velocity_indices[axis]);
-        const int di                       = axis == 0 ? 1 : 0;
-        const int dj                       = axis == 1 ? 1 : 0;
-        const int dk                       = axis == 2 ? 1 : 0;
-        for (int k = 0; k < nc[2]; k++)
-        {
-            for (int j = 0; j < nc[1]; j++)
-            {
-                for (int i = 0; i < nc[0]; i++)
-                {
-                    const int im                = (i - di + nc[0]) % nc[0];
-                    const int jm                = (j - dj + nc[1]) % nc[1];
-                    const int km                = (k - dk + nc[2]) % nc[2];
-                    const double rho_face       = 0.5 * (solution_rho(i, j, k) + solution_rho(im, jm, km));
-                    const double delta_rho_face = 0.5 * (conserved_rho(i, j, k) + conserved_rho(im, jm, km));
-                    const double expected       = (20.0 + 10.0 * axis - (1.0 + axis) * delta_rho_face) / rho_face;
-                    CAPTURE(axis, i, j, k);
-                    REQUIRE_THAT(primitive_velocity(i, j, k), Catch::Matchers::WithinRel(expected, 1e-14));
-                }
-            }
-        }
-    }
-}
-
-namespace
-{
     /**
-     * @brief Run PhysicsBasedPreconditioner::conservedToPrimitive on the MUSIC data of one rank (rho, e and the velocity components, written by the MUSIC diff
-     * given in the pull request; MUSIC indices start at 1) and compare with the MUSIC outputs. Also check that the
-     * exchange of delta rho on the plan gives the halo MUSIC read.
+     * @brief Run PhysicsBasedPreconditioner::conservedToPrimitive on the Roberts Dynamo data of one rank and compare to expected results
+     *
+     * @details Inputs and expected outputs are read from `.dat` files with prefix `file_prefix`.
+     *
+     * @param[in] file_prefix - The prefix of the files containing inputs and expected outputs.
+     * @param[in] plan - The ghost exchange plan required for the chosen number opf ranks (should be periodic in all directions).
      */
-    void checkAgainstMusic(const std::string& file_prefix, GhostExchangePlan<double>& plan)
+    void checkAgainstRobertsDynamo(const std::string& file_prefix, GhostExchangePlan<double>& plan)
     {
         FILE* file = fopen((file_prefix + "_inputs.dat").c_str(), "r");
         REQUIRE(file != nullptr);
@@ -473,6 +243,242 @@ namespace
     }
 }  // namespace
 
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive rejects invalid input")
+{
+    const std::array<int, 3> nc    = {3, 3, 3};
+    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
+    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
+    std::vector<double> solution_raw(6 * size);
+    std::vector<double> solution_dPd_raw(2 * size);
+    std::vector<double> squared_sound_speed_raw(size);
+    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
+    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
+    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
+    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
+    std::vector<double> conserved_raw(6 * size);
+    std::vector<double> primitive_raw(6 * size);
+    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
+    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
+    std::vector<double> no_variables_raw;
+    PackedVariables no_variables(no_variables_raw, nc[0], nc[1], nc[2]);
+
+    SECTION("invalid input ndim and/or nmom")
+    {
+        for (const auto [ndim, nmom, expected_err] : std::array<std::tuple<unsigned int, unsigned int, std::string>, 5> {
+                 {{1, 3, "ndim must be 2 or 3"},
+                  {4, 3, "ndim must be 2 or 3"},
+                  {3, 1, "nmom must be 2 or 3"},
+                  {3, 4, "nmom must be 2 or 3"},
+                  {3, 2, "nmom must be at least ndim"}}
+        })
+        {
+            REQUIRE_THROWS_WITH(pbp.conservedToPrimitive(ndim,
+                                                         nmom,
+                                                         false,
+                                                         plan,
+                                                         no_variables,
+                                                         conserved,
+                                                         no_variables,
+                                                         no_variables,
+                                                         primitive,
+                                                         no_variables,
+                                                         no_variables),
+                                Catch::Matchers::ContainsSubstring(expected_err));
+        }
+    }
+
+    SECTION("active scalar inputs have matching counts")
+    {
+        std::vector<double> scalar_raw(size);
+        PackedVariables scalar(scalar_raw, nc[0], nc[1], nc[2]);
+        REQUIRE_THROWS_WITH(
+            pbp.conservedToPrimitive(
+                3, 3, false, plan, scalar, conserved, no_variables, no_variables, primitive, no_variables, no_variables),
+            Catch::Matchers::ContainsSubstring("The number of active scalars differs between the inputs"));
+    }
+}
+
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 3D with active scalars and MHD")
+{
+    const std::array<int, 3> nc    = {3, 4, 5};
+    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
+    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
+    std::vector<double> solution_raw(6 * size);
+    std::vector<double> solution_dPd_raw(2 * size);
+    std::vector<double> squared_sound_speed_raw(size);
+    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
+    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
+    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
+    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
+
+    initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {4.0, 5.0, 6.0});
+
+    std::vector<double> conserved_raw(6 * size, 1.0);
+    std::vector<double> primitive_raw(6 * size, NaN);
+    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
+    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
+    initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});
+
+    std::vector<double> scalar_solution_raw(2 * size);
+    std::vector<double> scalar_conserved_raw(2 * size);
+    std::vector<double> scalar_primitive_raw(2 * size, NaN);
+    PackedVariables scalar_solution(scalar_solution_raw, nc[0], nc[1], nc[2]);
+    PackedVariables scalar_conserved(scalar_conserved_raw, nc[0], nc[1], nc[2]);
+    PackedVariables scalar_primitive(scalar_primitive_raw, nc[0], nc[1], nc[2]);
+    for (unsigned int scalar = 0; scalar < 2; scalar++)
+    {
+        scalar_solution.singleVariableView(scalar).fill(7.0 + scalar);
+        scalar_conserved.singleVariableView(scalar).fill(50.0);
+    }
+
+    std::vector<double> magnetic_conserved_raw(3 * size);
+    std::vector<double> magnetic_primitive_raw(3 * size, NaN);
+    PackedVariables magnetic_conserved(magnetic_conserved_raw, nc[0], nc[1], nc[2]);
+    PackedVariables magnetic_primitive(magnetic_primitive_raw, nc[0], nc[1], nc[2]);
+    for (unsigned int axis = 0; axis < 3; axis++)
+    {
+        magnetic_conserved.singleVariableView(axis).fill(8.0 + axis);
+    }
+
+    pbp.conservedToPrimitive(3,
+                             3,
+                             true,
+                             plan,
+                             scalar_solution,
+                             conserved,
+                             scalar_conserved,
+                             magnetic_conserved,
+                             primitive,
+                             scalar_primitive,
+                             magnetic_primitive);
+
+    requireAll(primitive.singleVariableView(pbp.n_rho()), 1.0);
+    requireAll(primitive.singleVariableView(pbp.n_energy()), (10.0 - 3.0) / 2.0);
+    for (unsigned int scalar = 0; scalar < 2; scalar++)
+    {
+        requireAll(scalar_primitive.singleVariableView(scalar), (50.0 - (7.0 + scalar)) / 2.0);
+    }
+    const std::array<unsigned int, 3> velocity_indices = velocityIndices(pbp);
+    for (unsigned int axis = 0; axis < 3; axis++)
+    {
+        requireAll(primitive.singleVariableView(velocity_indices[axis]), (20.0 + 10.0 * axis - (4.0 + axis)) / 2.0);
+        requireAll(magnetic_primitive.singleVariableView(axis), 8.0 + axis);
+    }
+}
+
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity components and no MHD leaves the rest untouched")
+{
+    const std::array<int, 3> nc    = {3, 3, 1};
+    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
+    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
+    std::vector<double> solution_raw(6 * size);
+    std::vector<double> solution_dPd_raw(2 * size);
+    std::vector<double> squared_sound_speed_raw(size);
+    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
+    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
+    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
+    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
+    initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {4.0, 5.0, 6.0});
+
+    std::vector<double> conserved_raw(6 * size, 1.0);
+    std::vector<double> primitive_raw(6 * size, NaN);
+    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
+    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
+    initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});
+
+    std::vector<double> magnetic_conserved_raw(3 * size);
+    std::vector<double> magnetic_primitive_raw(3 * size, NaN);
+    PackedVariables magnetic_conserved(magnetic_conserved_raw, nc[0], nc[1], nc[2]);
+    PackedVariables magnetic_primitive(magnetic_primitive_raw, nc[0], nc[1], nc[2]);
+    std::vector<double> no_variables_raw;
+    PackedVariables no_variables(no_variables_raw, nc[0], nc[1], nc[2]);
+
+    pbp.conservedToPrimitive(2,
+                             2,
+                             false,
+                             plan,
+                             no_variables,
+                             conserved,
+                             no_variables,
+                             magnetic_conserved,
+                             primitive,
+                             no_variables,
+                             magnetic_primitive);
+
+    requireAll(primitive.singleVariableView(pbp.n_rho()), 1.0);
+    requireAll(primitive.singleVariableView(pbp.n_energy()), (10.0 - 3.0) / 2.0);
+    requireAll(primitive.singleVariableView(pbp.n_vel_i()), (20.0 - 4.0) / 2.0);
+    requireAll(primitive.singleVariableView(pbp.n_vel_j()), (30.0 - 5.0) / 2.0);
+    requireAll(primitive.singleVariableView(pbp.n_vel_k()), NaN);
+    for (unsigned int axis = 0; axis < 3; axis++)
+    {
+        requireAll(magnetic_primitive.singleVariableView(axis), NaN);
+    }
+}
+
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive converts each velocity component")
+{
+    const std::array<int, 3> nc    = {4, 3, 3};
+    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
+    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
+    std::vector<double> solution_raw(6 * size);
+    std::vector<double> solution_dPd_raw(2 * size);
+    std::vector<double> squared_sound_speed_raw(size);
+    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
+    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
+    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
+    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
+    Array3DWithGhosts<double> solution_rho = solution.singleVariableView(pbp.n_rho());
+    initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {1.0, 2.0, 3.0});
+
+    std::vector<double> conserved_raw(6 * size, 1.0);
+    std::vector<double> primitive_raw(6 * size, NaN);
+    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
+    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
+    initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});
+    Array3D<double> conserved_rho = conserved.singleVariableView(pbp.n_rho());
+    for (int k = 0; k < nc[2]; k++)
+    {
+        for (int j = 0; j < nc[1]; j++)
+        {
+            for (int i = 0; i < nc[0]; i++)
+            {
+                solution_rho(i, j, k)  = 2.0 + i + 2.0 * j + 3.0 * k;
+                conserved_rho(i, j, k) = 1.0 + i + 2.0 * j + 3.0 * k;
+            }
+        }
+    }
+    std::vector<double> no_variables_raw;
+    PackedVariables no_variables(no_variables_raw, nc[0], nc[1], nc[2]);
+    pbp.conservedToPrimitive(
+        3, 3, false, plan, no_variables, conserved, no_variables, no_variables, primitive, no_variables, no_variables);
+
+    const std::array<unsigned int, 3> velocity_indices = velocityIndices(pbp);
+    for (unsigned int axis = 0; axis < 3; axis++)
+    {
+        Array3D<double> primitive_velocity = primitive.singleVariableView(velocity_indices[axis]);
+        const int di                       = axis == 0 ? 1 : 0;
+        const int dj                       = axis == 1 ? 1 : 0;
+        const int dk                       = axis == 2 ? 1 : 0;
+        for (int k = 0; k < nc[2]; k++)
+        {
+            for (int j = 0; j < nc[1]; j++)
+            {
+                for (int i = 0; i < nc[0]; i++)
+                {
+                    const int im                = (i - di + nc[0]) % nc[0];
+                    const int jm                = (j - dj + nc[1]) % nc[1];
+                    const int km                = (k - dk + nc[2]) % nc[2];
+                    const double rho_face       = 0.5 * (solution_rho(i, j, k) + solution_rho(im, jm, km));
+                    const double delta_rho_face = 0.5 * (conserved_rho(i, j, k) + conserved_rho(im, jm, km));
+                    const double expected       = (20.0 + 10.0 * axis - (1.0 + axis) * delta_rho_face) / rho_face;
+                    REQUIRE_THAT(primitive_velocity(i, j, k), Catch::Matchers::WithinRel(expected, 1e-14));
+                }
+            }
+        }
+    }
+}
+
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_to_prim on the Roberts dynamo test on 1 rank")
 {
     int num_ranks;
@@ -480,7 +486,7 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_t
     if (num_ranks != 1) { SKIP("Test requires exactly 1 rank"); }
 
     GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
-    checkAgainstMusic(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_1rank_rank0", plan);
+    checkAgainstRobertsDynamo(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_1rank_rank0", plan);
 }
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_to_prim on the Roberts dynamo test on 4 ranks")
@@ -507,6 +513,7 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_t
     DirectionalArray<BoundaryConditions> inner;
     inner.fill(BoundaryConditions::INNER);
     GhostExchangePlan<double> plan(inner, neighbours, cartesian);
-    checkAgainstMusic(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_4ranks_rank" + std::to_string(rank), plan);
+    checkAgainstRobertsDynamo(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_4ranks_rank" + std::to_string(rank),
+                              plan);
     MPI_Comm_free(&cartesian);
 }

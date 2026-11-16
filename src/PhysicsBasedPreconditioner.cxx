@@ -149,7 +149,7 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(const unsigned int ndim,
     if (active_scalars.numVariables() != delta_conserved_rho_scalars.numVariables() ||
         active_scalars.numVariables() != delta_primitive_scalars.numVariables())
     {
-        throw std::invalid_argument("the number of active scalars differs between the inputs");
+        throw std::invalid_argument("The number of active scalars differs between the inputs");
     }
     if (mhd_enabled && (delta_conserved_magnetic_field.numVariables() != 3 || delta_primitive_magnetic_field.numVariables() != 3))
     {
