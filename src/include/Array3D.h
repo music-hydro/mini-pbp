@@ -227,7 +227,7 @@ class Array3D
     { return m_is_sub_array; }
 
     /**
-     * @brief Check if a this array's slab matches that of another.
+     * @brief Check if this array's slab matches that of another.
      *
      * @param[in] other_array - The other array to compare slabs with.
      * @param[in] error_info - Extra information to include in an error log, in the event the slabs do not match.

@@ -69,19 +69,19 @@ class PhysicsBasedPreconditioner
      * `cons_to_prim` in `src/solvers/preconditioner.f90`).
      *
      * @details rho and e are read from the stored solution. The scalar packed variables must have matching counts.
-     * Empty PackedVariables objects may be passed when there are no active scalars or MHD is disabled.
-     * - delta_rho = delta_conserved_rho
-     * - delta_e = (delta_rho_e - e delta_rho) / rho
-     * - each active scalar: delta_phi = (delta_rho_phi - phi delta_rho) / rho
-     * - each velocity component lives on the faces along its own axis: delta_v = (delta_rho_v - v delta_rho_f) / rho_f,
-     *   with rho_f and delta_rho_f the average of the two cells next to the face. In 2D the third component is
-     *   invariant along k and uses the cell values.
-     * - each magnetic field component is copied unchanged.
+     *          Empty PackedVariables objects may be passed when there are no active scalars or MHD is disabled.
+     *          - delta_rho = delta_conserved_rho
+     *          - delta_e = (delta_rho_e - e delta_rho) / rho
+     *          - each active scalar: delta_phi = (delta_rho_phi - phi delta_rho) / rho
+     *          - each velocity component lives on the faces along its own axis: delta_v = (delta_rho_v - v delta_rho_f) / rho_f,
+     *            with rho_f and delta_rho_f the average of the two cells next to the face. In 2D the third component is
+     *            invariant along k and uses the cell values.
+     *          - each magnetic field component is copied unchanged.
      *
-     * A field staggered along an axis holds at (i, j, k) the face on the negative side of cell (i, j, k). Its cellSlab()
-     * is the faces solved on the rank (MUSIC `solved_local_domain_nodes`), so it may start at 1 or end at n + 1. Every
-     * loop runs over the slab of the primitive delta it writes. The face averages read rho and delta rho one cell
-     * beyond the rank, so both are exchanged on `plan`; this is collective over the neighbours in the plan.
+     *          A field staggered along an axis holds at (i, j, k) the face on the negative side of cell (i, j, k). Its cellSlab()
+     *          is the faces solved on the rank (MUSIC `solved_local_domain_nodes`), so it may start at 1 or end at n + 1. Every
+     *          loop runs over the slab of the primitive delta it writes. The face averages read rho and delta rho one cell
+     *          beyond the rank, so both are exchanged on `plan`; this is collective over the neighbours in the plan.
      *
      * @param[in] ndim - The number of dimensions (2 or 3).
      * @param[in] nmom - The number of velocity components (2 or 3, at least ndim).
@@ -126,19 +126,19 @@ class PhysicsBasedPreconditioner
     { return m_n_energy; }
 
     /**
-     * @brief Getter for the velocity in the ith direction variable index
+     * @brief Getter for the variable index of the velocity in the ith direction
      */
     unsigned int n_vel_i()
     { return m_n_vel_i; }
 
     /**
-     * @brief Getter for the velocity in the jth direction variable index
+     * @brief Getter for the variable index of the velocity in the jth direction
      */
     unsigned int n_vel_j()
     { return m_n_vel_j; }
 
     /**
-     * @brief Getter for the velocity in the kth direction variable index
+     * @brief Getter for the variable index of the velocity in the kth direction
      */
     unsigned int n_vel_k()
     { return m_n_vel_k; }
