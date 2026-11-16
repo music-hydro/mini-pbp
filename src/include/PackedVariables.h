@@ -28,6 +28,8 @@ class BasePackedVariables
     /**
      * @brief Constructor
      *
+     * @details An empty packed array represents zero variables.
+     *
      * @param packed_variables_1D - The full 1D vector containing all variables
      * @param ni - The number of physical cells in the first direction.
      * @param nj - The number of physical cells in the second direction.
@@ -37,13 +39,14 @@ class BasePackedVariables
                         const unsigned int ni,
                         const unsigned int nj,
                         const unsigned int nk) :
-        m_data_origin(&packed_variables_1D[0]),
+        m_data_origin(packed_variables_1D.data()),
         m_ni(ni),
         m_nj(nj),
         m_nk(nk)
     {
         // Verify the size of solutions
         unsigned long long domain_size = m_ni * m_nj * m_nk;
+        if (domain_size == 0) { throw std::invalid_argument("Packed variables must have a non-empty domain"); }
         if (packed_variables_1D.size() % domain_size != 0)
         {
             throw std::invalid_argument("Size of packed_array_pointer is not a multiple of (ni * nj * nk)");
