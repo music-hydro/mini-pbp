@@ -94,8 +94,8 @@ namespace
         REQUIRE(fscanf(file, " local_cells %d %d %d", &ni, &nj, &nk) == 3);
         Slab local_slab({0, 0, 0}, {ni, nj, nk});
 
-        size_t size                 = ni * nj * nk;
-        unsigned int num_total_vars = 6;
+        size_t size                       = ni * nj * nk;
+        const unsigned int num_total_vars = PhysicsBasedPreconditioner::num_sol_vars();
         std::vector<double> solution_raw(num_total_vars * size);
         std::vector<double> solution_dPd_raw(2 * size);
         std::vector<double> conserved_variables_raw(num_total_vars * size);
@@ -245,18 +245,19 @@ namespace
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive rejects invalid input")
 {
-    const std::array<int, 3> nc    = {3, 3, 3};
-    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
-    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
-    std::vector<double> solution_raw(6 * size);
-    std::vector<double> solution_dPd_raw(2 * size);
+    const std::array<int, 3> nc     = {3, 3, 3};
+    const size_t size               = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
+    GhostExchangePlan<double> plan  = GhostExchangePlanTest::periodicPlan();
+    const unsigned int num_sol_vars = PhysicsBasedPreconditioner::num_sol_vars();
+    std::vector<double> solution_raw(num_sol_vars * size);
+    std::vector<double> solution_dPd_raw(PhysicsBasedPreconditioner::num_sol_dPd_vars() * size);
     std::vector<double> squared_sound_speed_raw(size);
     PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
     PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
     Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
     PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
-    std::vector<double> conserved_raw(6 * size);
-    std::vector<double> primitive_raw(6 * size);
+    std::vector<double> conserved_raw(num_sol_vars * size);
+    std::vector<double> primitive_raw(num_sol_vars * size);
     PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
     PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
     std::vector<double> no_variables_raw;
@@ -300,11 +301,12 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive rejects invalid inpu
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 3D with active scalars and MHD")
 {
-    const std::array<int, 3> nc    = {3, 4, 5};
-    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
-    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
-    std::vector<double> solution_raw(6 * size);
-    std::vector<double> solution_dPd_raw(2 * size);
+    const std::array<int, 3> nc     = {3, 4, 5};
+    const size_t size               = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
+    GhostExchangePlan<double> plan  = GhostExchangePlanTest::periodicPlan();
+    const unsigned int num_sol_vars = PhysicsBasedPreconditioner::num_sol_vars();
+    std::vector<double> solution_raw(num_sol_vars * size);
+    std::vector<double> solution_dPd_raw(PhysicsBasedPreconditioner::num_sol_dPd_vars() * size);
     std::vector<double> squared_sound_speed_raw(size);
     PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
     PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
@@ -313,8 +315,8 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 3D with active scala
 
     initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {4.0, 5.0, 6.0});
 
-    std::vector<double> conserved_raw(6 * size, 1.0);
-    std::vector<double> primitive_raw(6 * size, NaN);
+    std::vector<double> conserved_raw(num_sol_vars * size, 1.0);
+    std::vector<double> primitive_raw(num_sol_vars * size, NaN);
     PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
     PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
     initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});
@@ -368,11 +370,12 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 3D with active scala
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity components and no MHD leaves the rest untouched")
 {
-    const std::array<int, 3> nc    = {3, 3, 1};
-    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
-    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
-    std::vector<double> solution_raw(6 * size);
-    std::vector<double> solution_dPd_raw(2 * size);
+    const std::array<int, 3> nc     = {3, 3, 1};
+    const size_t size               = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
+    GhostExchangePlan<double> plan  = GhostExchangePlanTest::periodicPlan();
+    const unsigned int num_sol_vars = PhysicsBasedPreconditioner::num_sol_vars();
+    std::vector<double> solution_raw(num_sol_vars * size);
+    std::vector<double> solution_dPd_raw(PhysicsBasedPreconditioner::num_sol_dPd_vars() * size);
     std::vector<double> squared_sound_speed_raw(size);
     PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
     PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
@@ -380,8 +383,8 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity
     PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
     initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {4.0, 5.0, 6.0});
 
-    std::vector<double> conserved_raw(6 * size, 1.0);
-    std::vector<double> primitive_raw(6 * size, NaN);
+    std::vector<double> conserved_raw(num_sol_vars * size, 1.0);
+    std::vector<double> primitive_raw(num_sol_vars * size, NaN);
     PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
     PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
     initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});
@@ -418,11 +421,12 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive converts each velocity component")
 {
-    const std::array<int, 3> nc    = {4, 3, 3};
-    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
-    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
-    std::vector<double> solution_raw(6 * size);
-    std::vector<double> solution_dPd_raw(2 * size);
+    const std::array<int, 3> nc     = {4, 3, 3};
+    const size_t size               = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
+    GhostExchangePlan<double> plan  = GhostExchangePlanTest::periodicPlan();
+    const unsigned int num_sol_vars = PhysicsBasedPreconditioner::num_sol_vars();
+    std::vector<double> solution_raw(num_sol_vars * size);
+    std::vector<double> solution_dPd_raw(PhysicsBasedPreconditioner::num_sol_dPd_vars() * size);
     std::vector<double> squared_sound_speed_raw(size);
     PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
     PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
@@ -431,8 +435,8 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive converts each veloci
     Array3DWithGhosts<double> solution_rho = solution.singleVariableView(pbp.n_rho());
     initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {1.0, 2.0, 3.0});
 
-    std::vector<double> conserved_raw(6 * size, 1.0);
-    std::vector<double> primitive_raw(6 * size, NaN);
+    std::vector<double> conserved_raw(num_sol_vars * size, 1.0);
+    std::vector<double> primitive_raw(num_sol_vars * size, NaN);
     PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
     PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
     initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});

@@ -108,51 +108,63 @@ class PhysicsBasedPreconditioner
                               PackedVariables delta_primitive_magnetic_field);
 
     /**
+     * @brief Getter for the number of packed variables in the solution
+     */
+    static unsigned int num_sol_vars()
+    { return m_num_sol_vars; }
+
+    /**
+     * @brief Getter for the number of packed variables in the solution gradients
+     */
+    static unsigned int num_sol_dPd_vars()
+    { return m_num_sol_dPd_vars; }
+
+    /**
      * @brief getter for density index
      */
-    unsigned int n_rho() const
+    static unsigned int n_rho()
     { return m_n_rho; }
 
     /**
      * @brief getter for pressure index
      */
-    unsigned int n_pressure() const
+    static unsigned int n_pressure()
     { return m_n_pressure; }
 
     /**
      * @brief getter for energy index
      */
-    unsigned int n_energy() const
+    static unsigned int n_energy()
     { return m_n_energy; }
 
     /**
      * @brief Getter for the variable index of the velocity in the ith direction
      */
-    unsigned int n_vel_i()
+    static unsigned int n_vel_i()
     { return m_n_vel_i; }
 
     /**
      * @brief Getter for the variable index of the velocity in the jth direction
      */
-    unsigned int n_vel_j()
+    static unsigned int n_vel_j()
     { return m_n_vel_j; }
 
     /**
      * @brief Getter for the variable index of the velocity in the kth direction
      */
-    unsigned int n_vel_k()
+    static unsigned int n_vel_k()
     { return m_n_vel_k; }
 
     /**
      * @brief getter for density gradient index
      */
-    unsigned int n_dPdrho() const
+    static unsigned int n_dPdrho()
     { return m_n_dPdrho; }
 
     /**
      * @brief getter for energy gradient index
      */
-    unsigned int n_dPdenergy() const
+    static unsigned int n_dPdenergy()
     { return m_n_dPdenergy; }
 
     PackedVariablesWithGhosts solution() const
@@ -189,15 +201,19 @@ class PhysicsBasedPreconditioner
     Array3D<double> m_squared_sound_speed;
     /// @brief Flag to indicate whether to precondition the pressure equation only (`prec_nvar=1`), or both pressure and energy equations (`prec_nvar=2`)
     unsigned int m_prec_nvar;
+    /// @brief The number of packed variables that must be present in the solution
+    static const unsigned int m_num_sol_vars = 6;
+    /// @brief The number of packed variables that must be present in the solution gradients
+    static const unsigned int m_num_sol_dPd_vars = 2;
     /// Indices for each variable
-    unsigned int m_n_rho;
-    unsigned int m_n_pressure;
-    unsigned int m_n_energy;
-    unsigned int m_n_vel_i;
-    unsigned int m_n_vel_j;
-    unsigned int m_n_vel_k;
-    unsigned int m_n_dPdrho;
-    unsigned int m_n_dPdenergy;
+    static const unsigned int m_n_rho       = 0;
+    static const unsigned int m_n_pressure  = 1;
+    static const unsigned int m_n_energy    = 2;
+    static const unsigned int m_n_vel_i     = 3;
+    static const unsigned int m_n_vel_j     = 4;
+    static const unsigned int m_n_vel_k     = 5;
+    static const unsigned int m_n_dPdrho    = 0;
+    static const unsigned int m_n_dPdenergy = 1;
     // This is a temporary solution. The value has been taken from a run of music and should be calculated instead.
     double m_dt = 1.0917241379310345E-004; /** timestep */
 };

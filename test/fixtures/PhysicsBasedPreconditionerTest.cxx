@@ -33,18 +33,20 @@ class PhysicsBasedPreconditionerTest
     {
         int size = ni * nj * nk;
 
-        solution_raw            = std::make_unique<std::vector<double>>(size * 6);
-        solution_dPd_raw        = std::make_unique<std::vector<double>>(size * 2);
-        squared_sound_speed_raw = std::make_unique<std::vector<double>>(size);
+        const unsigned int num_sol_vars     = PhysicsBasedPreconditioner::num_sol_vars();
+        const unsigned int num_sol_dPd_vars = PhysicsBasedPreconditioner::num_sol_dPd_vars();
+        solution_raw                        = std::make_unique<std::vector<double>>(size * num_sol_vars);
+        solution_dPd_raw                    = std::make_unique<std::vector<double>>(size * num_sol_dPd_vars);
+        squared_sound_speed_raw             = std::make_unique<std::vector<double>>(size);
 
         for (int i = 0; i < size; i++)
         {
             (*squared_sound_speed_raw)[i] = 0;
-            for (int var = 0; var < 6; var++)
+            for (int var = 0; var < num_sol_vars; var++)
             {
                 (*solution_raw)[i + size * var] = 0;
             }
-            for (int var = 0; var < 2; var++)
+            for (int var = 0; var < num_sol_dPd_vars; var++)
             {
                 (*solution_dPd_raw)[i + size * var] = 0;
             }

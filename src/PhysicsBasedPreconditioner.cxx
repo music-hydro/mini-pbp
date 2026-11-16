@@ -13,34 +13,23 @@ PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(PackedVariablesWithGhosts
     m_solution(solution),
     m_solution_dPd(solution_dPd),
     m_squared_sound_speed(squared_sound_speed),
-    m_prec_nvar(prec_nvar),
-    m_n_rho(0),
-    m_n_pressure(1),
-    m_n_energy(2),
-    m_n_vel_i(3),
-    m_n_vel_j(4),
-    m_n_vel_k(5),
-    m_n_dPdrho(0),
-    m_n_dPdenergy(1)
+    m_prec_nvar(prec_nvar)
 {
     // Verify the size of solutions
     int num_solution_variables = m_solution.numVariables();
-    if (num_solution_variables != 6)
+    if (num_solution_variables != m_num_sol_vars)
     {
-        throw std::invalid_argument("Solution should contain exactly 6 variables, found " +
+        throw std::invalid_argument("Solution should contain exactly " + std::to_string(m_num_sol_vars) + " variables, found " +
                                     std::to_string(num_solution_variables));
     }
     int num_solution_dPd_variables = m_solution_dPd.numVariables();
-    if (num_solution_dPd_variables != 2)
+    if (num_solution_dPd_variables != m_num_sol_dPd_vars)
     {
-        throw std::invalid_argument("Solution gradients should contain exactly 2 variables, found " +
-                                    std::to_string(num_solution_dPd_variables));
+        throw std::invalid_argument("Solution gradients should contain exactly " + std::to_string(m_num_sol_dPd_vars) +
+                                    " variables, found " + std::to_string(num_solution_dPd_variables));
     }
 
-    unsigned int ni = solution.ni();
-    unsigned int nj = solution.nj();
-    unsigned int nk = solution.nk();
-    if (ni != solution_dPd.ni() || nj != solution_dPd.nj() || nk != solution_dPd.nk())
+    if (solution.ni() != solution_dPd.ni() || solution.nj() != solution_dPd.nj() || solution.nk() != solution_dPd.nk())
     {
         throw std::invalid_argument("Solution and solution gradients must have the same domain dimensions");
     }
