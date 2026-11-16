@@ -7,11 +7,8 @@
 #ifndef PhysicsBasedPreconditioner_H
 #define PhysicsBasedPreconditioner_H
 
-#include "Array3DWithGhosts.h"
 #include "GhostExchangePlan.h"
 #include "PackedVariables.h"
-#include <array>
-#include <vector>
 
 class PhysicsBasedPreconditioner
 {
@@ -71,7 +68,8 @@ class PhysicsBasedPreconditioner
      * @brief Convert the residual from conserved to primitive variables, the first step of the preconditioner (MUSIC
      * `cons_to_prim` in `src/solvers/preconditioner.f90`).
      *
-     * @details rho and e are read from the stored solution.
+     * @details rho and e are read from the stored solution. The scalar packed variables must have matching counts.
+     * Empty PackedVariables objects may be passed when there are no active scalars or MHD is disabled.
      * - delta_rho = delta_conserved_rho
      * - delta_e = (delta_rho_e - e delta_rho) / rho
      * - each active scalar: delta_phi = (delta_rho_phi - phi delta_rho) / rho
@@ -89,30 +87,25 @@ class PhysicsBasedPreconditioner
      * @param[in] nmom - The number of velocity components (2 or 3, at least ndim).
      * @param[in] mhd_enabled - Whether the magnetic field components are present.
      * @param[in] plan - The ghost exchange plan of the cells of this rank (MUSIC `rho_plans`).
-     * @param[in] vel - The solution velocity on the same faces as delta_primitive_vel (only the first nmom are read).
-     * @param[in] active_scalars - The solution active scalars phi on the cells.
-     * @param[in] delta_conserved_rho - delta rho on all the cells of the rank.
-     * @param[in] delta_conserved_rho_e - delta (rho e).
-     * @param[in] delta_conserved_rho_vel - delta (rho v) of each velocity component (only the first nmom are read).
-     * @param[in] delta_conserved_rho_scalars - delta (rho phi) of each active scalar.
-     * @param[in] delta_conserved_magnetic_field - delta B of each component (only read with MHD).
-     * @param[out] delta_primitive_rho - delta rho.
-     * @param[out] delta_primitive_e - delta e.
-     * @param[out] delta_primitive_vel - delta v of each velocity component (only the first nmom are written).
-     * @param[out] delta_primitive_scalars - delta phi of each active scalar.
-     * @param[out] delta_primitive_magnetic_field - delta B of each component (only written with MHD).
+     * @param[in] active_scalars - Packed solution active scalars phi on the cells.
+     * @param[in] delta_conserved - Packed conserved residual containing delta rho, delta (rho e) and delta (rho v) components.
+     * @param[in] delta_conserved_rho_scalars - Packed delta (rho phi) for each active scalar.
+     * @param[in] delta_conserved_magnetic_field - Packed delta B for each component (three when MHD is enabled).
+     * @param[out] delta_primitive - Packed primitive residual containing delta rho, delta e and delta v components.
+     * @param[out] delta_primitive_scalars - Packed delta phi for each active scalar.
+     * @param[out] delta_primitive_magnetic_field - Packed delta B for each component (three when MHD is enabled).
      */
     void conservedToPrimitive(const unsigned int ndim,
                               const unsigned int nmom,
                               const bool mhd_enabled,
                               GhostExchangePlan<double>& plan,
-                              const std::vector<const Array3D<double>*>& active_scalars,
+                              PackedVariables active_scalars,
                               PackedVariables delta_conserved,
-                              const std::vector<const Array3D<double>*>& delta_conserved_rho_scalars,
-                              const std::array<const Array3D<double>*, 3>& delta_conserved_magnetic_field,
+                              PackedVariables delta_conserved_rho_scalars,
+                              PackedVariables delta_conserved_magnetic_field,
                               PackedVariables delta_primitive,
-                              const std::vector<Array3D<double>*>& delta_primitive_scalars,
-                              const std::array<Array3D<double>*, 3>& delta_primitive_magnetic_field);
+                              PackedVariables delta_primitive_scalars,
+                              PackedVariables delta_primitive_magnetic_field);
 
     /**
      * @brief getter for density index

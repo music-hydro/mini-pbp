@@ -5,278 +5,303 @@
 #include "GhostExchangePlan.h"
 #include "PackedVariables.h"
 #include "PhysicsBasedPreconditioner.h"
-#include <algorithm>
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <cmath>
 #include <cstdio>
-#include <functional>
-#include <iostream>
 #include <limits>
-#include <memory>
 #include <mpi.h>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace
 {
-    // const double NaN = std::numeric_limits<double>::quiet_NaN();
+    constexpr double NaN = std::numeric_limits<double>::quiet_NaN();
+
+    std::array<unsigned int, 3> velocityIndices(PhysicsBasedPreconditioner& pbp)
+    { return {pbp.n_vel_i(), pbp.n_vel_j(), pbp.n_vel_k()}; }
 
     /**
-     * @brief A field on the nodes [start, end) of the rank, stored from node 0 so that the view keeps the local
-     * indices. Nodes outside [start, end) hold NaN. A field starting at node 0 is a whole array, so that it can be
-     * wrapped in an Array3DWithGhosts.
+     * @brief Initialize the density, pressure, energy, and velocity variables.
+     *
+     * @param variables Packed variables to initialize.
+     * @param pbp Preconditioner providing the variable indices.
+     * @param rho Value for density.
+     * @param pressure Value for pressure.
+     * @param energy Value for energy.
+     * @param velocities Values for the velocity components.
      */
-    // struct Field
-    // {
-    // Field(const std::array<int, 3> start, const std::array<int, 3> end, const double value = NaN) :
-    // data(static_cast<size_t>(end[0]) * end[1] * end[2], NaN),
-    // whole(std::make_unique<Array3D<double>>(end[0], end[1], end[2], data))
-    // {
-    // if (start == std::array<int, 3> {0, 0, 0}) { view = std::make_unique<Array3D<double>>(end[0], end[1], end[2], data); }
-    // else
-    // {
-    // view = std::make_unique<Array3D<double>>(*whole, Slab(start, end));
-    // }
-    // forEach(*view, [&](int i, int j, int k) { (*view)(i, j, k) = value; });
-    // }
+    template<typename T>
+    void initializeVariables(T& variables,
+                             PhysicsBasedPreconditioner& pbp,
+                             const double rho,
+                             const double pressure,
+                             const double energy,
+                             const std::array<double, 3>& velocities)
+    {
+        variables.singleVariableView(pbp.n_rho()).fill(rho);
+        variables.singleVariableView(pbp.n_pressure()).fill(pressure);
+        variables.singleVariableView(pbp.n_energy()).fill(energy);
+        const std::array<unsigned int, 3> velocity_indices = velocityIndices(pbp);
+        for (unsigned int axis = 0; axis < velocity_indices.size(); axis++)
+        {
+            variables.singleVariableView(velocity_indices[axis]).fill(velocities[axis]);
+        }
+    }
 
-    // template<typename Function>
-    // static void forEach(const Array3D<double>& a, Function f)
-    // {
-    // const Slab s = a.cellSlab();
-    // for (int k = s.start(2); k < s.end(2); k++)
-    // for (int j = s.start(1); j < s.end(1); j++)
-    // for (int i = s.start(0); i < s.end(0); i++)
-    // f(i, j, k);
-    // }
-
-    // std::vector<double> data;
-    // std::unique_ptr<Array3D<double>> whole, view;
-    // };
-
-    // /// @brief Every value of `a` equals `expected` (or is NaN when `expected` is NaN, i.e. not written)
-    // void requireAll(const Array3D<double>& a, const double expected)
-    // {
-    // const Slab s = a.cellSlab();
-    // for (int k = s.start(2); k < s.end(2); k++)
-    // {
-    // for (int j = s.start(1); j < s.end(1); j++)
-    // {
-    // for (int i = s.start(0); i < s.end(0); i++)
-    // {
-    // if (std::isnan(expected))
-    // REQUIRE(std::isnan(a(i, j, k)));
-    // else
-    // REQUIRE_THAT(a(i, j, k), Catch::Matchers::WithinRel(expected, 1e-14));
-    // }
-    // }
-    // }
-    // }
-
-    /// A PhysicsBasedPreconditioner on nc cells whose stored solution holds the given rho and e
-    // struct Preconditioner
-    // {
-    // Preconditioner(const std::array<int, 3> nc,
-    // const std::function<double(int, int, int)>& rho,
-    // const std::function<double(int, int, int)>& e) :
-    // size(static_cast<size_t>(nc[0]) * nc[1] * nc[2]),
-    // solution_raw(3 * size),
-    // solution_dPd_raw(2 * size),
-    // squared_sound_speed_raw(size),
-    // solution(solution_raw, nc[0], nc[1], nc[2]),
-    // solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]),
-    // squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw),
-    // pbp(solution, solution_dPd, squared_sound_speed)
-    // {
-    // Array3D<double> sol_rho = solution.singleVariableView(pbp.n_rho());
-    // Array3D<double> sol_e   = solution.singleVariableView(pbp.n_energy());
-
-    // Field::forEach(sol_rho,
-    // [&](int i, int j, int k)
-    // {
-    // sol_rho(i, j, k) = rho(i, j, k);
-    // sol_e(i, j, k)   = e(i, j, k);
-    // });
-    // }
-
-    // size_t size;
-    // std::vector<double> solution_raw, solution_dPd_raw, squared_sound_speed_raw;
-    // PackedVariables solution, solution_dPd;
-    // Array3D<double> squared_sound_speed;
-    // PhysicsBasedPreconditioner pbp;
-    // };
-
-    /**
-     * @brief Constant fields on nc periodic cells, so the expected result is a few numbers. The x velocity and B can be
-     * given other faces than the cells. The indices and ghosts are checked against MUSIC further down.
-     */
-    // struct ConstantProblem
-    // {
-    // ConstantProblem(const unsigned int ndim_,
-    // const unsigned int nmom_,
-    // const std::array<int, 3> nc,
-    // const unsigned int nscalars,
-    // const std::array<int, 3> x_faces_start = {0, 0, 0},
-    // std::array<int, 3> x_faces_end         = {0, 0, 0}) :
-    // ndim(ndim_),
-    // nmom(nmom_),
-    // plan(periodicPlan()),
-    // preconditioner(
-    // nc,
-    // [](int, int, int) { return 2.0; },
-    // [](int, int, int) { return 3.0; }),
-    // cv_rho({0, 0, 0}, nc, 1.0),
-    // cv_e({0, 0, 0}, nc, 10.0),
-    // pv_rho({0, 0, 0}, nc),
-    // pv_e({0, 0, 0}, nc)
-    // {
-    // if (x_faces_end == std::array<int, 3> {0, 0, 0}) { x_faces_end = nc; }
-    // for (unsigned int ax = 0; ax < 3; ax++)
-    // {
-    // const std::array<int, 3> start = (ax == 0) ? x_faces_start : std::array<int, 3> {0, 0, 0};
-    // const std::array<int, 3> end   = (ax == 0) ? x_faces_end : nc;
-    // sol_vel.push_back(std::make_unique<Field>(start, end, 4.0 + ax));
-    // cv_vel.push_back(std::make_unique<Field>(start, end, 20.0 + 10.0 * ax));
-    // pv_vel.push_back(std::make_unique<Field>(start, end));
-    // cv_b.push_back(std::make_unique<Field>(start, end, 8.0 + ax));
-    // pv_b.push_back(std::make_unique<Field>(start, end));
-    // }
-    // for (unsigned int isc = 0; isc < nscalars; isc++)
-    // {
-    // sol_phi.push_back(std::make_unique<Field>(std::array<int, 3> {0, 0, 0}, nc, 7.0 + isc));
-    // cv_phi.push_back(std::make_unique<Field>(std::array<int, 3> {0, 0, 0}, nc, 50.0));
-    // pv_phi.push_back(std::make_unique<Field>(std::array<int, 3> {0, 0, 0}, nc));
-    // }
-    // }
-
-    // template<typename T>
-    // static std::array<T*, 3> three(const std::vector<std::unique_ptr<Field>>& fields)
-    // { return {fields[0]->view.get(), fields[1]->view.get(), fields[2]->view.get()}; }
-
-    // template<typename T>
-    // static std::vector<T*> all(const std::vector<std::unique_ptr<Field>>& fields)
-    // {
-    // std::vector<T*> result;
-    // for (const auto& field : fields)
-    // {
-    // result.push_back(field->view.get());
-    // }
-    // return result;
-    // }
-
-    // /// Run conservedToPrimitive, optionally with another delta_primitive e or without the primitive deltas of the active scalars
-    // void run(const bool mhd, Array3D<double>* primitive_e = nullptr, const bool with_primitive_scalars = true)
-    // {
-    // preconditioner.pbp.conservedToPrimitive(ndim,
-    // nmom,
-    // mhd,
-    // plan,
-    // three<const Array3D<double>>(sol_vel),
-    // all<const Array3D<double>>(sol_phi),
-    // *cv_rho.view,
-    // *cv_e.view,
-    // three<const Array3D<double>>(cv_vel),
-    // all<const Array3D<double>>(cv_phi),
-    // three<const Array3D<double>>(cv_b),
-    // *pv_rho.view,
-    // primitive_e ? *primitive_e : *pv_e.view,
-    // three<Array3D<double>>(pv_vel),
-    // with_primitive_scalars ? all<Array3D<double>>(pv_phi) :
-    // std::vector<Array3D<double>*> {},
-    // three<Array3D<double>>(pv_b));
-    // }
-
-    // unsigned int ndim, nmom;
-    // GhostExchangePlan<double> plan;
-    // Preconditioner preconditioner;
-    // Field cv_rho, cv_e, pv_rho, pv_e;
-    // std::vector<std::unique_ptr<Field>> sol_vel, cv_vel, pv_vel, cv_b, pv_b, sol_phi, cv_phi, pv_phi;
-    // };
+    /// @brief Every value of `a` equals `expected` (or is NaN when `expected` is NaN, i.e. not written)
+    void requireAll(const Array3D<double>& a, const double expected)
+    {
+        const Slab s = a.cellSlab();
+        for (int k = s.start(2); k < s.end(2); k++)
+        {
+            for (int j = s.start(1); j < s.end(1); j++)
+            {
+                for (int i = s.start(0); i < s.end(0); i++)
+                {
+                    if (std::isnan(expected)) { REQUIRE(std::isnan(a(i, j, k))); }
+                    else
+                    {
+                        REQUIRE_THAT(a(i, j, k), Catch::Matchers::WithinRel(expected, 1e-14));
+                    }
+                }
+            }
+        }
+    }
 }  // namespace
 
-// TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive rejects invalid input")
-// {
-// const std::array<int, 3> nc = {3, 3, 3};
-// for (const auto& [ndim, nmom] : std::vector<std::pair<unsigned int, unsigned int>> {
-// {1, 3},
-// {4, 3},
-// {3, 1},
-// {3, 4},
-// {3, 2}
-// })
-// {
-// ConstantProblem p(ndim, nmom, nc, 0);
-// REQUIRE_THROWS_AS(p.run(true), std::invalid_argument);
-// }
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive rejects invalid input")
+{
+    const std::array<int, 3> nc    = {3, 3, 3};
+    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
+    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
+    std::vector<double> solution_raw(6 * size);
+    std::vector<double> solution_dPd_raw(2 * size);
+    std::vector<double> squared_sound_speed_raw(size);
+    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
+    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
+    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
+    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
+    std::vector<double> conserved_raw(6 * size);
+    std::vector<double> primitive_raw(6 * size);
+    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
+    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
+    std::vector<double> no_variables_raw;
+    PackedVariables no_variables(no_variables_raw, nc[0], nc[1], nc[2]);
 
-// SECTION("delta_primitive e on other nodes than delta_conserved rho")
-// {
-// ConstantProblem p(3, 3, nc, 0);
-// Field smaller({0, 0, 0}, {2, 3, 3});
-// REQUIRE_THROWS_AS(p.run(true, smaller.view.get()), std::invalid_argument);
-// }
+    for (const auto [ndim, nmom] : std::array<std::pair<unsigned int, unsigned int>, 5> {
+             {{1, 3}, {4, 3}, {3, 1}, {3, 4}, {3, 2}}
+    })
+    {
+        REQUIRE_THROWS_AS(pbp.conservedToPrimitive(ndim,
+                                                   nmom,
+                                                   false,
+                                                   plan,
+                                                   no_variables,
+                                                   conserved,
+                                                   no_variables,
+                                                   no_variables,
+                                                   primitive,
+                                                   no_variables,
+                                                   no_variables),
+                          std::invalid_argument);
+    }
 
-// SECTION("active scalars missing in delta_primitive")
-// {
-// ConstantProblem p(3, 3, nc, 1);
-// REQUIRE_THROWS_AS(p.run(true, nullptr, false), std::invalid_argument);
-// }
-// }
+    SECTION("active scalar inputs have matching counts")
+    {
+        std::vector<double> scalar_raw(size);
+        PackedVariables scalar(scalar_raw, nc[0], nc[1], nc[2]);
+        REQUIRE_THROWS_AS(
+            pbp.conservedToPrimitive(
+                3, 3, false, plan, scalar, conserved, no_variables, no_variables, primitive, no_variables, no_variables),
+            std::invalid_argument);
+    }
+}
 
-// TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 3D with active scalars and MHD")
-// {
-// ConstantProblem p(3, 3, {3, 4, 5}, 2);
-// p.run(true);
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 3D with active scalars and MHD")
+{
+    const std::array<int, 3> nc    = {3, 4, 5};
+    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
+    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
+    std::vector<double> solution_raw(6 * size);
+    std::vector<double> solution_dPd_raw(2 * size);
+    std::vector<double> squared_sound_speed_raw(size);
+    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
+    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
+    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
+    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
 
-// requireAll(*p.pv_rho.view, 1.0);
-// requireAll(*p.pv_e.view, (10.0 - 3.0 * 1.0) / 2.0);
-// for (unsigned int isc = 0; isc < 2; isc++)
-// {
-// requireAll(*p.pv_phi[isc]->view, (50.0 - (7.0 + isc) * 1.0) / 2.0);
-// }
-// for (unsigned int ax = 0; ax < 3; ax++)
-// {
-// CAPTURE(ax);
-// requireAll(*p.pv_vel[ax]->view, (20.0 + 10.0 * ax - (4.0 + ax) * 1.0) / 2.0);
-// requireAll(*p.pv_b[ax]->view, 8.0 + ax);
-// }
-// }
+    initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {4.0, 5.0, 6.0});
 
-// TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity components and no MHD leaves the rest untouched")
-// {
-// ConstantProblem p(2, 2, {3, 3, 1}, 0);
-// p.run(false);
+    std::vector<double> conserved_raw(6 * size, 1.0);
+    std::vector<double> primitive_raw(6 * size, NaN);
+    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
+    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
+    initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});
 
-// requireAll(*p.pv_vel[0]->view, (20.0 - 4.0) / 2.0);
-// requireAll(*p.pv_vel[1]->view, (30.0 - 5.0) / 2.0);
-// requireAll(*p.pv_vel[2]->view, NaN);
-// for (unsigned int ax = 0; ax < 3; ax++)
-// {
-// requireAll(*p.pv_b[ax]->view, NaN);
-// }
-// }
+    std::vector<double> scalar_solution_raw(2 * size);
+    std::vector<double> scalar_conserved_raw(2 * size);
+    std::vector<double> scalar_primitive_raw(2 * size, NaN);
+    PackedVariables scalar_solution(scalar_solution_raw, nc[0], nc[1], nc[2]);
+    PackedVariables scalar_conserved(scalar_conserved_raw, nc[0], nc[1], nc[2]);
+    PackedVariables scalar_primitive(scalar_primitive_raw, nc[0], nc[1], nc[2]);
+    for (unsigned int scalar = 0; scalar < 2; scalar++)
+    {
+        scalar_solution.singleVariableView(scalar).fill(7.0 + scalar);
+        scalar_conserved.singleVariableView(scalar).fill(50.0);
+    }
 
-// TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive converts each velocity over its own solved faces")
-// {
-// // Along x the negative boundary face is not solved (faces start at 1) and the positive one is (faces end at n + 1),
-// // as MUSIC `solved_local_domain_nodes` gives on a rank touching both boundaries
-// const std::array<int, 3> nc = {4, 3, 3};
-// ConstantProblem p(3, 3, nc, 0, {1, 0, 0}, {nc[0] + 1, nc[1], nc[2]});
-// p.run(true);
+    std::vector<double> magnetic_conserved_raw(3 * size);
+    std::vector<double> magnetic_primitive_raw(3 * size, NaN);
+    PackedVariables magnetic_conserved(magnetic_conserved_raw, nc[0], nc[1], nc[2]);
+    PackedVariables magnetic_primitive(magnetic_primitive_raw, nc[0], nc[1], nc[2]);
+    for (unsigned int axis = 0; axis < 3; axis++)
+    {
+        magnetic_conserved.singleVariableView(axis).fill(8.0 + axis);
+    }
 
-// requireAll(*p.pv_vel[0]->view, (20.0 - 4.0) / 2.0);
-// requireAll(*p.pv_b[0]->view, 8.0);
-// for (int k = 0; k < nc[2]; k++)
-// {
-// for (int j = 0; j < nc[1]; j++)
-// {
-// REQUIRE(std::isnan((*p.pv_vel[0]->whole)(0, j, k)));
-// REQUIRE(std::isnan((*p.pv_b[0]->whole)(0, j, k)));
-// }
-// }
-// }
+    pbp.conservedToPrimitive(3,
+                             3,
+                             true,
+                             plan,
+                             scalar_solution,
+                             conserved,
+                             scalar_conserved,
+                             magnetic_conserved,
+                             primitive,
+                             scalar_primitive,
+                             magnetic_primitive);
+
+    requireAll(primitive.singleVariableView(pbp.n_rho()), 1.0);
+    requireAll(primitive.singleVariableView(pbp.n_energy()), (10.0 - 3.0) / 2.0);
+    for (unsigned int scalar = 0; scalar < 2; scalar++)
+    {
+        requireAll(scalar_primitive.singleVariableView(scalar), (50.0 - (7.0 + scalar)) / 2.0);
+    }
+    const std::array<unsigned int, 3> velocity_indices = velocityIndices(pbp);
+    for (unsigned int axis = 0; axis < 3; axis++)
+    {
+        CAPTURE(axis);
+        requireAll(primitive.singleVariableView(velocity_indices[axis]), (20.0 + 10.0 * axis - (4.0 + axis)) / 2.0);
+        requireAll(magnetic_primitive.singleVariableView(axis), 8.0 + axis);
+    }
+}
+
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity components and no MHD leaves the rest untouched")
+{
+    const std::array<int, 3> nc    = {3, 3, 1};
+    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
+    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
+    std::vector<double> solution_raw(6 * size);
+    std::vector<double> solution_dPd_raw(2 * size);
+    std::vector<double> squared_sound_speed_raw(size);
+    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
+    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
+    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
+    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
+    initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {4.0, 5.0, 6.0});
+
+    std::vector<double> conserved_raw(6 * size, 1.0);
+    std::vector<double> primitive_raw(6 * size, NaN);
+    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
+    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
+    initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});
+
+    std::vector<double> magnetic_conserved_raw(3 * size);
+    std::vector<double> magnetic_primitive_raw(3 * size, NaN);
+    PackedVariables magnetic_conserved(magnetic_conserved_raw, nc[0], nc[1], nc[2]);
+    PackedVariables magnetic_primitive(magnetic_primitive_raw, nc[0], nc[1], nc[2]);
+    std::vector<double> no_variables_raw;
+    PackedVariables no_variables(no_variables_raw, nc[0], nc[1], nc[2]);
+
+    pbp.conservedToPrimitive(2,
+                             2,
+                             false,
+                             plan,
+                             no_variables,
+                             conserved,
+                             no_variables,
+                             magnetic_conserved,
+                             primitive,
+                             no_variables,
+                             magnetic_primitive);
+
+    requireAll(primitive.singleVariableView(pbp.n_rho()), 1.0);
+    requireAll(primitive.singleVariableView(pbp.n_energy()), (10.0 - 3.0) / 2.0);
+    requireAll(primitive.singleVariableView(pbp.n_vel_i()), (20.0 - 4.0) / 2.0);
+    requireAll(primitive.singleVariableView(pbp.n_vel_j()), (30.0 - 5.0) / 2.0);
+    requireAll(primitive.singleVariableView(pbp.n_vel_k()), NaN);
+    for (unsigned int axis = 0; axis < 3; axis++)
+    {
+        requireAll(magnetic_primitive.singleVariableView(axis), NaN);
+    }
+}
+
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive converts each velocity component")
+{
+    const std::array<int, 3> nc    = {4, 3, 3};
+    const size_t size              = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
+    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
+    std::vector<double> solution_raw(6 * size);
+    std::vector<double> solution_dPd_raw(2 * size);
+    std::vector<double> squared_sound_speed_raw(size);
+    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
+    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
+    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
+    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
+    Array3DWithGhosts<double> solution_rho = solution.singleVariableView(pbp.n_rho());
+    initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {1.0, 2.0, 3.0});
+
+    std::vector<double> conserved_raw(6 * size, 1.0);
+    std::vector<double> primitive_raw(6 * size, NaN);
+    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
+    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
+    initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});
+    Array3D<double> conserved_rho = conserved.singleVariableView(pbp.n_rho());
+    for (int k = 0; k < nc[2]; k++)
+    {
+        for (int j = 0; j < nc[1]; j++)
+        {
+            for (int i = 0; i < nc[0]; i++)
+            {
+                solution_rho(i, j, k)  = 2.0 + i + 2.0 * j + 3.0 * k;
+                conserved_rho(i, j, k) = 1.0 + i + 2.0 * j + 3.0 * k;
+            }
+        }
+    }
+    std::vector<double> no_variables_raw;
+    PackedVariables no_variables(no_variables_raw, nc[0], nc[1], nc[2]);
+    pbp.conservedToPrimitive(
+        3, 3, false, plan, no_variables, conserved, no_variables, no_variables, primitive, no_variables, no_variables);
+
+    const std::array<unsigned int, 3> velocity_indices = velocityIndices(pbp);
+    for (unsigned int axis = 0; axis < 3; axis++)
+    {
+        Array3D<double> primitive_velocity = primitive.singleVariableView(velocity_indices[axis]);
+        const int di                       = axis == 0 ? 1 : 0;
+        const int dj                       = axis == 1 ? 1 : 0;
+        const int dk                       = axis == 2 ? 1 : 0;
+        for (int k = 0; k < nc[2]; k++)
+        {
+            for (int j = 0; j < nc[1]; j++)
+            {
+                for (int i = 0; i < nc[0]; i++)
+                {
+                    const int im                = (i - di + nc[0]) % nc[0];
+                    const int jm                = (j - dj + nc[1]) % nc[1];
+                    const int km                = (k - dk + nc[2]) % nc[2];
+                    const double rho_face       = 0.5 * (solution_rho(i, j, k) + solution_rho(im, jm, km));
+                    const double delta_rho_face = 0.5 * (conserved_rho(i, j, k) + conserved_rho(im, jm, km));
+                    const double expected       = (20.0 + 10.0 * axis - (1.0 + axis) * delta_rho_face) / rho_face;
+                    CAPTURE(axis, i, j, k);
+                    REQUIRE_THAT(primitive_velocity(i, j, k), Catch::Matchers::WithinRel(expected, 1e-14));
+                }
+            }
+        }
+    }
+}
 
 namespace
 {
@@ -295,15 +320,6 @@ namespace
         unsigned int nmom = 3;
         bool use_mhd      = false;
         int ni, nj, nk;
-        const DirectionalArray<BoundaryConditions> global_bcs({
-            BoundaryConditions::PERIODIC,
-            BoundaryConditions::PERIODIC,
-            BoundaryConditions::PERIODIC,
-            BoundaryConditions::PERIODIC,
-            BoundaryConditions::PERIODIC,
-            BoundaryConditions::PERIODIC,
-        });
-
         // The local dimensions change per rank and thus must be read from the file
         REQUIRE(fscanf(file, " local_cells %d %d %d", &ni, &nj, &nk) == 3);
         Slab local_slab({0, 0, 0}, {ni, nj, nk});
@@ -415,7 +431,19 @@ namespace
         // The magnetic field is a copy and is not in the data; it is covered by the cases above
         Array3D<double> actual_primitive_rho    = actual_primitive_variables.singleVariableView(pbp.n_rho());
         Array3D<double> actual_primitive_energy = actual_primitive_variables.singleVariableView(pbp.n_energy());
-        pbp.conservedToPrimitive(ndim, nmom, use_mhd, plan, {}, conserved_variables, {}, {}, actual_primitive_variables, {}, {});
+        std::vector<double> no_variables_raw;
+        PackedVariables no_variables(no_variables_raw, ni, nj, nk);
+        pbp.conservedToPrimitive(ndim,
+                                 nmom,
+                                 use_mhd,
+                                 plan,
+                                 no_variables,
+                                 conserved_variables,
+                                 no_variables,
+                                 no_variables,
+                                 actual_primitive_variables,
+                                 no_variables,
+                                 no_variables);
 
         // Verify the actual primitive variable views have been populated with the expected values
         for (unsigned int k = 0; k < nk; k++)
