@@ -455,29 +455,30 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_t
     checkAgainstMusic(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_1rank_rank0", plan);
 }
 
-// TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_to_prim on the Roberts dynamo test on 4 ranks")
-// {
-// int num_ranks;
-// MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
-// if (num_ranks != 4) { SKIP("The 4 rank MUSIC data needs exactly 4 ranks"); }
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_to_prim on the Roberts dynamo test on 4 ranks")
+{
+    int num_ranks;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
+    if (num_ranks != 4) { SKIP("Test requires exactly 4 rank"); }
 
-// // MUSIC splits the periodic 16^3 domain 2 x 2 x 1 with rank = 2 * (x block) + (y block), which is the order of a
-// // cartesian communicator of dims {2, 2, 1} without reordering
-// std::array<int, 3> dims    = {2, 2, 1};
-// std::array<int, 3> periods = {1, 1, 1};
-// MPI_Comm cartesian;
-// MPI_Cart_create(MPI_COMM_WORLD, 3, dims.data(), periods.data(), false, &cartesian);
-// int rank;
-// MPI_Comm_rank(cartesian, &rank);
-// DirectionalArray<int> neighbours;
-// for (int axis = 0; axis < 3; axis++)
-// {
-// MPI_Cart_shift(
-// cartesian, axis, 1, &neighbours.get(axis, Direction::NEGATIVE), &neighbours.get(axis, Direction::POSITIVE));
-// }
-// DirectionalArray<BoundaryConditions> inner;
-// inner.fill(BoundaryConditions::INNER);
-// GhostExchangePlan<double> plan(inner, neighbours, cartesian);
-// checkAgainstMusic(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_4ranks_rank" + std::to_string(rank), plan);
-// MPI_Comm_free(&cartesian);
-// }
+    // MUSIC splits the periodic 16^3 domain 2 x 2 x 1 with rank = 2 * (x block) + (y block), which is the order of a
+    // cartesian communicator of dims {2, 2, 1} without reordering
+    std::array<int, 3> dims    = {2, 2, 1};
+    std::array<int, 3> periods = {1, 1, 1};
+    MPI_Comm cartesian;
+    MPI_Cart_create(MPI_COMM_WORLD, 3, dims.data(), periods.data(), false, &cartesian);
+    int rank;
+    MPI_Comm_rank(cartesian, &rank);
+
+    DirectionalArray<int> neighbours;
+    for (int axis = 0; axis < 3; axis++)
+    {
+        MPI_Cart_shift(
+            cartesian, axis, 1, &neighbours.get(axis, Direction::NEGATIVE), &neighbours.get(axis, Direction::POSITIVE));
+    }
+    DirectionalArray<BoundaryConditions> inner;
+    inner.fill(BoundaryConditions::INNER);
+    GhostExchangePlan<double> plan(inner, neighbours, cartesian);
+    checkAgainstMusic(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_4ranks_rank" + std::to_string(rank), plan);
+    MPI_Comm_free(&cartesian);
+}
