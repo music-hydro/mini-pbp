@@ -231,6 +231,8 @@ class Array3D
      *
      * @param[in] other_array - The other array to compare slabs with.
      * @param[in] error_info - Extra information to include in an error log, in the event the slabs do not match.
+     *
+     * @throws std::invalid_argument Thrown if the slabs do not match.
      */
     void requireSameSlab(const Array3D<T>& other_array, const std::string& error_info)
     {
