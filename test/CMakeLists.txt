@@ -11,16 +11,18 @@ endif()
 
 set(PROJ_TEST_DIR "${PROJECT_SOURCE_DIR}/test")
 
-# Serial tests
-set(TEST_FILES
+set(TEST_FIXTURES
     "${PROJ_TEST_DIR}/fixtures/PhysicsBasedPreconditionerTest.cxx"
     "${PROJ_TEST_DIR}/fixtures/MpiTest.cxx"
     "${PROJ_TEST_DIR}/fixtures/Array3DWithGhostsTest.cxx"
     "${PROJ_TEST_DIR}/fixtures/GhostExchangePlanTest.cxx"
+)
+
+# Serial tests
+set(SERIAL_TEST_FILES
+
     "${PROJ_TEST_DIR}/testArray3D.cxx"
     "${PROJ_TEST_DIR}/testArray2D.cxx"
-    # "${PROJ_TEST_DIR}/testArray3DWithGhosts.cxx"
-    # "${PROJ_TEST_DIR}/testGhostExchangePlan.cxx"
     "${PROJ_TEST_DIR}/testPackedVariables.cxx"
     "${PROJ_TEST_DIR}/testPhysicsBasedPreconditioner.cxx"
     "${PROJ_TEST_DIR}/testReconstructDensityDelta.cxx"
@@ -29,21 +31,14 @@ set(TEST_FILES
     "${PROJ_TEST_DIR}/testSlab.cxx"
 )
 
-set(BENCHMARK_FILES
-    "${PROJ_TEST_DIR}/fixtures/PhysicsBasedPreconditionerBenchmark.cxx"
-    "${PROJ_TEST_DIR}/benchmarkPhysicsBasedPreconditioner.cxx"
-)
 
 # These tests can use the Catch2-provided main
-add_executable(mini_pbp_unit_tests ${TEST_FILES} ${HEADER_FILES} ${IMPLEMENTATION_FILES})
+add_executable(mini_pbp_unit_tests ${TEST_FIXTURES} ${SERIAL_TEST_FILES} ${HEADER_FILES} ${IMPLEMENTATION_FILES})
 target_link_libraries(mini_pbp_unit_tests PRIVATE Catch2::Catch2WithMain)
 target_compile_definitions(mini_pbp_unit_tests PRIVATE
     TEST_DATA_DIR="${PROJ_TEST_DIR}/data"
 )
 add_test(NAME mini_pbp_unit_tests COMMAND mini_pbp_unit_tests)
-
-add_executable(mini_pbp_benchmarks ${BENCHMARK_FILES} ${HEADER_FILES} ${IMPLEMENTATION_FILES})
-target_link_libraries(mini_pbp_benchmarks PRIVATE Catch2::Catch2WithMain)
 
 # MPI tests
 set(MPI_TEST_FILES
@@ -53,7 +48,7 @@ set(MPI_TEST_FILES
     "${PROJ_TEST_DIR}/testGhostExchangePlan.cxx"
 )
 
-add_executable(mini_pbp_mpi_unit_tests ${MPI_TEST_FILES})
+add_executable(mini_pbp_mpi_unit_tests ${TEST_FIXTURES} ${MPI_TEST_FILES})
 target_link_libraries(mini_pbp_mpi_unit_tests PRIVATE "${PROJECT_NAME}_lib" Catch2::Catch2 )
 target_compile_definitions(mini_pbp_mpi_unit_tests PRIVATE
     TEST_DATA_DIR="${PROJ_TEST_DIR}/data"
@@ -66,3 +61,12 @@ foreach(num_ranks 1 4 8)
         COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${num_ranks} ${MPI_PREFLAGS}
             $<TARGET_FILE:mini_pbp_mpi_unit_tests> ${MPIEXEC_POSTFLAGS})
 endforeach()
+
+# Benchmarks
+set(BENCHMARK_FILES
+    "${PROJ_TEST_DIR}/fixtures/PhysicsBasedPreconditionerBenchmark.cxx"
+    "${PROJ_TEST_DIR}/benchmarkPhysicsBasedPreconditioner.cxx"
+)
+
+add_executable(mini_pbp_benchmarks ${BENCHMARK_FILES} ${HEADER_FILES} ${IMPLEMENTATION_FILES})
+target_link_libraries(mini_pbp_benchmarks PRIVATE Catch2::Catch2WithMain)
