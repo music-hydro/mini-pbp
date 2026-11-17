@@ -187,3 +187,31 @@ TEST_CASE("Array3D.deepCopy() Makes a copy without reallocating")
         }
     }
 }
+
+TEST_CASE("Array3D::operator()(i,j,k) throws for out of range")
+{
+    // Define the problem
+    unsigned int n = 10;
+    size_t size    = n * n * n;
+
+    // Allocate a 1D array equal to the size of a 3D array
+    std::vector<double> input_1d(size);
+
+    Array3D<double> full_array(n, n, n, input_1d);
+    Array3D<double> a(full_array, Slab({2, 2, 2}, {8, 8, 8}));
+
+    // Negative
+    REQUIRE_THROWS_WITH(a(-4, 3, 3), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 0"));
+    REQUIRE_THROWS_WITH(a(3, -7, 3), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 1"));
+    REQUIRE_THROWS_WITH(a(3, 3, -2), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 2"));
+
+    // Positive less than slab
+    REQUIRE_THROWS_WITH(a(1, 3, 3), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 0"));
+    REQUIRE_THROWS_WITH(a(3, 1, 3), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 1"));
+    REQUIRE_THROWS_WITH(a(3, 3, 1), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 2"));
+
+    // Positive more than slab
+    REQUIRE_THROWS_WITH(a(100, 3, 3), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 0"));
+    REQUIRE_THROWS_WITH(a(3, 45, 3), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 1"));
+    REQUIRE_THROWS_WITH(a(3, 3, 22), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 2"));
+}
