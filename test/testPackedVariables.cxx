@@ -66,6 +66,35 @@ TEST_CASE("PackedVariablesWithGhosts::singleVariableView stores contiguously wit
     verifySingleVariableViewIsContiguous<PackedVariablesWithGhosts>(packed_variable_constructor);
 }
 
+TEST_CASE("PackedVariablesWithGhosts copy constructor does not copy underlying data")
+{
+    // Define the problem
+    int num_variables = 6;
+    int ni            = 2;
+    int nj            = 2;
+    int nk            = 3;
+    int size          = ni * nj * nk;
+
+    // Allocate a 1D array equal to the size of a 3D array
+    std::vector<double> input_array(size * num_variables);
+
+    // Populate the 1D array with the variable index
+    for (int i = 0; i < num_variables; i++)
+    {
+        int offset = size * i;
+        for (int j = 0; j < size; j++)
+            input_array[i + offset] = (double)i;
+    }
+
+    PackedVariablesWithGhosts packed_variables(input_array, ni, nj, nk, GhostExchangePlanTest::arbitraryPlan());
+    PackedVariablesWithGhosts copy(packed_variables);
+
+    // Check an arbitrary variable and inner cell has matching addresses
+    REQUIRE(&copy.singleVariableView(2)(1, 1, 1) == &packed_variables.singleVariableView(2)(1, 1, 1));
+    // Check an arbitrary variable and ghost cell has matching addresses
+    REQUIRE(&copy.singleVariableView(2)(-1, 1, 1) == &packed_variables.singleVariableView(2)(-1, 1, 1));
+}
+
 template<class T>
 void verifyPackedVariablesFailsForIncorrectSize(std::function<T(std::vector<double>&, int, int, int)> packed_variable_constructor)
 {
