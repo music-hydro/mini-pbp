@@ -20,7 +20,6 @@ set(TEST_FIXTURES
 
 # Serial tests
 set(SERIAL_TEST_FILES
-
     "${PROJ_TEST_DIR}/testArray3D.cxx"
     "${PROJ_TEST_DIR}/testArray2D.cxx"
     "${PROJ_TEST_DIR}/testPackedVariables.cxx"
