@@ -69,6 +69,10 @@ class Array3DWithGhosts : public Array3D<T>
      *          ghost plane, but is in a kth axis ghost plane, only then will
      *          it be returned from that kth axis ghost plane.
      *
+     *          For safety, we have added a check that the indices are not
+     *          out of the slabs bounds. However, this will likely have a big
+     *          negative hit on performance and should be revisited.
+     *
      * @param i - The index in the first dimension.
      * @param j - The index in the second dimension.
      * @param k - The index in the third dimension.
