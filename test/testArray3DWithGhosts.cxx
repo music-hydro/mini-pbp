@@ -206,8 +206,8 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::exchangeGhosts")
     {
         for (int j = j0; j < jn; j++)
         {
-            REQUIRE((int)i_negative_ghost(j, k) == expected_ghost_values.get(0U, Direction::NEGATIVE));
-            REQUIRE((int)i_positive_ghost(j, k) == expected_ghost_values.get(0U, Direction::POSITIVE));
+            REQUIRE(i_negative_ghost(j, k) == expected_ghost_values.get(0U, Direction::NEGATIVE));
+            REQUIRE(i_positive_ghost(j, k) == expected_ghost_values.get(0U, Direction::POSITIVE));
         }
     }
     // axis j
