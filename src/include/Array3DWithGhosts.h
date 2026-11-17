@@ -32,7 +32,7 @@ class Array3DWithGhosts : public Array3D<T>
      * @param[in] inner_array - The 3D view of the array without ghost cells.
      * @param[in] plan - The plan defining how ghost cells should be exchanged.
      */
-    Array3DWithGhosts(const Array3D<T>& inner_array, GhostExchangePlan<T>& plan) :
+    Array3DWithGhosts(const Array3D<T>& inner_array, const GhostExchangePlan<T>& plan) :
         Array3D<T>(inner_array),
         m_plan(plan),
         m_ni(this->m_slab.extent(0)),
