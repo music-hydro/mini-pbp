@@ -24,7 +24,7 @@ class DirectionalArray : public std::array<T, 6>
     /**
      * @brief Consistent definition of how to index a DirectionalArray
      *
-     * @param[in] axis - The axis to be indexed.
+     * @param[in] axis - The axis to be indexed where i = 0, j = 1 and k = 2.
      * @param[in] direction - The direction of the axis to be indexed.
      *
      * @returns The value stored in the direction of the requested axis.
