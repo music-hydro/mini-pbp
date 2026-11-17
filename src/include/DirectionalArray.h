@@ -24,10 +24,10 @@ class DirectionalArray : public std::array<T, 6>
     /**
      * @brief Consistent definition of how to index a DirectionalArray
      *
-     * @param[in] axis - The axis to be indexed should be indexed.
+     * @param[in] axis - The axis to be indexed.
      * @param[in] direction - The direction of the axis to be indexed.
      *
-     * @returns The index for accessing a DirectionalArray.
+     * @returns The value stored in the direction of the requested axis.
      */
     T& get(const unsigned int& axis, const Direction& direction)
     { return (*this)[axis * 2U + direction]; }
