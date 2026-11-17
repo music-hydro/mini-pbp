@@ -108,10 +108,8 @@ class BasePackedVariables
   private:
     /**
      * @brief Fills the vector of 3D array views of the 1D contiguous array.
-     *
-     * @param packed_variables_1D - The full 1D vector containing all variables.
      */
-    virtual void populatePackedArrays(std::vector<double>& packed_variables_1D) = 0;
+    virtual void populatePackedArrays() = 0;
 };
 
 /**
@@ -138,18 +136,21 @@ class PackedVariablesWithGhosts : public BasePackedVariables<Array3DWithGhosts<d
                               GhostExchangePlan<double> plan) :
         BasePackedVariables<Array3DWithGhosts<double>>(packed_variables_1D, ni, nj, nk),
         m_plan(plan)
-    { populatePackedArrays(packed_variables_1D); }
+    { populatePackedArrays(); }
 
   private:
     const GhostExchangePlan<double> m_plan;
 
-    void populatePackedArrays(std::vector<double>& packed_variables_1D) override
+    /**
+     * @copydoc BasePackedVariables::populatePackedArrays
+     */
+    void populatePackedArrays() override
     {
         size_t domain_size = m_ni * m_nj * m_nk;
         // Pre-allocate ghost arrays
         for (unsigned int ivar = 0; ivar < m_num_variables; ivar++)
         {
-            Array3D<double> new_inner_array(m_ni, m_nj, m_nk, &packed_variables_1D[domain_size * ivar]);
+            Array3D<double> new_inner_array(m_ni, m_nj, m_nk, &m_data_origin[domain_size * ivar]);
             std::shared_ptr<Array3DWithGhosts<double>> new_array_with_ghosts =
                 std::make_shared<Array3DWithGhosts<double>>(new_inner_array, m_plan);
             m_packed_arrays.push_back(new_array_with_ghosts);
@@ -173,16 +174,19 @@ class PackedVariables : public BasePackedVariables<Array3D<double>>
                     const unsigned int nj,
                     const unsigned int nk) :
         BasePackedVariables<Array3D<double>>(packed_variables_1D, ni, nj, nk)
-    { populatePackedArrays(packed_variables_1D); }
+    { populatePackedArrays(); }
 
-    void populatePackedArrays(std::vector<double>& packed_variables_1D) override
+    /**
+     * @copydoc BasePackedVariables::populatePackedArrays
+     */
+    void populatePackedArrays() override
     {
         size_t domain_size = m_ni * m_nj * m_nk;
         // Pre-allocate ghost arrays
         for (unsigned int ivar = 0; ivar < m_num_variables; ivar++)
         {
             std::shared_ptr<Array3D<double>> new_inner_array =
-                std::make_shared<Array3D<double>>(m_ni, m_nj, m_nk, &packed_variables_1D[domain_size * ivar]);
+                std::make_shared<Array3D<double>>(m_ni, m_nj, m_nk, &m_data_origin[domain_size * ivar]);
             m_packed_arrays.push_back(new_inner_array);
         }
     }
