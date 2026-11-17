@@ -246,3 +246,26 @@ TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts constructed from a su
     REQUIRE_THROWS_WITH(Array3DWithGhosts<double>(sub_array, *my_plan),
                         Catch::Matchers::ContainsSubstring("A sub array cannot be used to create an array with ghosts"));
 }
+
+TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts::operator()(i,j,k) throws for out of range")
+{
+    // Define the problem
+    unsigned int n = 10;
+    size_t size    = n * n * n;
+
+    // Allocate a 1D array equal to the size of a 3D array
+    std::vector<double> input_1d(size);
+
+    Array3D<double> inner_array(n, n, n, input_1d);
+    Array3DWithGhosts<double> a(inner_array, *my_plan);
+
+    // Negative
+    REQUIRE_THROWS_WITH(a(-4, 3, 3), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 0"));
+    REQUIRE_THROWS_WITH(a(3, -7, 3), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 1"));
+    REQUIRE_THROWS_WITH(a(3, 3, -2), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 2"));
+
+    // Positive more than slab
+    REQUIRE_THROWS_WITH(a(100, 3, 3), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 0"));
+    REQUIRE_THROWS_WITH(a(3, 45, 3), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 1"));
+    REQUIRE_THROWS_WITH(a(3, 3, 22), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 2"));
+}

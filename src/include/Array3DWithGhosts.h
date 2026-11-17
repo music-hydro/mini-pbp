@@ -85,6 +85,8 @@ class Array3DWithGhosts : public Array3D<T>
                 direction = Direction::NEGATIVE;
             else if (indices[axis] == this->m_slab.end(axis))
                 direction = Direction::POSITIVE;
+            else if (indices[axis] < this->m_slab.start(axis) - 1 || indices[axis] > this->m_slab.end(axis))
+                throw std::out_of_range("Requested cell out of slab range for axis " + std::to_string(axis));
             else
                 continue;
 
