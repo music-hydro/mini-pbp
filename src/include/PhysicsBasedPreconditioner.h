@@ -256,7 +256,6 @@ class PhysicsBasedPreconditioner
     unsigned long long globalVarIndex(const int& i, const int& j, const int& k, const int& var_index, const Slab& global_slab)
     { return i + global_slab.end(0) * (j + global_slab.end(1) * (k + global_slab.end(2) * var_index)); }
 
-    
     /// @brief The number of dimensions (2 or 3).
     const unsigned int m_ndim;
     /// @brief The number of velocity components (2 or 3, at least ndim).
