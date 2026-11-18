@@ -298,7 +298,7 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
                 for (int axis = 0; axis < 3; axis++)
                     pressure_coefficient_sum += pressure_coefficients.get(axis, Direction::NEGATIVE) +
                                                 pressure_coefficients.get(axis, Direction::POSITIVE);
-                if (pressure_coefficient_sum = 0.0) throw std::runtime_error("pressure_coefficient_sum is zero");
+                if (pressure_coefficient_sum == 0.0) throw std::runtime_error("pressure_coefficient_sum is zero");
 
                 // Add the current cell's value to the pressure matrix
                 const unsigned long long global_index =

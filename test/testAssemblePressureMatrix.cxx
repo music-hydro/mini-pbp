@@ -10,25 +10,6 @@
 #include <memory>
 #include <mpi.h>
 
-/**
- * @brief Set the problem inputs to those of the Roberts Dynamo Problem taken from MUSIC.
- */
-void setRobertsDynamoProblem(int& dt,
-                             std::shared_ptr<DirectionalArray<BoundaryConditions>>& global_bcs,
-                             std::shared_ptr<Slab>& global_slab)
-{
-    dt          = 4.5228571428571426E-004;
-    global_bcs  = std::make_shared<DirectionalArray<BoundaryConditions>>(DirectionalArray<BoundaryConditions>({
-        BoundaryConditions::PERIODIC,
-        BoundaryConditions::PERIODIC,
-        BoundaryConditions::PERIODIC,
-        BoundaryConditions::PERIODIC,
-        BoundaryConditions::PERIODIC,
-        BoundaryConditions::PERIODIC,
-    }));
-    global_slab = std::make_shared<Slab>(Slab({0, 0, 0}, {16, 16, 16}));
-}
-
 TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix")
 {
     int num_ranks;
@@ -36,39 +17,34 @@ TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix")
     if (num_ranks != 1 && num_ranks != 4) { SKIP("Test requires either 1 or 4 ranks"); }
 
     // Initialise problem
-    int dt;
-    std::shared_ptr<DirectionalArray<BoundaryConditions>> global_bcs;
-    std::shared_ptr<Slab> global_slab;
-    setRobertsDynamoProblem(dt, global_bcs, global_slab);
+    int dt = 4.5228571428571426E-004;
+    DirectionalArray<BoundaryConditions> global_bcs;
+    global_bcs.fill(BoundaryConditions::PERIODIC);
+    Slab global_slab({0, 0, 0}, {16, 16, 16});
 
     // Set domain decompositions
     std::array<int, 3> cart_dims = createCartesianDimensions();
-    MPI_Comm cart_comm           = createCartesianTopology(cart_dims, *global_bcs);
+    MPI_Comm cart_comm           = createCartesianTopology(cart_dims, global_bcs);
     int my_rank;
     MPI_Comm_rank(cart_comm, &my_rank);
     DirectionalArray<int> nghbrs = neighbours(cart_comm);
-    GhostExchangePlan plan(*global_slab, *global_bcs, nghbrs, cart_dims, cart_comm);
+    GhostExchangePlan plan(global_slab, global_bcs, nghbrs, cart_dims, cart_comm);
 
     // Populate starting states
     // Laplacian coefficients
     std::vector<DirectionalArray<double>> laplacian_coefficients_data;
-    for (int cell_idx = 0; cell_idx < global_slab->volume(); cell_idx++)
+    for (int cell_idx = 0; cell_idx < global_slab.volume(); cell_idx++)
     {
         DirectionalArray<double> laplacian_coefficient;
-        for (int axis = 0; axis < 3; axis++)
-        {
-            laplacian_coefficient.get(axis, Direction::NEGATIVE) = 2.5600000000000000E+002;
-            laplacian_coefficient.get(axis, Direction::POSITIVE) = 2.5600000000000000E+002;
-        }
-
+        laplacian_coefficient.fill(2.5600000000000000E+002);
         laplacian_coefficients_data.push_back(laplacian_coefficient);
     }
     Array3D<DirectionalArray<double>> laplacian_coefficients(
-        global_slab->end(0), global_slab->end(1), global_slab->end(2), laplacian_coefficients_data);
-    std::vector<double> solution_data(global_slab->volume() * PhysicsBasedPreconditioner::num_sol_vars());
-    std::vector<double> solution_dPd_data(global_slab->volume() * PhysicsBasedPreconditioner::num_sol_dPd_vars());
-    PackedVariablesWithGhosts solution(solution_data, global_slab->end(0), global_slab->end(1), global_slab->end(2), plan);
-    PackedVariables solution_dPd(solution_dPd_data, global_slab->end(0), global_slab->end(1), global_slab->end(2));
+        global_slab.end(0), global_slab.end(1), global_slab.end(2), laplacian_coefficients_data);
+    std::vector<double> solution_data(global_slab.volume() * PhysicsBasedPreconditioner::num_sol_vars());
+    std::vector<double> solution_dPd_data(global_slab.volume() * PhysicsBasedPreconditioner::num_sol_dPd_vars());
+    PackedVariablesWithGhosts solution(solution_data, global_slab.end(0), global_slab.end(1), global_slab.end(2), plan);
+    PackedVariables solution_dPd(solution_dPd_data, global_slab.end(0), global_slab.end(1), global_slab.end(2));
 
     // Fill arrays
     solution.singleVariableView(SolutionVariableIndices::RHO).fill(1.0);
@@ -81,7 +57,7 @@ TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix")
     // Pressure
     Array3DWithGhosts<double> solution_rho_with_ghosts = solution.singleVariableView(SolutionVariableIndices::RHO);
     // Squared sound speed
-    Array3D<double> squared_sound_speed(global_slab->end(0), global_slab->end(1), global_slab->end(2));
+    Array3D<double> squared_sound_speed(global_slab.end(0), global_slab.end(1), global_slab.end(2));
 
     PhysicsBasedPreconditioner pbp(3, 3, true, solution, solution_dPd, squared_sound_speed);
 
