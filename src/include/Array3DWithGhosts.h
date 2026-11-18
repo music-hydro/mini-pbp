@@ -32,7 +32,7 @@ class Array3DWithGhosts : public Array3D<T>
      * @param[in] inner_array - The 3D view of the array without ghost cells.
      * @param[in] plan - The plan defining how ghost cells should be exchanged.
      */
-    Array3DWithGhosts(const Array3D<T>& inner_array, GhostExchangePlan<T>& plan) :
+    Array3DWithGhosts(const Array3D<T>& inner_array, const GhostExchangePlan<T>& plan) :
         Array3D<T>(inner_array),
         m_plan(plan),
         m_ni(this->m_slab.extent(0)),
@@ -69,6 +69,10 @@ class Array3DWithGhosts : public Array3D<T>
      *          ghost plane, but is in a kth axis ghost plane, only then will
      *          it be returned from that kth axis ghost plane.
      *
+     *          For safety, we have added a check that the indices are not
+     *          out of the slabs bounds. However, this will likely have a big
+     *          negative hit on performance and should be revisited.
+     *
      * @param i - The index in the first dimension.
      * @param j - The index in the second dimension.
      * @param k - The index in the third dimension.
@@ -85,6 +89,8 @@ class Array3DWithGhosts : public Array3D<T>
                 direction = Direction::NEGATIVE;
             else if (indices[axis] == this->m_slab.end(axis))
                 direction = Direction::POSITIVE;
+            else if (indices[axis] < this->m_slab.start(axis) - 1 || indices[axis] > this->m_slab.end(axis))
+                throw std::out_of_range("Requested cell out of slab range for axis " + std::to_string(axis));
             else
                 continue;
 

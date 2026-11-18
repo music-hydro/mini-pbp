@@ -49,8 +49,10 @@ class Array3DWithGhostsTest : public MpiTest
         my_array_with_ghosts = std::make_shared<Array3DWithGhosts<double>>(*my_array, *my_plan);
 
         // Populate the 1D array with the rank of the current process
+        int my_rank;
+        MPI_Comm_rank(my_array_with_ghosts->m_plan.communicator(), &my_rank);
         for (int i = 0; i < (size_t)size; i++)
-            (*input_1d)[i] = my_array_with_ghosts->m_plan.m_my_rank;
+            (*input_1d)[i] = my_rank;
 
         // Fill with -42.0 to help highlight unset values in tests.
         for (int plane_idx = 0; plane_idx < 6; plane_idx++)

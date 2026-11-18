@@ -59,7 +59,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
     REQUIRE_NOTHROW(
         pbp.reconstructEnergyDelta(preconditioned_delta_pressure, preconditioned_delta_energy, dp_rhs_press, delta_energy));
 
-    PackedVariables new_solution = pbp.solution();
+    PackedVariablesWithGhosts new_solution = pbp.solution();
 
     int n_rho      = pbp.n_rho();
     int n_pressure = pbp.n_pressure();

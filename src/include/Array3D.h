@@ -136,6 +136,10 @@ class Array3D
      * @details Indices are signed ints to allow for custom bounds in
      *          overriding methods.
      *
+     *          For safety, we have added a check that the indices are not
+     *          out of the slabs bounds. However, this will likely have a big
+     *          negative hit on performance and should be revisited.
+     *
      * @param i - The index in the first dimension.
      * @param j - The index in the second dimension.
      * @param k - The index in the third dimension.
@@ -144,6 +148,11 @@ class Array3D
      */
     virtual T& operator ()(int i, int j, int k) const
     {
+        std::array<int, 3> indices = {i, j, k};
+        for (int axis = 0; axis < 3; axis++)
+            if (indices[axis] < this->m_slab.start(axis) || indices[axis] >= this->m_slab.end(axis))
+                throw std::out_of_range("Requested cell out of slab range for axis " + std::to_string(axis));
+
         const unsigned int offset = (i * m_stride_i) + (j * m_stride_j) + (k * m_stride_k);
         return m_data_origin[offset];
     }

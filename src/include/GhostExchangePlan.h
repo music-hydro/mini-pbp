@@ -32,9 +32,9 @@ class GhostExchangePlan
     GhostExchangePlan(const GhostExchangePlan<T>& parent) :
         m_boundary_conditions(parent.boundaryConditions()),
         m_neighbours(parent.neighbours()),
-        m_communicator(parent.communicator()),
-        m_my_rank(-1)
-    { MPI_Comm_rank(m_communicator, &m_my_rank); }
+        m_communicator(parent.communicator())
+    {
+    }
 
     /**
      * @brief Constructor
@@ -52,11 +52,8 @@ class GhostExchangePlan
                       const MPI_Comm& communicator) :
         m_boundary_conditions(boundary_conditions),
         m_neighbours(neighbours),
-        m_communicator(communicator),
-        m_my_rank(-1)
+        m_communicator(communicator)
     {
-        MPI_Comm_rank(m_communicator, &m_my_rank);
-
         // Validate BCs and neighbours. PERIODIC BC should result in neighbours at boundaries.
         for (unsigned int axis_direction = 0; axis_direction < 6; axis_direction++)
             if (m_neighbours[axis_direction] == MPI_PROC_NULL)
@@ -97,7 +94,6 @@ class GhostExchangePlan
     const DirectionalArray<BoundaryConditions> m_boundary_conditions;
     const DirectionalArray<int> m_neighbours;
     const MPI_Comm m_communicator;
-    int m_my_rank;
 };
 
 #endif  // GhostExchangePlan_H
