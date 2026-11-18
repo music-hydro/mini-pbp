@@ -58,33 +58,77 @@ TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourCellPosition returns the 
 
 TEST_CASE_METHOD(MpiTest, "GhostExchangePlan::determineLocalBCs throws for invalid neighbours")
 {
-    DirectionalArray<int> invalid_neighbours(
-        {MPI_PROC_NULL, MPI_PROC_NULL, MPI_PROC_NULL, MPI_PROC_NULL, MPI_PROC_NULL, MPI_PROC_NULL});
+    DirectionalArray<int> invalid_neighbours;
+    invalid_neighbours.fill(MPI_PROC_NULL);
     DirectionalArray<BoundaryConditions> global_bcs;
     std::string error_msg;
 
     SECTION("No neighbour for PERIODIC boundary")
     {
-        global_bcs = {BoundaryConditions::PERIODIC,
-                      BoundaryConditions::PERIODIC,
-                      BoundaryConditions::ZERO_VALUE,
-                      BoundaryConditions::ZERO_VALUE,
-                      BoundaryConditions::ZERO_DERIVATIVE,
-                      BoundaryConditions::ZERO_DERIVATIVE};
-        error_msg  = "No neighbour found at periodic boundary";
+        global_bcs.fill(BoundaryConditions::PERIODIC);
+        error_msg = "No neighbour found at periodic boundary";
+        // The first error will come from the -ve ith direction. Therefore, the error message depends on
+        // the valid neighbours in that direction. I.e. if the valid neighbours exists, the local boundary
+        // will have been set to INNER.
+        if (m_neighbours.get(0U, Direction::NEGATIVE) != MPI_PROC_NULL) error_msg = "No neighbour found at inner boundary";
     }
 
     SECTION("No neighbour for INNER boundary")
     {
-        global_bcs = {BoundaryConditions::INNER,
-                      BoundaryConditions::INNER,
-                      BoundaryConditions::ZERO_VALUE,
-                      BoundaryConditions::ZERO_VALUE,
-                      BoundaryConditions::ZERO_DERIVATIVE,
-                      BoundaryConditions::ZERO_DERIVATIVE};
-        error_msg  = "No neighbour found at inner boundary";
+        global_bcs.fill(BoundaryConditions::ZERO_DERIVATIVE);
+        error_msg = "No neighbour found at inner boundary";
     }
 
-    REQUIRE_THROWS_WITH(GhostExchangePlan(m_global_domain_slab, global_bcs, invalid_neighbours, m_dimensions, m_cartesian_communicator),
-                        Catch::Matchers::ContainsSubstring(error_msg));
+    REQUIRE_THROWS_WITH(
+        GhostExchangePlan(m_global_domain_slab, global_bcs, invalid_neighbours, m_dimensions, m_cartesian_communicator),
+        Catch::Matchers::ContainsSubstring(error_msg));
+}
+
+TEST_CASE_METHOD(MpiTest, "GhostExchangePlan::determineLocalDomain returns the correct local domain")
+{
+    Slab local_domain = GhostExchangePlan::determineLocalDomain(m_global_domain_slab, m_dimensions, m_cartesian_communicator);
+    // Expected result will differ for each rank depending on the total number of ranks
+
+    int num_ranks;
+    MPI_Comm_size(m_cartesian_communicator, &num_ranks);
+    int rank;
+    MPI_Comm_rank(m_cartesian_communicator, &rank);
+
+    std::array<int, 3> expected_start;
+    std::array<int, 3> expected_end;
+    if (num_ranks == 1)
+    {
+        expected_start = m_global_domain_slab.start();
+        expected_end   = m_global_domain_slab.end();
+    }
+
+    if (num_ranks == 4)
+    {
+        if (rank == 0)
+        {
+            expected_start = {0, 0, 0};
+            expected_end   = {15, 20, 30};
+        }
+        else if (rank == 1)
+        {
+            expected_start = {0, 20, 0};
+            expected_end   = {15, 40, 30};
+        }
+        else if (rank == 2)
+        {
+            expected_start = {15, 0, 0};
+            expected_end   = {30, 20, 30};
+        }
+        else if (rank == 3)
+        {
+            expected_start = {15, 20, 0};
+            expected_end   = {30, 40, 30};
+        }
+    }
+
+    for (unsigned int axis = 0; axis < 3; axis++)
+    {
+        REQUIRE(expected_start[axis] == local_domain.start(axis));
+        REQUIRE(expected_end[axis] == local_domain.end(axis));
+    }
 }
