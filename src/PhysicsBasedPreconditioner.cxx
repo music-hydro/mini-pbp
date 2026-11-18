@@ -269,6 +269,7 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(const GhostExchangePlan& p
 void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double>& solution_rho,
                                                         const Array3D<DirectionalArray<double>>& laplacian_coefficients)
 {
+    const GhostExchangePlan& plan = solution_rho.plan();
     solution_rho.exchangeGhosts();
 
     // Compute squared sound speed
@@ -282,7 +283,7 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
     m_global_pressure_row_offsets.push_back(0);
 
     // Fill pressure
-    Slab global_slab = solution_rho.plan().globalDomain();
+    Slab global_slab = plan.globalDomain();
     Slab cell_slab   = solution_rho.cellSlab();
     for (int k = cell_slab.start(2); k < cell_slab.end(2); ++k)
     {
@@ -302,10 +303,13 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
                 if (pressure_coefficient_sum == 0.0) throw std::runtime_error("pressure_coefficient_sum is zero");
 
                 // Add the current cell's value to the pressure matrix
-                const unsigned long long global_index = globalVarIndex(i, j, k, n_pressure(), global_slab);
+                const unsigned long long global_index = globalVarIndex(i + plan.localDomain().start(0),
+                                                                       j + plan.localDomain().start(1),
+                                                                       k + plan.localDomain().start(2),
+                                                                       n_pressure(),
+                                                                       global_slab);
                 m_global_pressure_row_indices.push_back(global_index);
                 m_global_pressure_column_indices.push_back(global_index);
-                // m_pressure_matrix_for_solver.push_back(69.0);
                 m_pressure_matrix_for_solver.push_back(1.0 / m_dt - J_PP * pressure_coefficient_sum);
 
                 // Add neighbour cell values to the pressure matrix
@@ -313,9 +317,9 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
                 {
                     // Determine the neighbour cell positions
                     std::array<int, 3> negative_neighbour_position =
-                        solution_rho.plan().neighbourCellPosition(i, j, k, axis, Direction::NEGATIVE);
+                        plan.neighbourCellPosition(i, j, k, axis, Direction::NEGATIVE);
                     std::array<int, 3> positive_neighbour_position =
-                        solution_rho.plan().neighbourCellPosition(i, j, k, axis, Direction::POSITIVE);
+                        plan.neighbourCellPosition(i, j, k, axis, Direction::POSITIVE);
 
                     // Get the global var indices for each neighbour
                     unsigned long long global_negative_neighbour_var_index =

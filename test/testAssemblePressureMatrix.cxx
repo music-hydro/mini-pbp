@@ -17,7 +17,6 @@ TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix")
     if (num_ranks != 1 && num_ranks != 4) { SKIP("Test requires either 1 or 4 ranks"); }
 
     // Initialise problem
-    int dt = 4.5228571428571426E-004;
     DirectionalArray<BoundaryConditions> global_bcs;
     global_bcs.fill(BoundaryConditions::PERIODIC);
     Slab global_slab({0, 0, 0}, {16, 16, 16});
@@ -29,22 +28,26 @@ TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix")
     MPI_Comm_rank(cart_comm, &my_rank);
     DirectionalArray<int> nghbrs = neighbours(cart_comm);
     GhostExchangePlan plan(global_slab, global_bcs, nghbrs, cart_dims, cart_comm);
+    Slab local_section_of_global_slab = plan.localDomain();
 
     // Populate starting states
     // Laplacian coefficients
     std::vector<DirectionalArray<double>> laplacian_coefficients_data;
-    for (int cell_idx = 0; cell_idx < global_slab.volume(); cell_idx++)
+    int ni      = local_section_of_global_slab.extent(0);
+    int nj      = local_section_of_global_slab.extent(1);
+    int nk      = local_section_of_global_slab.extent(2);
+    size_t size = local_section_of_global_slab.volume();
+    for (int cell_idx = 0; cell_idx < size; cell_idx++)
     {
         DirectionalArray<double> laplacian_coefficient;
         laplacian_coefficient.fill(2.5600000000000000E+002);
         laplacian_coefficients_data.push_back(laplacian_coefficient);
     }
-    Array3D<DirectionalArray<double>> laplacian_coefficients(
-        global_slab.end(0), global_slab.end(1), global_slab.end(2), laplacian_coefficients_data);
-    std::vector<double> solution_data(global_slab.volume() * PhysicsBasedPreconditioner::num_sol_vars());
-    std::vector<double> solution_dPd_data(global_slab.volume() * PhysicsBasedPreconditioner::num_sol_dPd_vars());
-    PackedVariablesWithGhosts solution(solution_data, global_slab.end(0), global_slab.end(1), global_slab.end(2), plan);
-    PackedVariables solution_dPd(solution_dPd_data, global_slab.end(0), global_slab.end(1), global_slab.end(2));
+    Array3D<DirectionalArray<double>> laplacian_coefficients(ni, nj, nk, laplacian_coefficients_data);
+    std::vector<double> solution_data(size * PhysicsBasedPreconditioner::num_sol_vars());
+    std::vector<double> solution_dPd_data(size * PhysicsBasedPreconditioner::num_sol_dPd_vars());
+    PackedVariablesWithGhosts solution(solution_data, ni, nj, nk, plan);
+    PackedVariables solution_dPd(solution_dPd_data, ni, nj, nk);
 
     // Fill arrays
     solution.singleVariableView(PhysicsBasedPreconditioner::n_rho()).fill(1.0);
@@ -57,7 +60,7 @@ TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix")
     // Pressure
     Array3DWithGhosts<double> solution_rho_with_ghosts = solution.singleVariableView(PhysicsBasedPreconditioner::n_rho());
     // Squared sound speed
-    Array3D<double> squared_sound_speed(global_slab.end(0), global_slab.end(1), global_slab.end(2));
+    Array3D<double> squared_sound_speed(ni, nj, nk);
 
     PhysicsBasedPreconditioner pbp(3, 3, true, solution, solution_dPd, squared_sound_speed);
 
