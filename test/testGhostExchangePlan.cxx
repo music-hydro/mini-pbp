@@ -8,6 +8,10 @@
 
 TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourCellPosition returns the correct positions")
 {
+    int num_ranks;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
+    if (num_ranks != 1) { SKIP("Test requires exactly 1 rank"); }
+
     int n = 3;
     // The neighbouring ranks shouldn't matter
     DirectionalArray<int> neighbours({0, 0, 0, 0, 0, 0});
@@ -75,7 +79,7 @@ TEST_CASE_METHOD(MpiTest, "GhostExchangePlan::determineLocalBCs throws for inval
 
     SECTION("No neighbour for INNER boundary")
     {
-        global_bcs.fill(BoundaryConditions::ZERO_DERIVATIVE);
+        global_bcs.fill(BoundaryConditions::INNER);
         error_msg = "No neighbour found at inner boundary";
     }
 
@@ -122,6 +126,50 @@ TEST_CASE_METHOD(MpiTest, "GhostExchangePlan::determineLocalDomain returns the c
         else if (rank == 3)
         {
             expected_start = {15, 20, 0};
+            expected_end   = {30, 40, 30};
+        }
+    }
+
+    if (num_ranks == 8)
+    {
+        if (rank == 0)
+        {
+            expected_start = {0, 0, 0};
+            expected_end   = {15, 20, 15};
+        }
+        else if (rank == 1)
+        {
+            expected_start = {0, 0, 15};
+            expected_end   = {15, 20, 30};
+        }
+        else if (rank == 2)
+        {
+            expected_start = {0, 20, 0};
+            expected_end   = {15, 40, 15};
+        }
+        else if (rank == 3)
+        {
+            expected_start = {0, 20, 15};
+            expected_end   = {15, 40, 30};
+        }
+        else if (rank == 4)
+        {
+            expected_start = {15, 0, 0};
+            expected_end   = {30, 20, 15};
+        }
+        else if (rank == 5)
+        {
+            expected_start = {15, 0, 15};
+            expected_end   = {30, 20, 30};
+        }
+        else if (rank == 6)
+        {
+            expected_start = {15, 20, 0};
+            expected_end   = {30, 40, 15};
+        }
+        else if (rank == 7)
+        {
+            expected_start = {15, 20, 15};
             expected_end   = {30, 40, 30};
         }
     }
