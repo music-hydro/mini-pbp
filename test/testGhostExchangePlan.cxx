@@ -2,62 +2,81 @@
 #include "fixtures/MpiTest.cxx"
 #include "GhostExchangePlan.h"
 #include "Slab.h"
+#include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <mpi.h>
+#include <string>
 
 TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourCellPosition returns the correct positions")
 {
     int num_ranks;
     MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
-    if (num_ranks != 1) { SKIP("Test requires exactly 1 rank"); }
+    if (num_ranks != 4) { SKIP("Test requires exactly 4 ranks"); }
 
-    int n = 3;
-    // The neighbouring ranks shouldn't matter
-    DirectionalArray<int> neighbours({0, 0, 0, 0, 0, 0});
-    DirectionalArray<BoundaryConditions> bcs({BoundaryConditions::INNER,
-                                              BoundaryConditions::INNER,
-                                              BoundaryConditions::PERIODIC,
-                                              BoundaryConditions::PERIODIC,
-                                              BoundaryConditions::INNER,
-                                              BoundaryConditions::INNER});
-    // Choose global slab so indices are on global boundaries
-    Slab global_slab({0, 0, 0}, {n, n, n});
+    std::array<int, 3> global_end;
+    for (unsigned int axis = 0; axis < 3; ++axis)
+        global_end[axis] = 2 * m_dimensions[axis];
+    Slab global_slab({0, 0, 0}, global_end);
+    DirectionalArray<BoundaryConditions> global_bcs {
+        {BoundaryConditions::ZERO_DERIVATIVE,
+         BoundaryConditions::ZERO_DERIVATIVE,
+         BoundaryConditions::PERIODIC,
+         BoundaryConditions::PERIODIC,
+         BoundaryConditions::ZERO_VALUE,
+         BoundaryConditions::ZERO_VALUE}
+    };
+    GhostExchangePlan my_plan(global_slab, global_bcs, m_neighbours, m_dimensions, m_cartesian_communicator);
+    Slab local_domain = my_plan.localDomain();
 
-    GhostExchangePlan my_plan(global_slab, bcs, neighbours, m_dimensions, m_cartesian_communicator);
+    // Test one axis at a time
+    for (unsigned int axis = 0; axis < 3; ++axis)
+    {
+        // Populate a cell position in the centre of the local domain
+        std::array<int, 3> local_cell;
+        for (unsigned int other_axis = 0; other_axis < 3; ++other_axis)
+            local_cell[other_axis] = local_domain.extent(other_axis) / 2;
 
-    // i axis
-    int axis                                       = 0;
-    std::array<int, 3> negative_neighbour_position = my_plan.neighbourCellPosition(0, 1, 1, axis, Direction::NEGATIVE);
-    REQUIRE(negative_neighbour_position[0] == -1);
-    REQUIRE(negative_neighbour_position[1] == 1);
-    REQUIRE(negative_neighbour_position[2] == 1);
-    std::array<int, 3> positive_neighbour_position = my_plan.neighbourCellPosition(2, 1, 1, axis, Direction::POSITIVE);
-    REQUIRE(positive_neighbour_position[0] == -1);
-    REQUIRE(positive_neighbour_position[1] == 1);
-    REQUIRE(positive_neighbour_position[2] == 1);
+        // Test one direction at a time
+        for (Direction direction : {Direction::NEGATIVE, Direction::POSITIVE})
+        {
+            // Set the current axis index to the local boundary
+            local_cell[axis] = direction == Direction::NEGATIVE ? 0 : local_domain.extent(axis) - 1;
 
-    // j axis
-    axis                        = 1;
-    negative_neighbour_position = my_plan.neighbourCellPosition(1, 0, 1, axis, Direction::NEGATIVE);
-    REQUIRE(negative_neighbour_position[0] == 1);
-    REQUIRE(negative_neighbour_position[1] == 2);  // PERIODIC
-    REQUIRE(negative_neighbour_position[2] == 1);
-    positive_neighbour_position = my_plan.neighbourCellPosition(1, 2, 1, axis, Direction::POSITIVE);
-    REQUIRE(positive_neighbour_position[0] == 1);
-    REQUIRE(positive_neighbour_position[1] == 0);  // PERIODIC
-    REQUIRE(positive_neighbour_position[2] == 1);
+            // initialise the expected position to the global original local cell position in global coordinates
+            std::array<int, 3> expected;
+            for (unsigned int other_axis = 0; other_axis < 3; ++other_axis)
+                expected[other_axis] = local_domain.start(other_axis) + local_cell[other_axis];
 
-    // K axis
-    axis                        = 2;
-    negative_neighbour_position = my_plan.neighbourCellPosition(1, 1, 0, axis, Direction::NEGATIVE);
-    REQUIRE(negative_neighbour_position[0] == 1);
-    REQUIRE(negative_neighbour_position[1] == 1);
-    REQUIRE(negative_neighbour_position[2] == -1);
-    positive_neighbour_position = my_plan.neighbourCellPosition(1, 1, 2, axis, Direction::POSITIVE);
-    REQUIRE(positive_neighbour_position[0] == 1);
-    REQUIRE(positive_neighbour_position[1] == 1);
-    REQUIRE(positive_neighbour_position[2] == -1);
+            // Check the current rank is at a global boundary in the current direction
+            const bool rank_at_global_boundary = direction == Direction::NEGATIVE ?
+                                                     m_cartesian_coordinates[axis] == 0 :
+                                                     m_cartesian_coordinates[axis] == m_dimensions[axis] - 1;
+
+            if (!rank_at_global_boundary)
+            {
+                // If we're at an inner boundary, set the expected index one step in the current direction
+                expected[axis] = direction == Direction::NEGATIVE ? local_domain.start(axis) - 1 : local_domain.end(axis);
+            }
+            else if (global_bcs.get(axis, direction) == BoundaryConditions::PERIODIC)
+            {
+                // If we're at a periodic boundary, set the expected index to the index at the opposite global boundary
+                expected[axis] = direction == Direction::NEGATIVE ? global_slab.end(axis) - 1 : global_slab.start(axis);
+            }
+            else
+            {
+                // If we're at a global boundary that is not periodic we should have no neighbour (i.e. -1)
+                expected[axis] = -1;
+            }
+
+            const std::array<int, 3> actual =
+                my_plan.neighbourCellPosition(local_cell[0], local_cell[1], local_cell[2], axis, direction);
+            INFO("axis=" + std::to_string(axis) + ", direction=" + std::to_string(static_cast<int>(direction)) +
+                 ", coordinates={" + std::to_string(m_cartesian_coordinates[0]) + ", " +
+                 std::to_string(m_cartesian_coordinates[1]) + ", " + std::to_string(m_cartesian_coordinates[2]) + "}");
+            REQUIRE(actual == expected);
+        }
+    }
 }
 
 TEST_CASE_METHOD(MpiTest, "GhostExchangePlan::determineLocalBCs throws for invalid neighbours")

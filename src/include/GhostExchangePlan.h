@@ -144,9 +144,9 @@ class GhostExchangePlan
     /**
      * @brief Get the global indices of a neighbouring cell in a given direction along an axis.
      *
-     * @param[in] i - The cell index in the first dimension.
-     * @param[in] j - The cell index in the second dimension.
-     * @param[in] k - The cell index in the third dimension.
+     * @param[in] i - The local cell index in the first dimension.
+     * @param[in] j - The local cell index in the second dimension.
+     * @param[in] k - The local cell index in the third dimension.
      * @param[in] axis - The axis along which to look for neighbours.
      * @param[in] direction - The direction in which along the axis to look for neighbours.
      */
@@ -156,13 +156,12 @@ class GhostExchangePlan
                                              const unsigned int& axis,
                                              const Direction& direction) const
     {
-        const Slab& global_domain   = globalDomain();
-        std::array<int, 3> position = {global_domain.start(0) + i, global_domain.start(1) + j, global_domain.start(2) + k};
+        std::array<int, 3> position = {localDomain().start(0) + i, localDomain().start(1) + j, localDomain().start(2) + k};
         position[axis]              = direction == Direction::NEGATIVE ? position[axis] - 1 : position[axis] + 1;
-        int n                       = global_domain.end(axis);
+        int n                       = globalDomain().extent(axis);
         if (globalBoundaryConditions().get(axis, direction) == BoundaryConditions::PERIODIC)
             position[axis] = ((position[axis] % n) + n) % n;
-        else if (position[axis] < global_domain.start(axis) || position[axis] >= n)
+        else if (position[axis] < globalDomain().start(axis) || position[axis] >= n)
             position[axis] = -1;
         return position;
     }
