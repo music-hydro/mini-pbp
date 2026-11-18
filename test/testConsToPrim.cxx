@@ -1,6 +1,7 @@
 #include "Array3D.h"
 #include "Array3DWithGhosts.h"
 #include "DirectionalArray.h"
+#include "fixtures/GhostExchangePlanTest.cxx"
 #include "GhostExchangePlan.h"
 #include "PackedVariables.h"
 #include "PhysicsBasedPreconditioner.h"
@@ -69,16 +70,6 @@ namespace
                        });
     }
 
-    /// Ghost exchange plan of a periodic domain held by this rank alone, which is then its own neighbour
-    GhostExchangePlan<double> periodicPlan()
-    {
-        DirectionalArray<BoundaryConditions> bcs;
-        bcs.fill(BoundaryConditions::PERIODIC);
-        DirectionalArray<int> neighbours;
-        neighbours.fill(0);
-        return GhostExchangePlan<double>(bcs, neighbours, MPI_COMM_SELF);
-    }
-
     /// A PhysicsBasedPreconditioner on nc cells whose stored solution holds the given rho and e
     struct Preconditioner
     {
@@ -89,7 +80,7 @@ namespace
             solution_raw(3 * size),
             solution_dPd_raw(2 * size),
             squared_sound_speed_raw(size),
-            solution(solution_raw, nc[0], nc[1], nc[2], periodicPlan()),
+            solution(solution_raw, nc[0], nc[1], nc[2], GhostExchangePlanTest::periodicPlan()),
             solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]),
             squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw),
             pbp(solution, solution_dPd, squared_sound_speed)
@@ -126,7 +117,7 @@ namespace
                         std::array<int, 3> x_faces_end         = {0, 0, 0}) :
             ndim(ndim_),
             nmom(nmom_),
-            plan(periodicPlan()),
+            plan(GhostExchangePlanTest::periodicPlan()),
             preconditioner(
                 nc,
                 [](int, int, int) { return 2.0; },
@@ -413,7 +404,7 @@ namespace
 
 TEST_CASE("PhysicsBasedPreconditioner::consToPrim matches MUSIC cons_to_prim on the Roberts dynamo test on 1 rank")
 {
-    GhostExchangePlan<double> plan = periodicPlan();
+    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
     checkAgainstMusic(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_1rank_rank0", plan);
 }
 

@@ -29,6 +29,20 @@ class GhostExchangePlanTest
         GhostExchangePlan<double> plan(bcs, neighbours, MPI_COMM_WORLD);
         return plan;
     }
+
+    /**
+     * @brief Create an periodic plan for tests which require one to exist.
+     *
+     * @returns The periodic GhostExchangePlan
+     */
+    static GhostExchangePlan<double> periodicPlan()
+    {
+        DirectionalArray<BoundaryConditions> bcs;
+        bcs.fill(BoundaryConditions::PERIODIC);
+        DirectionalArray<int> neighbours;
+        neighbours.fill(0);
+        return GhostExchangePlan<double>(bcs, neighbours, MPI_COMM_SELF);
+    }
 };
 
 #endif  // GhostExchangePlanTest_H
