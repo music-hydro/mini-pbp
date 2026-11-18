@@ -247,14 +247,14 @@ class PhysicsBasedPreconditioner
     /**
      * @brief Get the index of a variable value at a a specific cell centre.
      *
-     * @param[in] i - The cell index in the first dimension.
-     * @param[in] j - The cell index in the second dimension.
-     * @param[in] k - The cell index in the third dimension.
+     * @param[in] i - The global cell index in the first dimension.
+     * @param[in] j - The global cell index in the second dimension.
+     * @param[in] k - The global cell index in the third dimension.
      * @param[in] var_index - The index of the variable to be accessed.
      * @param[in] global_slab - Slab representing the global domain.
      */
     unsigned long long globalVarIndex(const int& i, const int& j, const int& k, const int& var_index, const Slab& global_slab)
-    { return i + global_slab.end(0) * (j + global_slab.end(1) * (k + global_slab.end(2) * var_index)); }
+    { return i + global_slab.extent(0) * (j + global_slab.extent(1) * (k + global_slab.extent(2) * var_index)); }
 
     /// @brief The number of dimensions (2 or 3).
     const unsigned int m_ndim;
