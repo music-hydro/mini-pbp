@@ -32,6 +32,7 @@ class GhostExchangePlan
      */
     GhostExchangePlan(const GhostExchangePlan& parent) :
         m_global_domain(parent.globalDomain()),
+        m_local_domain(parent.localDomain()),
         m_global_boundary_conditions(parent.globalBoundaryConditions()),
         m_local_boundary_conditions(parent.localBoundaryConditions()),
         m_neighbours(parent.neighbours()),
@@ -58,6 +59,7 @@ class GhostExchangePlan
                       const std::array<int, 3> communicator_dimensions,
                       const MPI_Comm& communicator) :
         m_global_domain(global_domain),
+        m_local_domain(determineLocalDomain(global_domain, communicator_dimensions, communicator)),
         m_global_boundary_conditions(global_boundary_conditions),
         m_local_boundary_conditions(
             determineLocalBCs(communicator, communicator_dimensions, global_boundary_conditions, neighbours)),
@@ -65,18 +67,35 @@ class GhostExchangePlan
         m_communicator_dimensions(communicator_dimensions),
         m_communicator(communicator)
     {
-        // Validate BCs and neighbours. PERIODIC BC should result in neighbours at boundaries.
-        for (unsigned int axis_direction = 0; axis_direction < 6; axis_direction++)
-        {
-            if (neighbours[axis_direction] == MPI_PROC_NULL)
-            {
-                if (m_local_boundary_conditions[axis_direction] == BoundaryConditions::PERIODIC)
-                    throw std::invalid_argument("No neighbour found at periodic boundary");
+    }
 
-                if (m_local_boundary_conditions[axis_direction] == BoundaryConditions::INNER)
-                    throw std::invalid_argument("No neighbour found at inner boundary");
-            }
+    static std::array<int, 3> determineCartesianCoordinates(const MPI_Comm& communicator)
+    {
+        int my_cart_rank;
+        MPI_Comm_rank(communicator, &my_cart_rank);
+        std::array<int, 3> coordinates;
+        MPI_Cart_coords(communicator, my_cart_rank, 3, coordinates.data());
+        return coordinates;
+    }
+
+    static Slab determineLocalDomain(const Slab& global_domain,
+                                     const std::array<int, 3> communicator_dimensions,
+                                     const MPI_Comm& communicator)
+    {
+        std::array<int, 3> local_start, local_end;
+        std::array<int, 3> coordinates = determineCartesianCoordinates(communicator);
+        for (unsigned int axis = 0; axis < 3; axis++)
+        {
+            int global_start  = global_domain.start(axis);
+            int global_length = global_domain.extent(axis);
+            // Start is global start + local length times coordinate
+            unsigned int local_n = global_length / communicator_dimensions[axis];
+            local_start[axis]    = global_start + local_n * coordinates[axis];
+
+            // End is local_start + local length
+            local_end[axis] = local_start[axis] + local_n;
         }
+        return Slab(local_start, local_end);
     }
 
     /**
@@ -95,22 +114,28 @@ class GhostExchangePlan
                                                                   const DirectionalArray<int>& neighbours)
     {
         // Get the coordinates of this rank in the cartesian MPI topology
-        int my_cart_rank;
-        MPI_Comm_rank(communicator, &my_cart_rank);
-        std::array<int, 3> coordinates;
-        MPI_Cart_coords(communicator, my_cart_rank, 3, coordinates.data());
+        std::array<int, 3> coordinates = determineCartesianCoordinates(communicator);
 
         DirectionalArray<BoundaryConditions> local_bcs;
+        local_bcs.fill(BoundaryConditions::INNER);
         for (unsigned int axis = 0; axis < 3U; axis++)
         {
-            if (coordinates[axis] == 0)
-                local_bcs.get(axis, Direction::NEGATIVE) = global_bcs.get(axis, Direction::NEGATIVE);
-            else if (coordinates[axis] == communicator_dimensions[axis] - 1)
+            // Do not link these two if statements as, in a single rank case, these -ve and +ve bounds can be at the same coordinate
+            if (coordinates[axis] == 0) local_bcs.get(axis, Direction::NEGATIVE) = global_bcs.get(axis, Direction::NEGATIVE);
+            if (coordinates[axis] == communicator_dimensions[axis] - 1)
                 local_bcs.get(axis, Direction::POSITIVE) = global_bcs.get(axis, Direction::POSITIVE);
-            else
+        }
+
+        // Validate BCs and neighbours. PERIODIC BC should result in neighbours at boundaries.
+        for (unsigned int axis_direction = 0; axis_direction < 6; axis_direction++)
+        {
+            if (neighbours[axis_direction] == MPI_PROC_NULL)
             {
-                local_bcs.get(axis, Direction::NEGATIVE) = BoundaryConditions::INNER;
-                local_bcs.get(axis, Direction::POSITIVE) = BoundaryConditions::INNER;
+                if (local_bcs[axis_direction] == BoundaryConditions::PERIODIC)
+                    throw std::invalid_argument("No neighbour found at periodic boundary");
+
+                if (local_bcs[axis_direction] == BoundaryConditions::INNER)
+                    throw std::invalid_argument("No neighbour found at inner boundary");
             }
         }
         return local_bcs;
@@ -125,8 +150,11 @@ class GhostExchangePlan
      * @param[in] axis - The axis along which to look for neighbours.
      * @param[in] direction - The direction in which along the axis to look for neighbours.
      */
-    std::array<int, 3>
-        neighbourCellPosition(const int& i, const int& j, const int& k, const unsigned int& axis, const Direction& direction)
+    std::array<int, 3> neighbourCellPosition(const int& i,
+                                             const int& j,
+                                             const int& k,
+                                             const unsigned int& axis,
+                                             const Direction& direction) const
     {
         const Slab& global_domain   = globalDomain();
         std::array<int, 3> position = {global_domain.start(0) + i, global_domain.start(1) + j, global_domain.start(2) + k};
@@ -184,8 +212,15 @@ class GhostExchangePlan
     Slab globalDomain() const
     { return m_global_domain; }
 
+    /**
+     * @brief Get the slab which defines the local domain (i.e. the section of the global domain owned by this rank).
+     */
+    Slab localDomain() const
+    { return m_local_domain; }
+
   private:
     const Slab m_global_domain;
+    const Slab m_local_domain;
     const DirectionalArray<BoundaryConditions> m_global_boundary_conditions;
     const DirectionalArray<BoundaryConditions> m_local_boundary_conditions;
     const DirectionalArray<int> m_neighbours;
