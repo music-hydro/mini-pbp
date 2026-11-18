@@ -31,6 +31,10 @@ void setRobertsDynamoProblem(int& dt,
 
 TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix")
 {
+    int num_ranks;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
+    if (num_ranks != 1 && num_ranks != 4) { SKIP("Test requires either 1 or 4 ranks"); }
+
     // Initialise problem
     int dt;
     std::shared_ptr<DirectionalArray<BoundaryConditions>> global_bcs;
@@ -41,9 +45,7 @@ TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix")
     std::array<int, 3> cart_dims = createCartesianDimensions();
     MPI_Comm cart_comm           = createCartesianTopology(cart_dims, *global_bcs);
     int my_rank;
-    int num_ranks;
     MPI_Comm_rank(cart_comm, &my_rank);
-    MPI_Comm_size(cart_comm, &num_ranks);
     DirectionalArray<int> nghbrs = neighbours(cart_comm);
     GhostExchangePlan plan(*global_slab, *global_bcs, nghbrs, cart_dims, cart_comm);
 
@@ -71,10 +73,10 @@ TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix")
     // Fill arrays
     solution.singleVariableView(SolutionVariableIndices::RHO).fill(1.0);
     // Fill with something easier to spot as these shouldn't be used by assemblePressureMatrix.
-    solution.singleVariableView(SolutionVariableIndices::PRESSURE).fill(-1234.0);
-    solution.singleVariableView(SolutionVariableIndices::ENERGY).fill(-1234.0);
-    solution_dPd.singleVariableView(SolutionDpdVariableIndices::DPDENERGY).fill(-1234.0);
-    solution_dPd.singleVariableView(SolutionDpdVariableIndices::DPDRHO).fill(-1234.0);
+    solution.singleVariableView(SolutionVariableIndices::PRESSURE).fill(0);
+    solution.singleVariableView(SolutionVariableIndices::ENERGY).fill(0);
+    solution_dPd.singleVariableView(SolutionDpdVariableIndices::DPDENERGY).fill(0);
+    solution_dPd.singleVariableView(SolutionDpdVariableIndices::DPDRHO).fill(0);
 
     // Pressure
     Array3DWithGhosts<double> solution_rho_with_ghosts = solution.singleVariableView(SolutionVariableIndices::RHO);

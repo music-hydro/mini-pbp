@@ -13,20 +13,35 @@
 #include "GhostExchangePlan.h"
 #include "PackedVariables.h"
 
-enum SolutionVariableIndices
+struct PreconditioningMatrixVariableIndices
 {
-  PRESSURE,
-  RHO,
-  ENERGY,
-  VELOCITY_I,
-  VELOCITY_J,
-  VELOCITY_K,
+    enum Indices
+    {
+        PRESSURE,
+        ENERGY,
+    };
 };
 
-enum SolutionDpdVariableIndices
+struct SolutionVariableIndices
 {
-    DPDRHO,
-    DPDENERGY
+    enum Indices
+    {
+        RHO,
+        PRESSURE,
+        ENERGY,
+        VELOCITY_I,
+        VELOCITY_J,
+        VELOCITY_K,
+    };
+};
+
+struct SolutionDpdVariableIndices
+{
+    enum Indices
+    {
+        DPDRHO,
+        DPDENERGY,
+    };
 };
 
 class PhysicsBasedPreconditioner
@@ -222,13 +237,12 @@ class PhysicsBasedPreconditioner
     unsigned long long globalVarIndex(const int& i, const int& j, const int& k, const int& var_index, const Slab& global_slab)
     { return i + global_slab.end(0) * (j + global_slab.end(1) * (k + global_slab.end(2) * var_index)); }
 
-    
     /// @brief The number of dimensions (2 or 3).
     const unsigned int m_ndim;
     /// @brief The number of velocity components (2 or 3, at least ndim).
     const unsigned int m_nmom;
     /// @brief Whether the magnetic field components are present.
-    const bool m_mhd_enabled;    
+    const bool m_mhd_enabled;
     /// @brief Store of the solution
     PackedVariablesWithGhosts m_solution;
     /// @brief Store of the solution gradients

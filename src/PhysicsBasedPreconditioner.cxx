@@ -216,7 +216,8 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(GhostExchangePlan& plan,
     // Velocity: each component lives on the faces along its own axis, so convert it over that component's own nodes
     // rather than over the cells slab, which may omit a solved boundary face. Averaging delta rho to the first face, or
     // to a solved positive boundary face, reads the NEGATIVE or POSITIVE ghost of rho and delta_rho_g.
-    std::array<unsigned int, 3> velocities_indices = {SolutionVariableIndices::VELOCITY_I, SolutionVariableIndices::VELOCITY_J,SolutionVariableIndices::VELOCITY_K};
+    std::array<unsigned int, 3> velocities_indices = {
+        SolutionVariableIndices::VELOCITY_I, SolutionVariableIndices::VELOCITY_J, SolutionVariableIndices::VELOCITY_K};
     for (unsigned int ax = 0; ax < m_nmom; ax++)
     {
         Array3D<double> delta_v           = delta_primitive.singleVariableView(velocities_indices[ax]);
@@ -291,7 +292,7 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
 
                 const DirectionalArray<double> pressure_coefficients = pressureCoefficients(
                     i, j, k, solution_rho, laplacian_coefficients(i, j, k), solution_rho.neighbourLinkWeights(i, j, k));
-                const double J_PP = m_dt * m_squared_sound_speed(i, j, k);
+                const double J_PP = -m_dt * m_squared_sound_speed(i, j, k);
 
                 double pressure_coefficient_sum = 0.0;
                 for (int axis = 0; axis < 3; axis++)
@@ -300,9 +301,11 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
                 if (pressure_coefficient_sum = 0.0) throw std::runtime_error("pressure_coefficient_sum is zero");
 
                 // Add the current cell's value to the pressure matrix
-                const unsigned long long global_index = globalVarIndex(i, j, k, SolutionVariableIndices::PRESSURE, global_slab);
+                const unsigned long long global_index =
+                    globalVarIndex(i, j, k, PreconditioningMatrixVariableIndices::PRESSURE, global_slab);
                 m_global_pressure_row_indices.push_back(global_index);
                 m_global_pressure_column_indices.push_back(global_index);
+                // m_pressure_matrix_for_solver.push_back(69.0);
                 m_pressure_matrix_for_solver.push_back(1.0 / m_dt - J_PP * pressure_coefficient_sum);
 
                 // Add neighbour cell values to the pressure matrix
@@ -315,16 +318,18 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
                         solution_rho.plan().neighbourCellPosition(i, j, k, axis, Direction::POSITIVE);
 
                     // Get the global var indices for each neighbour
-                    unsigned long long global_negative_neighbour_var_index = globalVarIndex(negative_neighbour_position[0],
-                                                                                            negative_neighbour_position[1],
-                                                                                            negative_neighbour_position[2],
-                                                                                            SolutionVariableIndices::PRESSURE,
-                                                                                            global_slab);
-                    unsigned long long global_positive_neighbour_var_index = globalVarIndex(positive_neighbour_position[0],
-                                                                                            positive_neighbour_position[1],
-                                                                                            positive_neighbour_position[2],
-                                                                                            SolutionVariableIndices::PRESSURE,
-                                                                                            global_slab);
+                    unsigned long long global_negative_neighbour_var_index =
+                        globalVarIndex(negative_neighbour_position[0],
+                                       negative_neighbour_position[1],
+                                       negative_neighbour_position[2],
+                                       PreconditioningMatrixVariableIndices::PRESSURE,
+                                       global_slab);
+                    unsigned long long global_positive_neighbour_var_index =
+                        globalVarIndex(positive_neighbour_position[0],
+                                       positive_neighbour_position[1],
+                                       positive_neighbour_position[2],
+                                       PreconditioningMatrixVariableIndices::PRESSURE,
+                                       global_slab);
 
                     // Add the global indices to the column index map
                     m_global_pressure_column_indices.push_back(global_negative_neighbour_var_index);
@@ -362,7 +367,7 @@ DirectionalArray<double> PhysicsBasedPreconditioner::pressureCoefficients(const 
     rho_face.get(2, Direction::POSITIVE) = (solution_rho(i, j, k + 1) + solution_rho(i, j, k)) * 0.5;
 
     for (int signed_axis = 0; signed_axis < 6; ++signed_axis)
-        coefficients[signed_axis] *= rho / rho_face[signed_axis] * weights[signed_axis];
+        coefficients[signed_axis] *= (rho / rho_face[signed_axis]) * weights[signed_axis];
 
     return coefficients;
 }
