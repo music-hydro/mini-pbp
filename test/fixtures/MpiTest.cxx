@@ -42,8 +42,7 @@ class MpiTest
         m_dimensions(createCartesianDimensions()),
         m_cartesian_communicator(createCartesianTopology(m_dimensions, m_global_bcs)),
         m_cartesian_coordinates(cartesianCoordinates(m_cartesian_communicator)),
-        m_neighbours(neighbours(m_cartesian_communicator)),
-        m_local_boundary_conditions(localBoundaryConditions(m_global_bcs, m_neighbours))
+        m_neighbours(neighbours(m_cartesian_communicator))
     {
     }
 
@@ -112,42 +111,19 @@ class MpiTest
         MPI_Cart_shift(cartesian_communicator,
                        Axis::X,
                        1,
-                       &neighbours.get(Axis::X, Direction::POSITIVE),
-                       &neighbours.get(Axis::X, Direction::NEGATIVE));
+                       &neighbours.get(Axis::X, Direction::NEGATIVE),
+                       &neighbours.get(Axis::X, Direction::POSITIVE));
         MPI_Cart_shift(cartesian_communicator,
                        Axis::Y,
                        1,
-                       &neighbours.get(Axis::Y, Direction::POSITIVE),
-                       &neighbours.get(Axis::Y, Direction::NEGATIVE));
+                       &neighbours.get(Axis::Y, Direction::NEGATIVE),
+                       &neighbours.get(Axis::Y, Direction::POSITIVE));
         MPI_Cart_shift(cartesian_communicator,
                        Axis::Z,
                        1,
-                       &neighbours.get(Axis::Z, Direction::POSITIVE),
-                       &neighbours.get(Axis::Z, Direction::NEGATIVE));
+                       &neighbours.get(Axis::Z, Direction::NEGATIVE),
+                       &neighbours.get(Axis::Z, Direction::POSITIVE));
         return neighbours;
-    }
-
-    /**
-     * @brief Get the boundary conditions for this ranks cells.
-     *
-     * @param[in] cartesian_communicator - The cartesian communicator to get
-     *                                     this ranks boundary conditions from.
-     * @param[in] global_bcs - The global boundary conditions for this problem.
-     * @param[in] neighbours - This ranks neighbours.
-     *
-     * @returns The boundary conditions for this ranks block of cells.
-     */
-    static DirectionalArray<BoundaryConditions> localBoundaryConditions(const DirectionalArray<BoundaryConditions>& global_bcs,
-                                                                        const DirectionalArray<int>& neighbours)
-    {
-        DirectionalArray<BoundaryConditions> bcs {};
-        for (int axis_direction = 0; axis_direction < 6; axis_direction++)
-        {
-            if (global_bcs[axis_direction] == BoundaryConditions::INNER) throw std::runtime_error("Found INNER");
-            bcs[axis_direction] =
-                neighbours[axis_direction] == MPI_PROC_NULL ? global_bcs[axis_direction] : BoundaryConditions::INNER;
-        }
-        return bcs;
     }
 
     /**
@@ -169,8 +145,6 @@ class MpiTest
     const std::array<int, 3> m_cartesian_coordinates;
     /// @brief The ranks of this ranks neighbours: {-x, +x, -y, +y, -z, +z}.
     const DirectionalArray<int> m_neighbours;
-    /// @brief Boundary conditions for this ranks cells.
-    const DirectionalArray<BoundaryConditions> m_local_boundary_conditions;
 
     /**
      * @brief Get my rank in the given communicator.
