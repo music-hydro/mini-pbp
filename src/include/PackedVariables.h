@@ -28,7 +28,8 @@ class BasePackedVariables
     /**
      * @brief Constructor
      *
-     * @details An empty packed array represents zero variables.
+     * @details An empty packed array represents zero variables. However,
+     *          the domain size must be non-zero (i.e. ni * nj * nk).
      *
      * @param packed_variables_1D - The full 1D vector containing all variables
      * @param ni - The number of physical cells in the first direction.
