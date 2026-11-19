@@ -39,10 +39,11 @@ namespace
                              const double energy,
                              const std::array<double, 3>& velocities)
     {
-        variables.singleVariableView(pbp.n_rho()).fill(rho);
-        variables.singleVariableView(pbp.n_pressure()).fill(pressure);
-        variables.singleVariableView(pbp.n_energy()).fill(energy);
-        const std::array<unsigned int, 3> velocity_indices = {pbp.n_vel_i(), pbp.n_vel_j(), pbp.n_vel_k()};
+        variables.singleVariableView(SolutionVariableIndices::RHO).fill(rho);
+        variables.singleVariableView(SolutionVariableIndices::PRESSURE).fill(pressure);
+        variables.singleVariableView(SolutionVariableIndices::ENERGY).fill(energy);
+        const std::array<unsigned int, 3> velocity_indices = {
+            SolutionVariableIndices::VELOCITY_I, SolutionVariableIndices::VELOCITY_J, SolutionVariableIndices::VELOCITY_K};
         for (unsigned int axis = 0; axis < velocity_indices.size(); axis++)
         {
             variables.singleVariableView(velocity_indices[axis]).fill(velocities[axis]);
@@ -57,7 +58,7 @@ namespace
         int ndim, nmom;
         std::array<int, 3> nc;
         size_t size;
-        GhostExchangePlan<double> plan;
+        GhostExchangePlan plan;
         std::vector<double> solution_raw;
         std::vector<double> solution_dPd_raw;
         std::vector<double> squared_sound_speed_raw;
@@ -87,7 +88,7 @@ namespace
                                           nmom,
                                           mhd_enabled,
                                           cell_counts,
-                                          GhostExchangePlanTest::periodicPlan(),
+                                          GhostExchangePlanTest::periodicPlan(Slab({0, 0, 0}, cell_counts)),
                                           primitive_initial_value)
         {
         }
@@ -104,7 +105,7 @@ namespace
                                       const int nmom,
                                       const bool mhd_enabled,
                                       const std::array<int, 3>& cell_counts,
-                                      const GhostExchangePlan<double>& exchange_plan,
+                                      const GhostExchangePlan& exchange_plan,
                                       const double primitive_initial_value = 0.0,
                                       const double conserved_initial_value = 1.0) :
             nc(cell_counts),
@@ -154,7 +155,7 @@ namespace
      * @param[in] file_prefix - The prefix of the files containing inputs and expected outputs.
      * @param[in] plan - The ghost exchange plan required for the chosen number opf ranks (should be periodic in all directions).
      */
-    void checkAgainstRobertsDynamo(const std::string& file_prefix, GhostExchangePlan<double>& plan)
+    void checkAgainstRobertsDynamo(const std::string& file_prefix, GhostExchangePlan& plan)
     {
         FILE* file = fopen((file_prefix + "_inputs.dat").c_str(), "r");
         REQUIRE(file != nullptr);
@@ -174,11 +175,11 @@ namespace
         auto& actual_primitive_variables = setup.primitive;
 
         // Read the solution values (including the ghosts)
-        Array3DWithGhosts<double> solution_rho    = setup.solution.singleVariableView(setup.pbp.n_rho());
-        Array3DWithGhosts<double> solution_energy = setup.solution.singleVariableView(setup.pbp.n_energy());
-        Array3DWithGhosts<double> solution_vel_i  = setup.solution.singleVariableView(setup.pbp.n_vel_i());
-        Array3DWithGhosts<double> solution_vel_j  = setup.solution.singleVariableView(setup.pbp.n_vel_j());
-        Array3DWithGhosts<double> solution_vel_k  = setup.solution.singleVariableView(setup.pbp.n_vel_k());
+        Array3DWithGhosts<double> solution_rho    = setup.solution.singleVariableView(SolutionVariableIndices::RHO);
+        Array3DWithGhosts<double> solution_energy = setup.solution.singleVariableView(SolutionVariableIndices::ENERGY);
+        Array3DWithGhosts<double> solution_vel_i  = setup.solution.singleVariableView(SolutionVariableIndices::VELOCITY_I);
+        Array3DWithGhosts<double> solution_vel_j  = setup.solution.singleVariableView(SolutionVariableIndices::VELOCITY_J);
+        Array3DWithGhosts<double> solution_vel_k  = setup.solution.singleVariableView(SolutionVariableIndices::VELOCITY_K);
         for (int k = -1; k < nk + 1; k++)
         {
             for (int j = -1; j < nj + 1; j++)
@@ -204,8 +205,11 @@ namespace
 
         // Convenient store of the relevant variable indicies for this problem
         std::vector<unsigned int> relevant_var_indices(5);
-        relevant_var_indices = {
-            setup.pbp.n_rho(), setup.pbp.n_energy(), setup.pbp.n_vel_i(), setup.pbp.n_vel_j(), setup.pbp.n_vel_k()};
+        relevant_var_indices = {SolutionVariableIndices::RHO,
+                                SolutionVariableIndices::ENERGY,
+                                SolutionVariableIndices::VELOCITY_I,
+                                SolutionVariableIndices::VELOCITY_J,
+                                SolutionVariableIndices::VELOCITY_K};
         // Read the conserved values as a flat list of one element per row
         for (unsigned int idx = 0; idx < relevant_var_indices.size(); idx++)
         {
@@ -223,7 +227,7 @@ namespace
             }
         }
         // Read the conserved rho halo values in the negative direction as this is the only direction we read from in conservedToPrimitive
-        Array3DWithGhosts<double> delta_rho_g(setup.conserved.singleVariableView(setup.pbp.n_rho()), plan);
+        Array3DWithGhosts<double> delta_rho_g(setup.conserved.singleVariableView(SolutionVariableIndices::RHO), plan);
         delta_rho_g.exchangeGhosts();  // Populate all halos to start with but negative ones will be overwritten shortly
         for (unsigned int axis = 0; axis < 3; axis++)
         {
@@ -264,8 +268,8 @@ namespace
         fclose(file);
 
         // The magnetic field is a copy and is not in the data; it is covered by the cases above
-        Array3D<double> actual_primitive_rho    = actual_primitive_variables.singleVariableView(setup.pbp.n_rho());
-        Array3D<double> actual_primitive_energy = actual_primitive_variables.singleVariableView(setup.pbp.n_energy());
+        Array3D<double> actual_primitive_rho    = actual_primitive_variables.singleVariableView(SolutionVariableIndices::RHO);
+        Array3D<double> actual_primitive_energy = actual_primitive_variables.singleVariableView(SolutionVariableIndices::ENERGY);
         setup.pbp.conservedToPrimitive(plan,
                                        setup.no_variables,
                                        setup.conserved,
@@ -282,21 +286,26 @@ namespace
             {
                 for (unsigned int i = 0; i < ni; i++)
                 {
-                    REQUIRE_THAT(actual_primitive_rho(i, j, k),
-                                 Catch::Matchers::WithinRel(
-                                     expected_primitive_variables.singleVariableView(setup.pbp.n_rho())(i, j, k), 1e-12));
-                    REQUIRE_THAT(actual_primitive_energy(i, j, k),
-                                 Catch::Matchers::WithinRel(
-                                     expected_primitive_variables.singleVariableView(setup.pbp.n_energy())(i, j, k), 1e-12));
-                    REQUIRE_THAT(actual_primitive_variables.singleVariableView(setup.pbp.n_vel_i())(i, j, k),
-                                 Catch::Matchers::WithinRel(
-                                     expected_primitive_variables.singleVariableView(setup.pbp.n_vel_i())(i, j, k), 1e-12));
-                    REQUIRE_THAT(actual_primitive_variables.singleVariableView(setup.pbp.n_vel_j())(i, j, k),
-                                 Catch::Matchers::WithinRel(
-                                     expected_primitive_variables.singleVariableView(setup.pbp.n_vel_j())(i, j, k), 1e-12));
-                    REQUIRE_THAT(actual_primitive_variables.singleVariableView(setup.pbp.n_vel_k())(i, j, k),
-                                 Catch::Matchers::WithinRel(
-                                     expected_primitive_variables.singleVariableView(setup.pbp.n_vel_k())(i, j, k), 1e-12));
+                    REQUIRE_THAT(
+                        actual_primitive_rho(i, j, k),
+                        Catch::Matchers::WithinRel(
+                            expected_primitive_variables.singleVariableView(SolutionVariableIndices::RHO)(i, j, k), 1e-12));
+                    REQUIRE_THAT(
+                        actual_primitive_energy(i, j, k),
+                        Catch::Matchers::WithinRel(
+                            expected_primitive_variables.singleVariableView(SolutionVariableIndices::ENERGY)(i, j, k), 1e-12));
+                    REQUIRE_THAT(actual_primitive_variables.singleVariableView(SolutionVariableIndices::VELOCITY_I)(i, j, k),
+                                 Catch::Matchers::WithinRel(expected_primitive_variables.singleVariableView(
+                                                                SolutionVariableIndices::VELOCITY_I)(i, j, k),
+                                                            1e-12));
+                    REQUIRE_THAT(actual_primitive_variables.singleVariableView(SolutionVariableIndices::VELOCITY_J)(i, j, k),
+                                 Catch::Matchers::WithinRel(expected_primitive_variables.singleVariableView(
+                                                                SolutionVariableIndices::VELOCITY_J)(i, j, k),
+                                                            1e-12));
+                    REQUIRE_THAT(actual_primitive_variables.singleVariableView(SolutionVariableIndices::VELOCITY_K)(i, j, k),
+                                 Catch::Matchers::WithinRel(expected_primitive_variables.singleVariableView(
+                                                                SolutionVariableIndices::VELOCITY_K)(i, j, k),
+                                                            1e-12));
                 }
             }
         }
@@ -373,16 +382,16 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 3D with active scala
                                    scalar_primitive,
                                    magnetic_primitive);
 
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_rho()), expected_primitive_rho);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_energy()), expected_primitive_energy);
+    requireAll(setup.primitive.singleVariableView(SolutionVariableIndices::RHO), expected_primitive_rho);
+    requireAll(setup.primitive.singleVariableView(SolutionVariableIndices::ENERGY), expected_primitive_energy);
     for (unsigned int scalar = 0; scalar < 2; scalar++)
     {
         requireAll(scalar_primitive.singleVariableView(scalar), expected_primitive_scalars[scalar]);
     }
 
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_i()), expected_primitive_vel[0]);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_j()), expected_primitive_vel[1]);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_k()), expected_primitive_vel[2]);
+    requireAll(setup.primitive.singleVariableView(SolutionVariableIndices::VELOCITY_I), expected_primitive_vel[0]);
+    requireAll(setup.primitive.singleVariableView(SolutionVariableIndices::VELOCITY_J), expected_primitive_vel[1]);
+    requireAll(setup.primitive.singleVariableView(SolutionVariableIndices::VELOCITY_K), expected_primitive_vel[2]);
 
     for (unsigned int axis = 0; axis < 3; axis++)
     {
@@ -423,11 +432,11 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity
                                    setup.no_variables,
                                    magnetic_primitive);
 
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_rho()), expected_primitive_rho);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_energy()), expected_primitive_energy);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_i()), expected_primitive_vel[0]);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_j()), expected_primitive_vel[1]);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_k()), expected_primitive_vel[2]);
+    requireAll(setup.primitive.singleVariableView(SolutionVariableIndices::RHO), expected_primitive_rho);
+    requireAll(setup.primitive.singleVariableView(SolutionVariableIndices::ENERGY), expected_primitive_energy);
+    requireAll(setup.primitive.singleVariableView(SolutionVariableIndices::VELOCITY_I), expected_primitive_vel[0]);
+    requireAll(setup.primitive.singleVariableView(SolutionVariableIndices::VELOCITY_J), expected_primitive_vel[1]);
+    requireAll(setup.primitive.singleVariableView(SolutionVariableIndices::VELOCITY_K), expected_primitive_vel[2]);
     for (unsigned int axis = 0; axis < 3; axis++)
     {
         requireAll(magnetic_primitive.singleVariableView(axis), NaN);
@@ -449,9 +458,9 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive converts each veloci
                                    setup.no_variables,
                                    setup.no_variables);
 
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_i()), 3.0);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_j()), 6.0);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_k()), 9.0);
+    requireAll(setup.primitive.singleVariableView(SolutionVariableIndices::VELOCITY_I), 3.0);
+    requireAll(setup.primitive.singleVariableView(SolutionVariableIndices::VELOCITY_J), 6.0);
+    requireAll(setup.primitive.singleVariableView(SolutionVariableIndices::VELOCITY_K), 9.0);
 }
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_to_prim on the Roberts dynamo test on 1 rank")
@@ -460,7 +469,8 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_t
     MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
     if (num_ranks != 1) { SKIP("Test requires exactly 1 rank"); }
 
-    GhostExchangePlan<double> plan = GhostExchangePlanTest::periodicPlan();
+    Slab global_domain({0, 0, 0}, {16, 16, 16});
+    GhostExchangePlan plan = GhostExchangePlanTest::periodicPlan(global_domain);
     checkAgainstRobertsDynamo(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_1rank_rank0", plan);
 }
 
@@ -472,23 +482,29 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_t
 
     // MUSIC splits the periodic 16^3 domain 2 x 2 x 1 with rank = 2 * (x block) + (y block), which is the order of a
     // cartesian communicator of dims {2, 2, 1} without reordering
+    Slab global_domain({0, 0, 0}, {16, 16, 16});
     std::array<int, 3> dims    = {2, 2, 1};
     std::array<int, 3> periods = {1, 1, 1};
-    MPI_Comm cartesian;
-    MPI_Cart_create(MPI_COMM_WORLD, 3, dims.data(), periods.data(), false, &cartesian);
+    MPI_Comm cartesian_communicator;
+    MPI_Cart_create(MPI_COMM_WORLD, 3, dims.data(), periods.data(), false, &cartesian_communicator);
+
     int rank;
-    MPI_Comm_rank(cartesian, &rank);
+    MPI_Comm_rank(cartesian_communicator, &rank);
 
     DirectionalArray<int> neighbours;
     for (int axis = 0; axis < 3; axis++)
     {
-        MPI_Cart_shift(
-            cartesian, axis, 1, &neighbours.get(axis, Direction::NEGATIVE), &neighbours.get(axis, Direction::POSITIVE));
+        MPI_Cart_shift(cartesian_communicator,
+                       axis,
+                       1,
+                       &neighbours.get(axis, Direction::NEGATIVE),
+                       &neighbours.get(axis, Direction::POSITIVE));
     }
-    DirectionalArray<BoundaryConditions> inner;
-    inner.fill(BoundaryConditions::INNER);
-    GhostExchangePlan<double> plan(inner, neighbours, cartesian);
+    DirectionalArray<BoundaryConditions> global_bcs;
+    global_bcs.fill(BoundaryConditions::PERIODIC);
+
+    GhostExchangePlan plan(global_domain, global_bcs, neighbours, dims, cartesian_communicator);
     checkAgainstRobertsDynamo(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_4ranks_rank" + std::to_string(rank),
                               plan);
-    MPI_Comm_free(&cartesian);
+    MPI_Comm_free(&cartesian_communicator);
 }

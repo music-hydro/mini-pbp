@@ -2,6 +2,7 @@
 
 #include "Array3D.h"
 #include "Array3DWithGhosts.h"
+#include "DirectionalArray.h"
 #include "Slab.h"
 #include <stdexcept>
 #include <string>
@@ -51,8 +52,8 @@ void PhysicsBasedPreconditioner::setPressureRHS(const Array3D<double>& delta_rho
                                                 Array3D<double>& rhs_pressure,
                                                 Array3D<double>& rhs_energy)
 {
-    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(n_dPdrho());
-    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(n_dPdenergy());
+    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(SolutionDpdVariableIndices::DPDRHO);
+    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(SolutionDpdVariableIndices::DPDENERGY);
 
     // Arrays are column major, so loop with i innermost for unit stride access
     Slab rhs_pressure_slab = rhs_pressure.cellSlab();
@@ -87,8 +88,8 @@ void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double>& pre
                                                       const Array3D<double>& dp_rhs_press,
                                                       Array3D<double>& delta_energy)
 {
-    const Array3D<double> solution_pressure = m_solution.singleVariableView(n_pressure());
-    const Array3D<double> solution_rho      = m_solution.singleVariableView(n_rho());
+    const Array3D<double> solution_pressure = m_solution.singleVariableView(SolutionVariableIndices::PRESSURE);
+    const Array3D<double> solution_rho      = m_solution.singleVariableView(SolutionVariableIndices::RHO);
 
     Slab delta_e_slab = delta_energy.cellSlab();
     for (int k = delta_e_slab.start(2); k < delta_e_slab.end(2); k++)
@@ -110,8 +111,8 @@ void PhysicsBasedPreconditioner::reconstructDensityDelta(const Array3D<double>& 
                                                          const Array3D<double>& delta_energy,
                                                          Array3D<double>& delta_rho)
 {
-    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(n_dPdrho());
-    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(n_dPdenergy());
+    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(SolutionDpdVariableIndices::DPDRHO);
+    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(SolutionDpdVariableIndices::DPDENERGY);
 
     Slab delta_rho_slab = delta_rho.cellSlab();
     for (int k = delta_rho_slab.start(2); k < delta_rho_slab.end(2); k++)
@@ -130,7 +131,7 @@ void PhysicsBasedPreconditioner::reconstructDensityDelta(const Array3D<double>& 
 void PhysicsBasedPreconditioner::calculateSquaredSoundSpeed()
 { m_squared_sound_speed.fill(2.5266187266788758E007); }
 
-void PhysicsBasedPreconditioner::conservedToPrimitive(GhostExchangePlan<double>& plan,
+void PhysicsBasedPreconditioner::conservedToPrimitive(GhostExchangePlan& plan,
                                                       PackedVariables active_scalars,
                                                       PackedVariables delta_conserved,
                                                       PackedVariables delta_conserved_rho_scalars,
@@ -151,9 +152,9 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(GhostExchangePlan<double>&
     }
 
     // rho and e from the stored solution, rho with its ghosts
-    Array3DWithGhosts<double> sol_rho = m_solution.singleVariableView(n_rho());
-    const Array3D<double> sol_e       = m_solution.singleVariableView(n_energy());
-    const Array3D<double>& cv_rho     = delta_conserved.singleVariableView(n_rho());
+    Array3DWithGhosts<double> sol_rho = m_solution.singleVariableView(SolutionVariableIndices::RHO);
+    const Array3D<double> sol_e       = m_solution.singleVariableView(SolutionVariableIndices::ENERGY);
+    const Array3D<double>& cv_rho     = delta_conserved.singleVariableView(SolutionVariableIndices::RHO);
     sol_rho.requireSameSlab(cv_rho, "solution rho and delta_conserved rho");
 
     // rho one cell beyond the rank, read by the face averages
@@ -164,13 +165,13 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(GhostExchangePlan<double>&
     delta_rho_g.exchangeGhosts();
 
     // Density
-    Array3D<double> delta_primitive_rho = delta_primitive.singleVariableView(n_rho());
+    Array3D<double> delta_primitive_rho = delta_primitive.singleVariableView(SolutionVariableIndices::RHO);
     delta_primitive_rho.requireSameSlab(cv_rho, "delta_primitive rho and delta_conserved rho");
     cv_rho.deepCopy(delta_primitive_rho);
 
     // Energy
-    Array3D<double> delta_primitive_e     = delta_primitive.singleVariableView(n_energy());
-    Array3D<double> delta_conserved_rho_e = delta_conserved.singleVariableView(n_energy());
+    Array3D<double> delta_primitive_e     = delta_primitive.singleVariableView(SolutionVariableIndices::ENERGY);
+    Array3D<double> delta_conserved_rho_e = delta_conserved.singleVariableView(SolutionVariableIndices::ENERGY);
     delta_primitive_e.requireSameSlab(cv_rho, "delta_primitive e and delta_conserved rho");
     delta_primitive_e.requireSameSlab(delta_conserved_rho_e, "delta_primitive e and delta_conserved rho e");
     delta_primitive_e.requireSameSlab(sol_e, "delta_primitive e and solution e");
@@ -215,7 +216,8 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(GhostExchangePlan<double>&
     // Velocity: each component lives on the faces along its own axis, so convert it over that component's own nodes
     // rather than over the cells slab, which may omit a solved boundary face. Averaging delta rho to the first face, or
     // to a solved positive boundary face, reads the NEGATIVE or POSITIVE ghost of rho and delta_rho_g.
-    std::array<unsigned int, 3> velocities_indices = {n_vel_i(), n_vel_j(), n_vel_k()};
+    std::array<unsigned int, 3> velocities_indices = {
+        SolutionVariableIndices::VELOCITY_I, SolutionVariableIndices::VELOCITY_J, SolutionVariableIndices::VELOCITY_K};
     for (unsigned int ax = 0; ax < m_nmom; ax++)
     {
         Array3D<double> delta_v           = delta_primitive.singleVariableView(velocities_indices[ax]);
@@ -261,4 +263,114 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(GhostExchangePlan<double>&
             delta_conserved_b.deepCopy(delta_primitive_b);
         }
     }
+}
+
+void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double>& solution_rho,
+                                                        const Array3D<DirectionalArray<double>>& laplacian_coefficients)
+{
+    const GhostExchangePlan& plan = solution_rho.plan();
+    solution_rho.exchangeGhosts();
+
+    // Compute squared sound speed
+    calculateSquaredSoundSpeed();
+
+    m_global_pressure_column_indices.clear();
+    m_global_pressure_row_indices.clear();
+    m_global_pressure_row_offsets.clear();
+    m_pressure_matrix_for_solver.clear();
+
+    m_global_pressure_row_offsets.push_back(0);
+
+    // Fill pressure
+    Slab global_slab = plan.globalDomain();
+    Slab cell_slab   = solution_rho.cellSlab();
+    for (int k = cell_slab.start(2); k < cell_slab.end(2); ++k)
+    {
+        for (int j = cell_slab.start(1); j < cell_slab.end(1); ++j)
+        {
+            for (int i = cell_slab.start(0); i < cell_slab.end(0); ++i)
+            {
+
+                const DirectionalArray<double> pressure_coefficients = pressureCoefficients(
+                    i, j, k, solution_rho, laplacian_coefficients(i, j, k), solution_rho.neighbourLinkWeights(i, j, k));
+                const double J_PP = -m_dt * m_squared_sound_speed(i, j, k);
+
+                double pressure_coefficient_sum = 0.0;
+                for (int axis = 0; axis < 3; axis++)
+                    pressure_coefficient_sum += pressure_coefficients.get(axis, Direction::NEGATIVE) +
+                                                pressure_coefficients.get(axis, Direction::POSITIVE);
+                if (pressure_coefficient_sum == 0.0) throw std::runtime_error("pressure_coefficient_sum is zero");
+
+                // Add the current cell's value to the pressure matrix
+                const unsigned long long global_index = globalVarIndex(i + plan.localDomain().start(0),
+                                                                       j + plan.localDomain().start(1),
+                                                                       k + plan.localDomain().start(2),
+                                                                       PreconditioningMatrixVariableIndices::PRESSURE,
+                                                                       global_slab);
+                m_global_pressure_row_indices.push_back(global_index);
+                m_global_pressure_column_indices.push_back(global_index);
+                m_pressure_matrix_for_solver.push_back(1.0 / m_dt - J_PP * pressure_coefficient_sum);
+
+                // Add neighbour cell values to the pressure matrix
+                for (int axis = 0; axis < 3; ++axis)
+                {
+                    // Determine the neighbour cell positions
+                    std::array<int, 3> negative_neighbour_position =
+                        plan.neighbourCellPosition(i, j, k, axis, Direction::NEGATIVE);
+                    std::array<int, 3> positive_neighbour_position =
+                        plan.neighbourCellPosition(i, j, k, axis, Direction::POSITIVE);
+
+                    // Get the global var indices for each neighbour
+                    unsigned long long global_negative_neighbour_var_index =
+                        globalVarIndex(negative_neighbour_position[0],
+                                       negative_neighbour_position[1],
+                                       negative_neighbour_position[2],
+                                       PreconditioningMatrixVariableIndices::PRESSURE,
+                                       global_slab);
+                    unsigned long long global_positive_neighbour_var_index =
+                        globalVarIndex(positive_neighbour_position[0],
+                                       positive_neighbour_position[1],
+                                       positive_neighbour_position[2],
+                                       PreconditioningMatrixVariableIndices::PRESSURE,
+                                       global_slab);
+
+                    // Add the global indices to the column index map
+                    m_global_pressure_column_indices.push_back(global_negative_neighbour_var_index);
+                    m_global_pressure_column_indices.push_back(global_positive_neighbour_var_index);
+
+                    // Push the value for each neighbour into the pressure matrix
+                    m_pressure_matrix_for_solver.push_back(J_PP * pressure_coefficients.get(axis, Direction::NEGATIVE));
+                    m_pressure_matrix_for_solver.push_back(J_PP * pressure_coefficients.get(axis, Direction::POSITIVE));
+                }
+                m_global_pressure_row_offsets.push_back(m_pressure_matrix_for_solver.size());
+            }
+        }
+    }
+}
+
+DirectionalArray<double> PhysicsBasedPreconditioner::pressureCoefficients(const int& i,
+                                                                          const int& j,
+                                                                          const int& k,
+                                                                          const Array3DWithGhosts<double>& solution_rho,
+                                                                          const DirectionalArray<double>& laplacian_coefficients,
+                                                                          const DirectionalArray<double>& weights)
+{
+    // Coefficients for usual Laplacian operator
+    DirectionalArray<double> coefficients = laplacian_coefficients;
+    double rho                            = solution_rho(i, j, k);
+    DirectionalArray<double> rho_face;
+
+    rho_face.get(0, Direction::NEGATIVE) = (solution_rho(i, j, k) + solution_rho(i - 1, j, k)) * 0.5;
+    rho_face.get(0, Direction::POSITIVE) = (solution_rho(i + 1, j, k) + solution_rho(i, j, k)) * 0.5;
+    rho_face.get(1, Direction::NEGATIVE) = (solution_rho(i, j, k) + solution_rho(i, j - 1, k)) * 0.5;
+    rho_face.get(1, Direction::POSITIVE) = (solution_rho(i, j + 1, k) + solution_rho(i, j, k)) * 0.5;
+    // This is only really needed if we are working in 3D but so far we
+    // have assumed 3D and handled 2D by setting the length of k to 1.
+    rho_face.get(2, Direction::NEGATIVE) = (solution_rho(i, j, k) + solution_rho(i, j, k - 1)) * 0.5;
+    rho_face.get(2, Direction::POSITIVE) = (solution_rho(i, j, k + 1) + solution_rho(i, j, k)) * 0.5;
+
+    for (int signed_axis = 0; signed_axis < 6; ++signed_axis)
+        coefficients[signed_axis] *= (rho / rho_face[signed_axis]) * weights[signed_axis];
+
+    return coefficients;
 }

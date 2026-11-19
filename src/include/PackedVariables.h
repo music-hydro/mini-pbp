@@ -137,13 +137,13 @@ class PackedVariablesWithGhosts : public BasePackedVariables<Array3DWithGhosts<d
                               const unsigned int ni,
                               const unsigned int nj,
                               const unsigned int nk,
-                              GhostExchangePlan<double> plan) :
+                              GhostExchangePlan plan) :
         BasePackedVariables<Array3DWithGhosts<double>>(packed_variables_1D, ni, nj, nk),
         m_plan(plan)
     { populatePackedArrays(); }
 
   private:
-    const GhostExchangePlan<double> m_plan;
+    const GhostExchangePlan m_plan;
 
     /**
      * @copydoc BasePackedVariables::populatePackedArrays
