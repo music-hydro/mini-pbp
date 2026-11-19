@@ -66,7 +66,7 @@ class BasePackedVariables
     { return internalSingleVariableView(variable_index); }
 
     /**
-     * @copydoc
+     * @copydoc BasePackedVariables::singleVariableView(unsigned int)
      */
     const T& singleVariableView(const unsigned int variable_index) const
     { return internalSingleVariableView(variable_index); }
@@ -114,7 +114,7 @@ class BasePackedVariables
     virtual void populatePackedArrays() = 0;
 
     /**
-     * @copydoc
+     * @copydoc BasePackedVariables::singleVariableView(unsigned int)
      */
     T& internalSingleVariableView(const unsigned int variable_index) const
     {
@@ -179,7 +179,7 @@ class PackedVariables : public BasePackedVariables<Array3D<double>>
 {
   public:
     /**
-     @copydoc BasePackedVariables::BasePackedVariables
+     * @copydoc BasePackedVariables::BasePackedVariables
      */
     PackedVariables(std::vector<double>& packed_variables_1D,
                     const unsigned int ni,

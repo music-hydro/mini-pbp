@@ -150,7 +150,7 @@ class Array3D
     { return internalFetch(i, j, k); }
 
     /**
-     * @copydoc Array3D::operator()(int, int, int)
+     * @copydoc Array3D::operator()(int, int, int) const
      */
     virtual T& operator ()(int i, int j, int k)
     { return internalFetch(i, j, k); }
@@ -257,7 +257,7 @@ class Array3D
 
   private:
     /**
-     * @copydoc Array3D::operator()(int, int, int)
+     * @copydoc Array3D::operator()(int, int, int) const
      */
     T& internalFetch(int i, int j, int k) const
     {
