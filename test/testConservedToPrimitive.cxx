@@ -22,16 +22,6 @@ namespace
     constexpr double NaN = std::numeric_limits<double>::quiet_NaN();
 
     /**
-     * @brief Get the indices of the three velocity variables.
-     *
-     * @param pbp Preconditioner that provides the variable indices.
-     *
-     * @return Indices for the velocity components in the i, j, and k directions.
-     */
-    std::array<unsigned int, 3> velocityIndices(PhysicsBasedPreconditioner& pbp)
-    { return {pbp.n_vel_i(), pbp.n_vel_j(), pbp.n_vel_k()}; }
-
-    /**
      * @brief Initialize the density, pressure, energy, and velocity variables.
      *
      * @param variables Packed variables to initialize.
@@ -52,7 +42,7 @@ namespace
         variables.singleVariableView(pbp.n_rho()).fill(rho);
         variables.singleVariableView(pbp.n_pressure()).fill(pressure);
         variables.singleVariableView(pbp.n_energy()).fill(energy);
-        const std::array<unsigned int, 3> velocity_indices = velocityIndices(pbp);
+        const std::array<unsigned int, 3> velocity_indices = {pbp.n_vel_i(), pbp.n_vel_j(), pbp.n_vel_k()};
         for (unsigned int axis = 0; axis < velocity_indices.size(); axis++)
         {
             variables.singleVariableView(velocity_indices[axis]).fill(velocities[axis]);
