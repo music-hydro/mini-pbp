@@ -83,7 +83,12 @@ namespace
                                                const bool mhd_enabled,
                                                const std::array<int, 3>& cell_counts,
                                                const double primitive_initial_value = 0.0) :
-            ConservedToPrimitiveTestSetup(ndim, nmom, mhd_enabled, cell_counts, GhostExchangePlanTest::periodicPlan(), primitive_initial_value)
+            ConservedToPrimitiveTestSetup(ndim,
+                                          nmom,
+                                          mhd_enabled,
+                                          cell_counts,
+                                          GhostExchangePlanTest::periodicPlan(),
+                                          primitive_initial_value)
         {
         }
 
@@ -304,13 +309,13 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive throws if active sca
     std::vector<double> scalar_raw(setup.size);
     PackedVariables scalar(scalar_raw, setup.nc[0], setup.nc[1], setup.nc[2]);
     REQUIRE_THROWS_WITH(setup.pbp.conservedToPrimitive(setup.plan,
-                                                        scalar,
-                                                        setup.conserved,
-                                                        setup.no_variables,
-                                                        setup.no_variables,
-                                                        setup.primitive,
-                                                        setup.no_variables,
-                                                        setup.no_variables),
+                                                       scalar,
+                                                       setup.conserved,
+                                                       setup.no_variables,
+                                                       setup.no_variables,
+                                                       setup.primitive,
+                                                       setup.no_variables,
+                                                       setup.no_variables),
                         Catch::Matchers::ContainsSubstring("The number of active scalars differs between the inputs"));
 }
 
