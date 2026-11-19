@@ -1,24 +1,10 @@
 #include "PhysicsBasedPreconditioner.h"
 
 #include "Array3D.h"
+#include "Array3DWithGhosts.h"
 #include "Slab.h"
 #include <stdexcept>
 #include <string>
-
-namespace
-{
-    /**
-     * @brief Throw if two views do not cover the same nodes (MUSIC `ASSERT(a%nodes == b%nodes)`).
-     */
-    void requireSameSlab(const Array3D<double>& a, const Array3D<double>& b, const std::string& what)
-    {
-        const Slab sa = a.cellSlab(), sb = b.cellSlab();
-        if (sa.start() != sb.start() || sa.end() != sb.end())
-        {
-            throw std::invalid_argument("cons_to_prim: " + what + " do not cover the same nodes");
-        }
-    }
-}  // namespace
 
 PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(PackedVariablesWithGhosts& solution,
                                                        PackedVariables& solution_dPd,
@@ -27,31 +13,23 @@ PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(PackedVariablesWithGhosts
     m_solution(solution),
     m_solution_dPd(solution_dPd),
     m_squared_sound_speed(squared_sound_speed),
-    m_prec_nvar(prec_nvar),
-    m_n_rho(0),
-    m_n_pressure(1),
-    m_n_energy(2),
-    m_n_dPdrho(0),
-    m_n_dPdenergy(1)
+    m_prec_nvar(prec_nvar)
 {
     // Verify the size of solutions
     int num_solution_variables = m_solution.numVariables();
-    if (num_solution_variables != 3)
+    if (num_solution_variables != m_num_sol_vars)
     {
-        throw std::invalid_argument("Solution should contain exactly 3 variables, found " +
+        throw std::invalid_argument("Solution should contain exactly " + std::to_string(m_num_sol_vars) + " variables, found " +
                                     std::to_string(num_solution_variables));
     }
     int num_solution_dPd_variables = m_solution_dPd.numVariables();
-    if (num_solution_dPd_variables != 2)
+    if (num_solution_dPd_variables != m_num_sol_dPd_vars)
     {
-        throw std::invalid_argument("Solution gradients should contain exactly 2 variables, found " +
-                                    std::to_string(num_solution_dPd_variables));
+        throw std::invalid_argument("Solution gradients should contain exactly " + std::to_string(m_num_sol_dPd_vars) +
+                                    " variables, found " + std::to_string(num_solution_dPd_variables));
     }
 
-    unsigned int ni = solution.ni();
-    unsigned int nj = solution.nj();
-    unsigned int nk = solution.nk();
-    if (ni != solution_dPd.ni() || nj != solution_dPd.nj() || nk != solution_dPd.nk())
+    if (solution.ni() != solution_dPd.ni() || solution.nj() != solution_dPd.nj() || solution.nk() != solution_dPd.nk())
     {
         throw std::invalid_argument("Solution and solution gradients must have the same domain dimensions");
     }
@@ -63,8 +41,8 @@ void PhysicsBasedPreconditioner::setPressureRHS(const Array3D<double>& delta_rho
                                                 Array3D<double>& rhs_pressure,
                                                 Array3D<double>& rhs_energy)
 {
-    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(m_n_dPdrho);
-    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(m_n_dPdenergy);
+    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(n_dPdrho());
+    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(n_dPdenergy());
 
     // Arrays are column major, so loop with i innermost for unit stride access
     Slab rhs_pressure_slab = rhs_pressure.cellSlab();
@@ -99,8 +77,8 @@ void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double>& pre
                                                       const Array3D<double>& dp_rhs_press,
                                                       Array3D<double>& delta_energy)
 {
-    const Array3D<double> solution_pressure = m_solution.singleVariableView(m_n_pressure);
-    const Array3D<double> solution_rho      = m_solution.singleVariableView(m_n_rho);
+    const Array3D<double> solution_pressure = m_solution.singleVariableView(n_pressure());
+    const Array3D<double> solution_rho      = m_solution.singleVariableView(n_rho());
 
     Slab delta_e_slab = delta_energy.cellSlab();
     for (int k = delta_e_slab.start(2); k < delta_e_slab.end(2); k++)
@@ -122,8 +100,8 @@ void PhysicsBasedPreconditioner::reconstructDensityDelta(const Array3D<double>& 
                                                          const Array3D<double>& delta_energy,
                                                          Array3D<double>& delta_rho)
 {
-    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(m_n_dPdrho);
-    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(m_n_dPdenergy);
+    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(n_dPdrho());
+    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(n_dPdenergy());
 
     Slab delta_rho_slab = delta_rho.cellSlab();
     for (int k = delta_rho_slab.start(2); k < delta_rho_slab.end(2); k++)
@@ -142,58 +120,58 @@ void PhysicsBasedPreconditioner::reconstructDensityDelta(const Array3D<double>& 
 void PhysicsBasedPreconditioner::calculateSquaredSoundSpeed()
 { m_squared_sound_speed.fill(2.5266187266788758E007); }
 
-void PhysicsBasedPreconditioner::consToPrim(const unsigned int ndim,
-                                            const unsigned int nmom,
-                                            const bool mhd_enabled,
-                                            GhostExchangePlan<double>& plan,
-
-                                            const std::array<const Array3D<double>*, 3>& vel,
-                                            const std::vector<const Array3D<double>*>& active_scalars,
-
-                                            const Array3D<double>& delta_cons_rho,
-                                            const Array3D<double>& delta_cons_rho_e,
-                                            const std::array<const Array3D<double>*, 3>& delta_cons_rho_vel,
-                                            const std::vector<const Array3D<double>*>& delta_cons_rho_scalars,
-                                            const std::array<const Array3D<double>*, 3>& delta_cons_magnetic_field,
-
-                                            Array3D<double>& delta_prim_rho,
-                                            Array3D<double>& delta_prim_e,
-                                            const std::array<Array3D<double>*, 3>& delta_prim_vel,
-                                            const std::vector<Array3D<double>*>& delta_prim_scalars,
-                                            const std::array<Array3D<double>*, 3>& delta_prim_magnetic_field)
+void PhysicsBasedPreconditioner::conservedToPrimitive(const unsigned int ndim,
+                                                      const unsigned int nmom,
+                                                      const bool mhd_enabled,
+                                                      GhostExchangePlan<double>& plan,
+                                                      PackedVariables active_scalars,
+                                                      PackedVariables delta_conserved,
+                                                      PackedVariables delta_conserved_rho_scalars,
+                                                      PackedVariables delta_conserved_magnetic_field,
+                                                      PackedVariables delta_primitive,
+                                                      PackedVariables delta_primitive_scalars,
+                                                      PackedVariables delta_primitive_magnetic_field)
 {
-    if (ndim != 2 && ndim != 3) { throw std::invalid_argument("cons_to_prim: ndim must be 2 or 3"); }
-    if (nmom != 2 && nmom != 3) { throw std::invalid_argument("cons_to_prim: nmom must be 2 or 3"); }
-    if (nmom < ndim) { throw std::invalid_argument("cons_to_prim: nmom must be at least ndim"); }
-    if (active_scalars.size() != delta_cons_rho_scalars.size() || active_scalars.size() != delta_prim_scalars.size())
+    if (ndim != 2 && ndim != 3) { throw std::invalid_argument("ndim must be 2 or 3"); }
+    if (nmom != 2 && nmom != 3) { throw std::invalid_argument("nmom must be 2 or 3"); }
+    if (nmom < ndim) { throw std::invalid_argument("nmom must be at least ndim"); }
+    if (active_scalars.numVariables() != delta_conserved_rho_scalars.numVariables() ||
+        active_scalars.numVariables() != delta_primitive_scalars.numVariables())
     {
-        throw std::invalid_argument("cons_to_prim: the number of active scalars differs between the inputs");
+        throw std::invalid_argument("The number of active scalars differs between the inputs");
+    }
+    if (mhd_enabled && (delta_conserved_magnetic_field.numVariables() != 3 || delta_primitive_magnetic_field.numVariables() != 3))
+    {
+        throw std::invalid_argument("MHD requires three magnetic field components");
     }
 
     // rho and e from the stored solution, rho with its ghosts
-    Array3DWithGhosts<double> sol_rho(m_solution.singleVariableView(m_n_rho), plan);
-    const Array3D<double> sol_e   = m_solution.singleVariableView(m_n_energy);
-    const Array3D<double>& cv_rho = delta_cons_rho;
-    requireSameSlab(sol_rho, cv_rho, "solution rho and delta_cons rho");
+    Array3DWithGhosts<double> sol_rho = m_solution.singleVariableView(n_rho());
+    const Array3D<double> sol_e       = m_solution.singleVariableView(n_energy());
+    const Array3D<double>& cv_rho     = delta_conserved.singleVariableView(n_rho());
+    sol_rho.requireSameSlab(cv_rho, "solution rho and delta_conserved rho");
 
     // rho one cell beyond the rank, read by the face averages
     sol_rho.exchangeGhosts();
 
-    // delta rho one cell beyond the rank: the halo from the neighbour ranks, or the boundary condition fill
+    // Exchange ghost cells for the conserved density
     Array3DWithGhosts<double> delta_rho_g(cv_rho, plan);
     delta_rho_g.exchangeGhosts();
 
     // Density
-    requireSameSlab(delta_prim_rho, cv_rho, "delta_prim rho and delta_cons rho");
-    cv_rho.deepCopy(delta_prim_rho);
+    Array3D<double> delta_primitive_rho = delta_primitive.singleVariableView(n_rho());
+    delta_primitive_rho.requireSameSlab(cv_rho, "delta_primitive rho and delta_conserved rho");
+    cv_rho.deepCopy(delta_primitive_rho);
 
     // Energy
-    requireSameSlab(delta_prim_e, cv_rho, "delta_prim e and delta_cons rho");
-    requireSameSlab(delta_prim_e, delta_cons_rho_e, "delta_prim e and delta_cons rho e");
-    requireSameSlab(delta_prim_e, sol_e, "delta_prim e and solution e");
+    Array3D<double> delta_primitive_e     = delta_primitive.singleVariableView(n_energy());
+    Array3D<double> delta_conserved_rho_e = delta_conserved.singleVariableView(n_energy());
+    delta_primitive_e.requireSameSlab(cv_rho, "delta_primitive e and delta_conserved rho");
+    delta_primitive_e.requireSameSlab(delta_conserved_rho_e, "delta_primitive e and delta_conserved rho e");
+    delta_primitive_e.requireSameSlab(sol_e, "delta_primitive e and solution e");
     {
-        Array3D<double>& delta_e           = delta_prim_e;
-        const Array3D<double>& delta_rho_e = delta_cons_rho_e;
+        Array3D<double>& delta_e           = delta_primitive_e;
+        const Array3D<double>& delta_rho_e = delta_conserved_rho_e;
         const Slab s                       = delta_e.cellSlab();
         for (int k = s.start(2); k < s.end(2); k++)
         {
@@ -208,14 +186,14 @@ void PhysicsBasedPreconditioner::consToPrim(const unsigned int ndim,
     }
 
     // Active scalars
-    for (size_t isc = 0; isc < active_scalars.size(); isc++)
+    for (unsigned int scalar_index = 0; scalar_index < active_scalars.numVariables(); scalar_index++)
     {
-        const Array3D<double>& sol_phi       = *active_scalars[isc];
-        const Array3D<double>& delta_rho_phi = *delta_cons_rho_scalars[isc];
-        Array3D<double>& delta_phi           = *delta_prim_scalars[isc];
-        requireSameSlab(delta_phi, cv_rho, "delta_prim scalar and delta_cons rho");
-        requireSameSlab(delta_phi, delta_rho_phi, "delta_prim scalar and delta_cons rho scalar");
-        requireSameSlab(delta_phi, sol_phi, "delta_prim scalar and solution scalar");
+        const Array3D<double> sol_phi       = active_scalars.singleVariableView(scalar_index);
+        const Array3D<double> delta_rho_phi = delta_conserved_rho_scalars.singleVariableView(scalar_index);
+        Array3D<double> delta_phi           = delta_primitive_scalars.singleVariableView(scalar_index);
+        delta_phi.requireSameSlab(cv_rho, "delta_primitive scalar and delta_conserved rho");
+        delta_phi.requireSameSlab(delta_rho_phi, "delta_primitive scalar and delta_conserved rho scalar");
+        delta_phi.requireSameSlab(sol_phi, "delta_primitive scalar and solution scalar");
         const Slab s = delta_phi.cellSlab();
         for (int k = s.start(2); k < s.end(2); k++)
         {
@@ -232,12 +210,13 @@ void PhysicsBasedPreconditioner::consToPrim(const unsigned int ndim,
     // Velocity: each component lives on the faces along its own axis, so convert it over that component's own nodes
     // rather than over the cells slab, which may omit a solved boundary face. Averaging delta rho to the first face, or
     // to a solved positive boundary face, reads the NEGATIVE or POSITIVE ghost of rho and delta_rho_g.
+    std::array<unsigned int, 3> velocities_indices = {n_vel_i(), n_vel_j(), n_vel_k()};
     for (unsigned int ax = 0; ax < nmom; ax++)
     {
-        Array3D<double>& delta_v           = *delta_prim_vel[ax];
-        const Array3D<double>& delta_rho_v = *delta_cons_rho_vel[ax];
-        const Array3D<double>& sol_v       = *vel[ax];
-        requireSameSlab(delta_v, sol_v, "delta_prim velocity and solution velocity");
+        Array3D<double> delta_v           = delta_primitive.singleVariableView(velocities_indices[ax]);
+        const Array3D<double> delta_rho_v = delta_conserved.singleVariableView(velocities_indices[ax]);
+        const Array3D<double> sol_v       = m_solution.singleVariableView(velocities_indices[ax]);
+        delta_v.requireSameSlab(sol_v, "delta_primitive velocity and solution velocity");
         const Slab s = delta_v.cellSlab();
         // Neighbour cell on the negative side of the face along ax
         const int di = (ax == 0) ? 1 : 0, dj = (ax == 1) ? 1 : 0, dk = (ax == 2) ? 1 : 0;
@@ -251,7 +230,7 @@ void PhysicsBasedPreconditioner::consToPrim(const unsigned int ndim,
                     if (ax < ndim)
                     {
                         rho_f       = 0.5 * (sol_rho(i, j, k) + sol_rho(i - di, j - dj, k - dk));
-                        delta_rho_f = 0.5 * (delta_rho_g(i - di, j - dj, k - dk) + delta_rho_g(i, j, k));
+                        delta_rho_f = 0.5 * (delta_rho_g(i, j, k) + delta_rho_g(i - di, j - dj, k - dk));
                     }
                     else
                     {
@@ -259,8 +238,7 @@ void PhysicsBasedPreconditioner::consToPrim(const unsigned int ndim,
                         rho_f       = sol_rho(i, j, k);
                         delta_rho_f = cv_rho(i, j, k);
                     }
-                    const double v   = sol_v(i, j, k);
-                    delta_v(i, j, k) = (-v * delta_rho_f + delta_rho_v(i, j, k)) / rho_f;
+                    delta_v(i, j, k) = (-sol_v(i, j, k) * delta_rho_f + delta_rho_v(i, j, k)) / rho_f;
                 }
             }
         }
@@ -272,8 +250,10 @@ void PhysicsBasedPreconditioner::consToPrim(const unsigned int ndim,
     {
         for (unsigned int ax = 0; ax < 3; ax++)
         {
-            requireSameSlab(*delta_prim_magnetic_field[ax], *delta_cons_magnetic_field[ax], "delta_prim B and delta_cons B");
-            delta_cons_magnetic_field[ax]->deepCopy(*delta_prim_magnetic_field[ax]);
+            Array3D<double> delta_primitive_b       = delta_primitive_magnetic_field.singleVariableView(ax);
+            const Array3D<double> delta_conserved_b = delta_conserved_magnetic_field.singleVariableView(ax);
+            delta_primitive_b.requireSameSlab(delta_conserved_b, "delta_primitive B and delta_conserved B");
+            delta_conserved_b.deepCopy(delta_primitive_b);
         }
     }
 }

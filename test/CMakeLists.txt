@@ -43,7 +43,7 @@ add_test(NAME mini_pbp_unit_tests COMMAND mini_pbp_unit_tests)
 set(MPI_TEST_FILES
     "${PROJ_TEST_DIR}/mainMPITests.cxx"
     "${PROJ_TEST_DIR}/testArray3DWithGhosts.cxx"
-    "${PROJ_TEST_DIR}/testConsToPrim.cxx"
+    "${PROJ_TEST_DIR}/testConservedToPrimitive.cxx"
     "${PROJ_TEST_DIR}/testGhostExchangePlan.cxx"
 )
 

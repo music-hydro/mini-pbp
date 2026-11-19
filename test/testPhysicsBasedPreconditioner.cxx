@@ -9,24 +9,25 @@ TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner throws if solu
 {
     int n    = 2;
     int size = n * n * n;
-    std::vector<double> solution_raw(size);             // invalid
-    std::vector<double> solution_dPd_raw(size * 2);     // valid
-    std::vector<double> squared_sound_speed_raw(size);  // valid
+    std::vector<double> solution_raw(size);                                                       // invalid
+    std::vector<double> solution_dPd_raw(size * PhysicsBasedPreconditioner::num_sol_dPd_vars());  // valid
+    std::vector<double> squared_sound_speed_raw(size);                                            // valid
     PackedVariablesWithGhosts solution(solution_raw, n, n, n, GhostExchangePlanTest::arbitraryPlan());
     PackedVariables solution_dPd(solution_dPd_raw, n, n, n);
     Array3D<double> squared_sound_speed(n, n, n, squared_sound_speed_raw);
 
     REQUIRE_THROWS_WITH(PhysicsBasedPreconditioner(solution, solution_dPd, squared_sound_speed),
-                        Catch::Matchers::ContainsSubstring("Solution should contain exactly 3 variables"));
+                        Catch::Matchers::ContainsSubstring("Solution should contain exactly " +
+                                                           std::to_string(PhysicsBasedPreconditioner::num_sol_vars())));
 }
 
 TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner throws if solution_dPd is not a valid size")
 {
     int n    = 2;
     int size = n * n * n;
-    std::vector<double> solution_raw(size * 3);         // valid
-    std::vector<double> solution_dPd_raw(size);         // invalid
-    std::vector<double> squared_sound_speed_raw(size);  // valid
+    std::vector<double> solution_raw(size * PhysicsBasedPreconditioner::num_sol_vars());  // valid
+    std::vector<double> solution_dPd_raw(size);                                           // invalid
+    std::vector<double> squared_sound_speed_raw(size);                                    // valid
     PackedVariablesWithGhosts solution(solution_raw, n, n, n, GhostExchangePlanTest::arbitraryPlan());
     PackedVariables solution_dPd(solution_dPd_raw, n, n, n);
     Array3D<double> squared_sound_speed(n, n, n, squared_sound_speed_raw);

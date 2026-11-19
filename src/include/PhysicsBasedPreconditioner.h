@@ -7,11 +7,8 @@
 #ifndef PhysicsBasedPreconditioner_H
 #define PhysicsBasedPreconditioner_H
 
-#include "Array3DWithGhosts.h"
 #include "GhostExchangePlan.h"
 #include "PackedVariables.h"
-#include <array>
-#include <vector>
 
 class PhysicsBasedPreconditioner
 {
@@ -71,85 +68,103 @@ class PhysicsBasedPreconditioner
      * @brief Convert the residual from conserved to primitive variables, the first step of the preconditioner (MUSIC
      * `cons_to_prim` in `src/solvers/preconditioner.f90`).
      *
-     * @details rho and e are read from the stored solution.
-     * - delta_rho = delta_cons_rho
-     * - delta_e = (delta_rho_e - e delta_rho) / rho
-     * - each active scalar: delta_phi = (delta_rho_phi - phi delta_rho) / rho
-     * - each velocity component lives on the faces along its own axis: delta_v = (delta_rho_v - v delta_rho_f) / rho_f,
-     *   with rho_f and delta_rho_f the average of the two cells next to the face. In 2D the third component is
-     *   invariant along k and uses the cell values.
-     * - each magnetic field component is copied unchanged.
+     * @details rho and e are read from the stored solution. The scalar packed variables must have matching counts.
+     *          Empty PackedVariables objects may be passed when there are no active scalars or MHD is disabled.
+     *          - delta_rho = delta_conserved_rho
+     *          - delta_e = (delta_rho_e - e delta_rho) / rho
+     *          - each active scalar: delta_phi = (delta_rho_phi - phi delta_rho) / rho
+     *          - each velocity component lives on the faces along its own axis: delta_v = (delta_rho_v - v delta_rho_f) / rho_f,
+     *            with rho_f and delta_rho_f the average of the two cells next to the face. In 2D the third component is
+     *            invariant along k and uses the cell values.
+     *          - each magnetic field component is copied unchanged.
      *
-     * A field staggered along an axis holds at (i, j, k) the face on the negative side of cell (i, j, k). Its cellSlab()
-     * is the faces solved on the rank (MUSIC `solved_local_domain_nodes`), so it may start at 1 or end at n + 1. Every
-     * loop runs over the slab of the primitive delta it writes. The face averages read rho and delta rho one cell
-     * beyond the rank, so both are exchanged on `plan`; this is collective over the neighbours in the plan.
+     *          A field staggered along an axis holds at (i, j, k) the face on the negative side of cell (i, j, k). Its cellSlab()
+     *          is the faces solved on the rank (MUSIC `solved_local_domain_nodes`), so it may start at 1 or end at n + 1. Every
+     *          loop runs over the slab of the primitive delta it writes. The face averages read rho and delta rho one cell
+     *          beyond the rank, so both are exchanged on `plan`; this is collective over the neighbours in the plan.
      *
      * @param[in] ndim - The number of dimensions (2 or 3).
      * @param[in] nmom - The number of velocity components (2 or 3, at least ndim).
      * @param[in] mhd_enabled - Whether the magnetic field components are present.
      * @param[in] plan - The ghost exchange plan of the cells of this rank (MUSIC `rho_plans`).
-     * @param[in] vel - The solution velocity on the same faces as delta_prim_vel (only the first nmom are read).
-     * @param[in] active_scalars - The solution active scalars phi on the cells.
-     * @param[in] delta_cons_rho - delta rho on all the cells of the rank.
-     * @param[in] delta_cons_rho_e - delta (rho e).
-     * @param[in] delta_cons_rho_vel - delta (rho v) of each velocity component (only the first nmom are read).
-     * @param[in] delta_cons_rho_scalars - delta (rho phi) of each active scalar.
-     * @param[in] delta_cons_magnetic_field - delta B of each component (only read with MHD).
-     * @param[out] delta_prim_rho - delta rho.
-     * @param[out] delta_prim_e - delta e.
-     * @param[out] delta_prim_vel - delta v of each velocity component (only the first nmom are written).
-     * @param[out] delta_prim_scalars - delta phi of each active scalar.
-     * @param[out] delta_prim_magnetic_field - delta B of each component (only written with MHD).
+     * @param[in] active_scalars - Packed solution active scalars phi on the cells.
+     * @param[in] delta_conserved - Packed conserved residual containing delta rho, delta (rho e) and delta (rho v) components.
+     * @param[in] delta_conserved_rho_scalars - Packed delta (rho phi) for each active scalar.
+     * @param[in] delta_conserved_magnetic_field - Packed delta B for each component (three when MHD is enabled).
+     * @param[out] delta_primitive - Packed primitive residual containing delta rho, delta e and delta v components.
+     * @param[out] delta_primitive_scalars - Packed delta phi for each active scalar.
+     * @param[out] delta_primitive_magnetic_field - Packed delta B for each component (three when MHD is enabled).
      */
-    void consToPrim(const unsigned int ndim,
-                    const unsigned int nmom,
-                    const bool mhd_enabled,
-                    GhostExchangePlan<double>& plan,
+    void conservedToPrimitive(const unsigned int ndim,
+                              const unsigned int nmom,
+                              const bool mhd_enabled,
+                              GhostExchangePlan<double>& plan,
+                              PackedVariables active_scalars,
+                              PackedVariables delta_conserved,
+                              PackedVariables delta_conserved_rho_scalars,
+                              PackedVariables delta_conserved_magnetic_field,
+                              PackedVariables delta_primitive,
+                              PackedVariables delta_primitive_scalars,
+                              PackedVariables delta_primitive_magnetic_field);
 
-                    const std::array<const Array3D<double>*, 3>& vel,
-                    const std::vector<const Array3D<double>*>& active_scalars,
+    /**
+     * @brief Getter for the number of packed variables in the solution
+     */
+    static unsigned int num_sol_vars()
+    { return m_num_sol_vars; }
 
-                    const Array3D<double>& delta_cons_rho,
-                    const Array3D<double>& delta_cons_rho_e,
-                    const std::array<const Array3D<double>*, 3>& delta_cons_rho_vel,
-                    const std::vector<const Array3D<double>*>& delta_cons_rho_scalars,
-                    const std::array<const Array3D<double>*, 3>& delta_cons_magnetic_field,
-
-                    Array3D<double>& delta_prim_rho,
-                    Array3D<double>& delta_prim_e,
-                    const std::array<Array3D<double>*, 3>& delta_prim_vel,
-                    const std::vector<Array3D<double>*>& delta_prim_scalars,
-                    const std::array<Array3D<double>*, 3>& delta_prim_magnetic_field);
+    /**
+     * @brief Getter for the number of packed variables in the solution gradients
+     */
+    static unsigned int num_sol_dPd_vars()
+    { return m_num_sol_dPd_vars; }
 
     /**
      * @brief getter for density index
      */
-    unsigned int n_rho() const
+    static unsigned int n_rho()
     { return m_n_rho; }
 
     /**
      * @brief getter for pressure index
      */
-    unsigned int n_pressure() const
+    static unsigned int n_pressure()
     { return m_n_pressure; }
 
     /**
      * @brief getter for energy index
      */
-    unsigned int n_energy() const
+    static unsigned int n_energy()
     { return m_n_energy; }
+
+    /**
+     * @brief Getter for the variable index of the velocity in the ith direction
+     */
+    static unsigned int n_vel_i()
+    { return m_n_vel_i; }
+
+    /**
+     * @brief Getter for the variable index of the velocity in the jth direction
+     */
+    static unsigned int n_vel_j()
+    { return m_n_vel_j; }
+
+    /**
+     * @brief Getter for the variable index of the velocity in the kth direction
+     */
+    static unsigned int n_vel_k()
+    { return m_n_vel_k; }
 
     /**
      * @brief getter for density gradient index
      */
-    unsigned int n_dPdrho() const
+    static unsigned int n_dPdrho()
     { return m_n_dPdrho; }
 
     /**
      * @brief getter for energy gradient index
      */
-    unsigned int n_dPdenergy() const
+    static unsigned int n_dPdenergy()
     { return m_n_dPdenergy; }
 
     PackedVariablesWithGhosts solution() const
@@ -186,12 +201,19 @@ class PhysicsBasedPreconditioner
     Array3D<double> m_squared_sound_speed;
     /// @brief Flag to indicate whether to precondition the pressure equation only (`prec_nvar=1`), or both pressure and energy equations (`prec_nvar=2`)
     unsigned int m_prec_nvar;
+    /// @brief The number of packed variables that must be present in the solution
+    static const unsigned int m_num_sol_vars = 6;
+    /// @brief The number of packed variables that must be present in the solution gradients
+    static const unsigned int m_num_sol_dPd_vars = 2;
     /// Indices for each variable
-    unsigned int m_n_rho;
-    unsigned int m_n_pressure;
-    unsigned int m_n_energy;
-    unsigned int m_n_dPdrho;
-    unsigned int m_n_dPdenergy;
+    static const unsigned int m_n_rho       = 0;
+    static const unsigned int m_n_pressure  = 1;
+    static const unsigned int m_n_energy    = 2;
+    static const unsigned int m_n_vel_i     = 3;
+    static const unsigned int m_n_vel_j     = 4;
+    static const unsigned int m_n_vel_k     = 5;
+    static const unsigned int m_n_dPdrho    = 0;
+    static const unsigned int m_n_dPdenergy = 1;
     // This is a temporary solution. The value has been taken from a run of music and should be calculated instead.
     double m_dt = 1.0917241379310345E-004; /** timestep */
 };
