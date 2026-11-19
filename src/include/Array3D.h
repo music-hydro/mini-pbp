@@ -26,7 +26,7 @@ class Array3D
      * @param[in] nk - The number of elements in the third direction.
      */
     Array3D(const unsigned int ni, const unsigned int nj, const unsigned int nk) :
-        m_data_origin(static_cast<T*>(std::malloc(sizeof(T) * static_cast<size_t>(ni) * nj * nk))),
+        m_data_origin(new T[static_cast<size_t>(ni) * nj * nk]()),
         m_stride_i(1),
         m_stride_j(ni),
         m_stride_k(ni * nj),
@@ -120,9 +120,14 @@ class Array3D
     {
     }
 
+    /**
+     * @brief Destructor
+     *
+     * @details The 1D data will only be freed if it is owned by this instance.
+     */
     ~Array3D()
     {
-        if (m_owns_data) delete m_data_origin;
+        if (m_owns_data) delete[] m_data_origin;
     }
 
     /**
