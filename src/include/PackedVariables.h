@@ -62,39 +62,37 @@ class BasePackedVariables
      *
      * @return An Array3D instance providing a 3D view of the requested variable's 1D array
      */
-    T singleVariableView(const unsigned int variable_index) const
-    {
-        // Validate requested variable index against what is assumed
-        if (variable_index >= m_num_variables)
-        {
-            throw std::invalid_argument("Provided variable index not found: " + std::to_string(variable_index));
-        }
+    T& singleVariableView(const unsigned int variable_index)
+    { return internalSingleVariableView(variable_index); }
 
-        return *m_packed_arrays[variable_index];
-    }
+    /**
+     * @copydoc
+     */
+    const T& singleVariableView(const unsigned int variable_index) const
+    { return internalSingleVariableView(variable_index); }
 
     /**
      * @brief Return the number of variables
      */
-    unsigned int numVariables()
+    unsigned int numVariables() const
     { return m_num_variables; }
 
     /**
      * @brief Get the domain size in the ith direction.
      */
-    unsigned int ni()
+    unsigned int ni() const
     { return m_ni; }
 
     /**
      * @brief Get the domain size in the jth direction.
      */
-    unsigned int nj()
+    unsigned int nj() const
     { return m_nj; }
 
     /**
      * @brief Get the domain size in the kth direction.
      */
-    unsigned int nk()
+    unsigned int nk() const
     { return m_nk; }
 
   protected:
@@ -114,6 +112,16 @@ class BasePackedVariables
      * @brief Fills the vector of 3D array views of the 1D contiguous array.
      */
     virtual void populatePackedArrays() = 0;
+
+    /**
+     * @copydoc
+     */
+    T& internalSingleVariableView(const unsigned int variable_index) const
+    {
+        if (variable_index >= m_num_variables)
+            throw std::invalid_argument("Provided variable index not found: " + std::to_string(variable_index));
+        return *m_packed_arrays[variable_index];
+    }
 };
 
 /**
