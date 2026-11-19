@@ -26,12 +26,13 @@ class Array3D
      * @param[in] nk - The number of elements in the third direction.
      */
     Array3D(const unsigned int ni, const unsigned int nj, const unsigned int nk) :
-        m_data_origin(static_cast<T*>(std::malloc(sizeof(T) * static_cast<size_t>(ni) * nj * nk))),
+        m_data_origin(new T[static_cast<size_t>(ni) * nj * nk]()),
         m_stride_i(1),
         m_stride_j(ni),
         m_stride_k(ni * nj),
         m_slab({0, 0, 0}, {(int)ni, (int)nj, (int)nk}),
-        m_is_sub_array(false)
+        m_is_sub_array(false),
+        m_owns_data(true)
     {
     }
 
@@ -49,7 +50,8 @@ class Array3D
         m_stride_j(ni),
         m_stride_k(ni * nj),
         m_slab({0, 0, 0}, {(int)ni, (int)nj, (int)nk}),
-        m_is_sub_array(false)
+        m_is_sub_array(false),
+        m_owns_data(false)
     {
     }
 
@@ -69,7 +71,8 @@ class Array3D
         m_stride_j(ni),
         m_stride_k(ni * nj),
         m_slab({0, 0, 0}, {(int)ni, (int)nj, (int)nk}),
-        m_is_sub_array(false)
+        m_is_sub_array(false),
+        m_owns_data(false)
     {
         size_t domain_size = ni * nj * nk;
         if (data_1D.size() != domain_size) { throw std::invalid_argument("Size of data_1D is not equal to (ni * nj * nk)"); }
@@ -90,7 +93,8 @@ class Array3D
         m_stride_j(parent.m_stride_j),
         m_stride_k(parent.m_stride_k),
         m_slab(sub_slab),
-        m_is_sub_array(true)
+        m_is_sub_array(true),
+        m_owns_data(false)
     {
         Slab parent_slab = parent.cellSlab();
         for (int axis = 0; axis < 3; axis++)
@@ -111,8 +115,19 @@ class Array3D
         m_stride_j(parent.m_stride_j),
         m_stride_k(parent.m_stride_k),
         m_slab(parent.m_slab),
-        m_is_sub_array(parent.m_is_sub_array)
+        m_is_sub_array(parent.m_is_sub_array),
+        m_owns_data(false)
     {
+    }
+
+    /**
+     * @brief Destructor
+     *
+     * @details The 1D data will only be freed if it is owned by this instance.
+     */
+    ~Array3D()
+    {
+        if (m_owns_data) delete[] m_data_origin;
     }
 
     /**
@@ -256,6 +271,8 @@ class Array3D
     const Slab m_slab;
     /// @brief A flag to indicate if this is a sub array or a larger array.
     const bool m_is_sub_array;
+    /// @brief A flag to indicate if this instance owns the underlying data and must deallocate it on destruction.
+    const bool m_owns_data;
 };
 
 #endif  // Array3D_H

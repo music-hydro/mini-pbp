@@ -65,6 +65,28 @@ TEST_CASE("Array3D constructors correctly set m_is_sub_array")
     REQUIRE(sub_array.isSubArray());
 }
 
+TEST_CASE("Array3D destructor respects data ownership")
+{
+    std::vector<double> external_data(1, 42.0);
+
+    {
+        Array3D<double> owned(1, 1, 1);
+        owned(0, 0, 0) = 7.0;
+
+        {
+            Array3D<double> copied(owned);
+        }
+
+        REQUIRE(owned(0, 0, 0) == 7.0);
+    }
+
+    {
+        Array3D<double> borrowed(1, 1, 1, external_data);
+    }
+
+    REQUIRE(external_data[0] == 42.0);
+}
+
 TEST_CASE("Array3D constructors preserve memory locations")
 {
     unsigned int n = 3;
