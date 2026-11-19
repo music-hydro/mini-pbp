@@ -17,7 +17,8 @@ TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner throws if solu
     Array3D<double> squared_sound_speed(n, n, n, squared_sound_speed_raw);
 
     REQUIRE_THROWS_WITH(PhysicsBasedPreconditioner(solution, solution_dPd, squared_sound_speed),
-                        Catch::Matchers::ContainsSubstring("Solution should contain exactly "));
+                        Catch::Matchers::ContainsSubstring("Solution should contain exactly " +
+                                                           std::to_string(PhysicsBasedPreconditioner::num_sol_vars())));
 }
 
 TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner throws if solution_dPd is not a valid size")
