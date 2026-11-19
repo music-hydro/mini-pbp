@@ -60,7 +60,8 @@ TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix")
     // Pressure
     Array3DWithGhosts<double> solution_rho_with_ghosts = solution.singleVariableView(PhysicsBasedPreconditioner::n_rho());
     // Squared sound speed
-    Array3D<double> squared_sound_speed(ni, nj, nk);
+    std::vector<double> squared_sound_speed_raw(ni * nj * nk);
+    Array3D<double> squared_sound_speed(ni, nj, nk, squared_sound_speed_raw);
 
     PhysicsBasedPreconditioner pbp(3, 3, true, solution, solution_dPd, squared_sound_speed);
 

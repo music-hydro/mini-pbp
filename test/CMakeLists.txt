@@ -38,7 +38,7 @@ target_link_libraries(mini_pbp_single_rank_unit_tests PRIVATE Catch2::Catch2With
 target_compile_definitions(mini_pbp_single_rank_unit_tests PRIVATE
     TEST_DATA_DIR="${PROJ_TEST_DIR}/data"
 )
-add_test(NAME mini_pbp_single_rank_unit_tests 
+add_test(NAME mini_pbp_single_rank_unit_tests
     COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPI_PREFLAGS}
             $<TARGET_FILE:mini_pbp_single_rank_unit_tests> ${MPIEXEC_POSTFLAGS})
 

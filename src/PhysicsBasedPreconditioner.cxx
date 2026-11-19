@@ -322,18 +322,16 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
                         plan.neighbourCellPosition(i, j, k, axis, Direction::POSITIVE);
 
                     // Get the global var indices for each neighbour
-                    unsigned long long global_negative_neighbour_var_index =
-                        globalVarIndex(negative_neighbour_position[0],
-                                       negative_neighbour_position[1],
-                                       negative_neighbour_position[2],
-                                       n_pressure(),
-                                       global_slab);
-                    unsigned long long global_positive_neighbour_var_index =
-                        globalVarIndex(positive_neighbour_position[0],
-                                       positive_neighbour_position[1],
-                                       positive_neighbour_position[2],
-                                       n_pressure(),
-                                       global_slab);
+                    unsigned long long global_negative_neighbour_var_index = globalVarIndex(negative_neighbour_position[0],
+                                                                                            negative_neighbour_position[1],
+                                                                                            negative_neighbour_position[2],
+                                                                                            n_pressure(),
+                                                                                            global_slab);
+                    unsigned long long global_positive_neighbour_var_index = globalVarIndex(positive_neighbour_position[0],
+                                                                                            positive_neighbour_position[1],
+                                                                                            positive_neighbour_position[2],
+                                                                                            n_pressure(),
+                                                                                            global_slab);
 
                     // Add the global indices to the column index map
                     m_global_pressure_column_indices.push_back(global_negative_neighbour_var_index);

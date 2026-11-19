@@ -8,6 +8,7 @@
 #define GhostExchangePlanTest_H
 
 #include "GhostExchangePlan.h"
+
 #include "DirectionalArray.h"
 #include "MpiTest.cxx"
 #include <mpi.h>
@@ -32,9 +33,10 @@ class GhostExchangePlanTest : public MpiTest
         GhostExchangePlan plan(global_domain, bcs, neighbours, dims, createCartesianTopology(dims, bcs));
         return plan;
     }
+
     static GhostExchangePlan arbitraryPlan()
     {
-        Slab global_domain({0,0,0}, {3,3,3});
+        Slab global_domain({0, 0, 0}, {3, 3, 3});
         return arbitraryPlan(global_domain);
     }
 
