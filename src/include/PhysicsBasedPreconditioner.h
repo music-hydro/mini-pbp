@@ -16,12 +16,18 @@ class PhysicsBasedPreconditioner
     /**
      * @class Constructor
      *
+     * @param[in] ndim - The number of dimensions (2 or 3).
+     * @param[in] nmom - The number of velocity components (2 or 3, at least ndim).
+     * @param[in] mhd_enabled - Whether the magnetic field components are present.
      * @param[in] solution - The solution containing 3 packed variables (rho, then pressure and then energy)
      * @param[in] solution_dPd - The solution gradients containing 2 packed variables (dPd_rho and then dPd_energy)
      * @param[in] squared_sound_speed - 3D view of the squared sound speed within each each cell.
      * @param[in] prec_nvar - The number of variables to precondition (1: just pressure, 2: pressure and energy)
      */
-    PhysicsBasedPreconditioner(PackedVariablesWithGhosts& solution,
+    PhysicsBasedPreconditioner(const unsigned int ndim,
+                               const unsigned int nmom,
+                               const bool mhd_enabled,
+                               PackedVariablesWithGhosts& solution,
                                PackedVariables& solution_dPd,
                                Array3D<double>& squared_sound_speed,
                                const unsigned int prec_nvar = 1);
@@ -83,9 +89,6 @@ class PhysicsBasedPreconditioner
      *          loop runs over the slab of the primitive delta it writes. The face averages read rho and delta rho one cell
      *          beyond the rank, so both are exchanged on `plan`; this is collective over the neighbours in the plan.
      *
-     * @param[in] ndim - The number of dimensions (2 or 3).
-     * @param[in] nmom - The number of velocity components (2 or 3, at least ndim).
-     * @param[in] mhd_enabled - Whether the magnetic field components are present.
      * @param[in] plan - The ghost exchange plan of the cells of this rank (MUSIC `rho_plans`).
      * @param[in] active_scalars - Packed solution active scalars phi on the cells.
      * @param[in] delta_conserved - Packed conserved residual containing delta rho, delta (rho e) and delta (rho v) components.
@@ -95,10 +98,7 @@ class PhysicsBasedPreconditioner
      * @param[out] delta_primitive_scalars - Packed delta phi for each active scalar.
      * @param[out] delta_primitive_magnetic_field - Packed delta B for each component (three when MHD is enabled).
      */
-    void conservedToPrimitive(const unsigned int ndim,
-                              const unsigned int nmom,
-                              const bool mhd_enabled,
-                              GhostExchangePlan<double>& plan,
+    void conservedToPrimitive(GhostExchangePlan<double>& plan,
                               PackedVariables active_scalars,
                               PackedVariables delta_conserved,
                               PackedVariables delta_conserved_rho_scalars,
@@ -193,6 +193,13 @@ class PhysicsBasedPreconditioner
                               const Array3D<double>& dp_rhs_press,
                               Array3D<double>& delta_energy);
 
+
+    /// @brief The number of dimensions (2 or 3).
+    const unsigned int m_ndim;
+    /// @brief The number of velocity components (2 or 3, at least ndim).
+    const unsigned int m_nmom;
+    /// @brief Whether the magnetic field components are present.
+    const bool m_mhd_enabled;
     /// @brief Store of the solution
     PackedVariablesWithGhosts m_solution;
     /// @brief Store of the solution gradients

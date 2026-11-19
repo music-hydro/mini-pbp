@@ -54,6 +54,7 @@ namespace
      */
     struct ConservedToPrimitiveTestSetup
     {
+        int ndim, nmom;
         std::array<int, 3> nc;
         size_t size;
         GhostExchangePlan<double> plan;
@@ -77,9 +78,17 @@ namespace
          * @param cell_counts Number of cells in the i, j, and k directions.
          * @param primitive_initial_value Initial value for all primitive-variable storage.
          */
-        explicit ConservedToPrimitiveTestSetup(const std::array<int, 3>& cell_counts,
+        explicit ConservedToPrimitiveTestSetup(const int ndim,
+                                               const int nmom,
+                                               const bool mhd_enabled,
+                                               const std::array<int, 3>& cell_counts,
                                                const double primitive_initial_value = 0.0) :
-            ConservedToPrimitiveTestSetup(cell_counts, GhostExchangePlanTest::periodicPlan(), primitive_initial_value)
+            ConservedToPrimitiveTestSetup(ndim,
+                                          nmom,
+                                          mhd_enabled,
+                                          cell_counts,
+                                          GhostExchangePlanTest::periodicPlan(),
+                                          primitive_initial_value)
         {
         }
 
@@ -91,7 +100,10 @@ namespace
          * @param primitive_initial_value Initial value for all primitive-variable storage.
          * @param conserved_initial_value Initial value for all conserved-variable storage.
          */
-        ConservedToPrimitiveTestSetup(const std::array<int, 3>& cell_counts,
+        ConservedToPrimitiveTestSetup(const int ndim,
+                                      const int nmom,
+                                      const bool mhd_enabled,
+                                      const std::array<int, 3>& cell_counts,
                                       const GhostExchangePlan<double>& exchange_plan,
                                       const double primitive_initial_value = 0.0,
                                       const double conserved_initial_value = 1.0) :
@@ -109,7 +121,7 @@ namespace
             conserved(conserved_raw, nc[0], nc[1], nc[2]),
             primitive(primitive_raw, nc[0], nc[1], nc[2]),
             no_variables(no_variables_raw, nc[0], nc[1], nc[2]),
-            pbp(solution, solution_dPd, squared_sound_speed)
+            pbp(ndim, nmom, mhd_enabled, solution, solution_dPd, squared_sound_speed)
         {
         }
     };
@@ -156,7 +168,7 @@ namespace
         REQUIRE(fscanf(file, " local_cells %d %d %d", &ni, &nj, &nk) == 3);
         Slab local_slab({0, 0, 0}, {ni, nj, nk});
 
-        ConservedToPrimitiveTestSetup setup({ni, nj, nk}, plan, NaN, 0.0);
+        ConservedToPrimitiveTestSetup setup(ndim, nmom, use_mhd, {ni, nj, nk}, plan, NaN, 0.0);
         std::vector<double> expected_primitive_variables_raw(PhysicsBasedPreconditioner::num_sol_vars() * setup.size);
         PackedVariables expected_primitive_variables(expected_primitive_variables_raw, ni, nj, nk);
         auto& actual_primitive_variables = setup.primitive;
@@ -254,10 +266,7 @@ namespace
         // The magnetic field is a copy and is not in the data; it is covered by the cases above
         Array3D<double> actual_primitive_rho    = actual_primitive_variables.singleVariableView(setup.pbp.n_rho());
         Array3D<double> actual_primitive_energy = actual_primitive_variables.singleVariableView(setup.pbp.n_energy());
-        setup.pbp.conservedToPrimitive(ndim,
-                                       nmom,
-                                       use_mhd,
-                                       plan,
+        setup.pbp.conservedToPrimitive(plan,
                                        setup.no_variables,
                                        setup.conserved,
                                        setup.no_variables,
@@ -294,57 +303,25 @@ namespace
     }
 }  // namespace
 
-TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive rejects invalid input")
+TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive throws if active scalar inputs don't have matching counts")
 {
-    ConservedToPrimitiveTestSetup setup({3, 3, 3});
-
-    SECTION("invalid input ndim and/or nmom")
-    {
-        for (const auto [ndim, nmom, expected_err] : std::array<std::tuple<unsigned int, unsigned int, std::string>, 5> {
-                 {{1, 3, "ndim must be 2 or 3"},
-                  {4, 3, "ndim must be 2 or 3"},
-                  {3, 1, "nmom must be 2 or 3"},
-                  {3, 4, "nmom must be 2 or 3"},
-                  {3, 2, "nmom must be at least ndim"}}
-        })
-        {
-            REQUIRE_THROWS_WITH(setup.pbp.conservedToPrimitive(ndim,
-                                                               nmom,
-                                                               false,
-                                                               setup.plan,
-                                                               setup.no_variables,
-                                                               setup.conserved,
-                                                               setup.no_variables,
-                                                               setup.no_variables,
-                                                               setup.primitive,
-                                                               setup.no_variables,
-                                                               setup.no_variables),
-                                Catch::Matchers::ContainsSubstring(expected_err));
-        }
-    }
-
-    SECTION("active scalar inputs don't have matching counts")
-    {
-        std::vector<double> scalar_raw(setup.size);
-        PackedVariables scalar(scalar_raw, setup.nc[0], setup.nc[1], setup.nc[2]);
-        REQUIRE_THROWS_WITH(setup.pbp.conservedToPrimitive(3,
-                                                           3,
-                                                           false,
-                                                           setup.plan,
-                                                           scalar,
-                                                           setup.conserved,
-                                                           setup.no_variables,
-                                                           setup.no_variables,
-                                                           setup.primitive,
-                                                           setup.no_variables,
-                                                           setup.no_variables),
-                            Catch::Matchers::ContainsSubstring("The number of active scalars differs between the inputs"));
-    }
+    ConservedToPrimitiveTestSetup setup(3, 3, true, {3, 3, 3});
+    std::vector<double> scalar_raw(setup.size);
+    PackedVariables scalar(scalar_raw, setup.nc[0], setup.nc[1], setup.nc[2]);
+    REQUIRE_THROWS_WITH(setup.pbp.conservedToPrimitive(setup.plan,
+                                                       scalar,
+                                                       setup.conserved,
+                                                       setup.no_variables,
+                                                       setup.no_variables,
+                                                       setup.primitive,
+                                                       setup.no_variables,
+                                                       setup.no_variables),
+                        Catch::Matchers::ContainsSubstring("The number of active scalars differs between the inputs"));
 }
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 3D with active scalars and MHD")
 {
-    ConservedToPrimitiveTestSetup setup({3, 4, 5}, NaN);
+    ConservedToPrimitiveTestSetup setup(3, 3, true, {3, 4, 5}, NaN);
 
     // Inputs
     const double input_sol_rho                           = 2.0;
@@ -387,10 +364,7 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 3D with active scala
         magnetic_conserved.singleVariableView(axis).fill(input_magnetic_primitive[axis]);
     }
 
-    setup.pbp.conservedToPrimitive(3,
-                                   3,
-                                   true,
-                                   setup.plan,
+    setup.pbp.conservedToPrimitive(setup.plan,
                                    scalar_solution,
                                    setup.conserved,
                                    scalar_conserved,
@@ -418,7 +392,7 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 3D with active scala
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity components and no MHD leaves the rest untouched")
 {
-    ConservedToPrimitiveTestSetup setup({3, 3, 1}, NaN);
+    ConservedToPrimitiveTestSetup setup(2, 2, false, {3, 3, 1}, NaN);
 
     // Inputs
     const double input_sol_rho                      = 2.0;
@@ -440,10 +414,7 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity
     std::vector<double> magnetic_primitive_raw(3 * setup.size, NaN);
     PackedVariables magnetic_conserved(magnetic_conserved_raw, setup.nc[0], setup.nc[1], setup.nc[2]);
     PackedVariables magnetic_primitive(magnetic_primitive_raw, setup.nc[0], setup.nc[1], setup.nc[2]);
-    setup.pbp.conservedToPrimitive(2,
-                                   2,
-                                   false,
-                                   setup.plan,
+    setup.pbp.conservedToPrimitive(setup.plan,
                                    setup.no_variables,
                                    setup.conserved,
                                    setup.no_variables,
@@ -465,14 +436,11 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive converts each velocity component")
 {
-    ConservedToPrimitiveTestSetup setup({2, 2, 2}, NaN);
+    ConservedToPrimitiveTestSetup setup(3, 3, false, {2, 2, 2}, NaN);
 
     initializeVariables(setup.solution, setup.pbp, 2.0, 0.0, 3.0, {1.0, 2.0, 3.0});
     initializeVariables(setup.conserved, setup.pbp, 2.0, 0.0, 10.0, {8.0, 16.0, 24.0});
-    setup.pbp.conservedToPrimitive(3,
-                                   3,
-                                   false,
-                                   setup.plan,
+    setup.pbp.conservedToPrimitive(setup.plan,
                                    setup.no_variables,
                                    setup.conserved,
                                    setup.no_variables,
