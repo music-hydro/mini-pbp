@@ -43,10 +43,7 @@ namespace
         variables.singleVariableView(SolutionVariableIndices::PRESSURE).fill(pressure);
         variables.singleVariableView(SolutionVariableIndices::ENERGY).fill(energy);
         const std::array<unsigned int, 3> velocity_indices = {
-            SolutionVariableIndices::VELOCITY_I,
-            SolutionVariableIndices::VELOCITY_J,
-            SolutionVariableIndices::VELOCITY_K
-        };
+            SolutionVariableIndices::VELOCITY_I, SolutionVariableIndices::VELOCITY_J, SolutionVariableIndices::VELOCITY_K};
         for (unsigned int axis = 0; axis < velocity_indices.size(); axis++)
         {
             variables.singleVariableView(velocity_indices[axis]).fill(velocities[axis]);
@@ -208,13 +205,11 @@ namespace
 
         // Convenient store of the relevant variable indicies for this problem
         std::vector<unsigned int> relevant_var_indices(5);
-        relevant_var_indices = {
-            SolutionVariableIndices::RHO,
-            SolutionVariableIndices::ENERGY,
-            SolutionVariableIndices::VELOCITY_I,
-            SolutionVariableIndices::VELOCITY_J,
-            SolutionVariableIndices::VELOCITY_K
-        };
+        relevant_var_indices = {SolutionVariableIndices::RHO,
+                                SolutionVariableIndices::ENERGY,
+                                SolutionVariableIndices::VELOCITY_I,
+                                SolutionVariableIndices::VELOCITY_J,
+                                SolutionVariableIndices::VELOCITY_K};
         // Read the conserved values as a flat list of one element per row
         for (unsigned int idx = 0; idx < relevant_var_indices.size(); idx++)
         {
@@ -291,21 +286,26 @@ namespace
             {
                 for (unsigned int i = 0; i < ni; i++)
                 {
-                    REQUIRE_THAT(actual_primitive_rho(i, j, k),
-                                 Catch::Matchers::WithinRel(
-                                    expected_primitive_variables.singleVariableView(SolutionVariableIndices::RHO)(i, j, k), 1e-12));
-                    REQUIRE_THAT(actual_primitive_energy(i, j, k),
-                                 Catch::Matchers::WithinRel(
-                                     expected_primitive_variables.singleVariableView(SolutionVariableIndices::ENERGY)(i, j, k), 1e-12));
+                    REQUIRE_THAT(
+                        actual_primitive_rho(i, j, k),
+                        Catch::Matchers::WithinRel(
+                            expected_primitive_variables.singleVariableView(SolutionVariableIndices::RHO)(i, j, k), 1e-12));
+                    REQUIRE_THAT(
+                        actual_primitive_energy(i, j, k),
+                        Catch::Matchers::WithinRel(
+                            expected_primitive_variables.singleVariableView(SolutionVariableIndices::ENERGY)(i, j, k), 1e-12));
                     REQUIRE_THAT(actual_primitive_variables.singleVariableView(SolutionVariableIndices::VELOCITY_I)(i, j, k),
-                                 Catch::Matchers::WithinRel(
-                                     expected_primitive_variables.singleVariableView(SolutionVariableIndices::VELOCITY_I)(i, j, k), 1e-12));
+                                 Catch::Matchers::WithinRel(expected_primitive_variables.singleVariableView(
+                                                                SolutionVariableIndices::VELOCITY_I)(i, j, k),
+                                                            1e-12));
                     REQUIRE_THAT(actual_primitive_variables.singleVariableView(SolutionVariableIndices::VELOCITY_J)(i, j, k),
-                                 Catch::Matchers::WithinRel(
-                                     expected_primitive_variables.singleVariableView(SolutionVariableIndices::VELOCITY_J)(i, j, k), 1e-12));
+                                 Catch::Matchers::WithinRel(expected_primitive_variables.singleVariableView(
+                                                                SolutionVariableIndices::VELOCITY_J)(i, j, k),
+                                                            1e-12));
                     REQUIRE_THAT(actual_primitive_variables.singleVariableView(SolutionVariableIndices::VELOCITY_K)(i, j, k),
-                                 Catch::Matchers::WithinRel(
-                                     expected_primitive_variables.singleVariableView(SolutionVariableIndices::VELOCITY_K)(i, j, k), 1e-12));
+                                 Catch::Matchers::WithinRel(expected_primitive_variables.singleVariableView(
+                                                                SolutionVariableIndices::VELOCITY_K)(i, j, k),
+                                                            1e-12));
                 }
             }
         }
@@ -470,7 +470,7 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_t
     if (num_ranks != 1) { SKIP("Test requires exactly 1 rank"); }
 
     Slab global_domain({0, 0, 0}, {16, 16, 16});
-    GhostExchangePlan plan  = GhostExchangePlanTest::periodicPlan(global_domain);
+    GhostExchangePlan plan = GhostExchangePlanTest::periodicPlan(global_domain);
     checkAgainstRobertsDynamo(std::string(TEST_DATA_DIR) + "/cons_to_prim_roberts_dynamo_1rank_rank0", plan);
 }
 
@@ -482,20 +482,23 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_t
 
     // MUSIC splits the periodic 16^3 domain 2 x 2 x 1 with rank = 2 * (x block) + (y block), which is the order of a
     // cartesian communicator of dims {2, 2, 1} without reordering
-    Slab global_domain({0 ,0, 0}, {16, 16, 16});
+    Slab global_domain({0, 0, 0}, {16, 16, 16});
     std::array<int, 3> dims    = {2, 2, 1};
     std::array<int, 3> periods = {1, 1, 1};
     MPI_Comm cartesian_communicator;
     MPI_Cart_create(MPI_COMM_WORLD, 3, dims.data(), periods.data(), false, &cartesian_communicator);
-    
+
     int rank;
     MPI_Comm_rank(cartesian_communicator, &rank);
 
     DirectionalArray<int> neighbours;
     for (int axis = 0; axis < 3; axis++)
     {
-        MPI_Cart_shift(
-            cartesian_communicator, axis, 1, &neighbours.get(axis, Direction::NEGATIVE), &neighbours.get(axis, Direction::POSITIVE));
+        MPI_Cart_shift(cartesian_communicator,
+                       axis,
+                       1,
+                       &neighbours.get(axis, Direction::NEGATIVE),
+                       &neighbours.get(axis, Direction::POSITIVE));
     }
     DirectionalArray<BoundaryConditions> global_bcs;
     global_bcs.fill(BoundaryConditions::PERIODIC);
