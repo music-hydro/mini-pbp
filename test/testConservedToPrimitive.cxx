@@ -21,6 +21,13 @@ namespace
 {
     constexpr double NaN = std::numeric_limits<double>::quiet_NaN();
 
+    /**
+     * @brief Get the indices of the three velocity variables.
+     *
+     * @param pbp Preconditioner that provides the variable indices.
+     *
+     * @return Indices for the velocity components in the i, j, and k directions.
+     */
     std::array<unsigned int, 3> velocityIndices(PhysicsBasedPreconditioner& pbp)
     { return {pbp.n_vel_i(), pbp.n_vel_j(), pbp.n_vel_k()}; }
 
@@ -51,6 +58,71 @@ namespace
             variables.singleVariableView(velocity_indices[axis]).fill(velocities[axis]);
         }
     }
+
+    /**
+     * @brief A wrapper to initialise the variables shared by most tests
+     */
+    struct ConservedToPrimitiveTestSetup
+    {
+        std::array<int, 3> nc;
+        size_t size;
+        GhostExchangePlan<double> plan;
+        std::vector<double> solution_raw;
+        std::vector<double> solution_dPd_raw;
+        std::vector<double> squared_sound_speed_raw;
+        std::vector<double> conserved_raw;
+        std::vector<double> primitive_raw;
+        std::vector<double> no_variables_raw;
+        PackedVariablesWithGhosts solution;
+        PackedVariables solution_dPd;
+        Array3D<double> squared_sound_speed;
+        PackedVariables conserved;
+        PackedVariables primitive;
+        PackedVariables no_variables;
+        PhysicsBasedPreconditioner pbp;
+
+        /**
+         * @brief Allocate shared test variables using a periodic ghost-exchange plan.
+         *
+         * @param cell_counts Number of cells in the i, j, and k directions.
+         * @param primitive_initial_value Initial value for all primitive-variable storage.
+         */
+        explicit ConservedToPrimitiveTestSetup(const std::array<int, 3>& cell_counts,
+                                               const double primitive_initial_value = 0.0) :
+            ConservedToPrimitiveTestSetup(cell_counts, GhostExchangePlanTest::periodicPlan(), primitive_initial_value)
+        {
+        }
+
+        /**
+         * @brief Allocate shared test variables using the supplied ghost-exchange plan.
+         *
+         * @param cell_counts Number of cells in the i, j, and k directions.
+         * @param exchange_plan Ghost-exchange plan used by the solution variables.
+         * @param primitive_initial_value Initial value for all primitive-variable storage.
+         * @param conserved_initial_value Initial value for all conserved-variable storage.
+         */
+        ConservedToPrimitiveTestSetup(const std::array<int, 3>& cell_counts,
+                                      const GhostExchangePlan<double>& exchange_plan,
+                                      const double primitive_initial_value = 0.0,
+                                      const double conserved_initial_value = 1.0) :
+            nc(cell_counts),
+            size(static_cast<size_t>(nc[0]) * nc[1] * nc[2]),
+            plan(exchange_plan),
+            solution_raw(PhysicsBasedPreconditioner::num_sol_vars() * size),
+            solution_dPd_raw(PhysicsBasedPreconditioner::num_sol_dPd_vars() * size),
+            squared_sound_speed_raw(size),
+            conserved_raw(PhysicsBasedPreconditioner::num_sol_vars() * size, conserved_initial_value),
+            primitive_raw(PhysicsBasedPreconditioner::num_sol_vars() * size, primitive_initial_value),
+            solution(solution_raw, nc[0], nc[1], nc[2], plan),
+            solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]),
+            squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw),
+            conserved(conserved_raw, nc[0], nc[1], nc[2]),
+            primitive(primitive_raw, nc[0], nc[1], nc[2]),
+            no_variables(no_variables_raw, nc[0], nc[1], nc[2]),
+            pbp(solution, solution_dPd, squared_sound_speed)
+        {
+        }
+    };
 
     /// @brief Every value of `a` equals `expected` (or is NaN when `expected` is NaN, i.e. not written)
     void requireAll(const Array3D<double>& a, const double expected)
@@ -94,27 +166,17 @@ namespace
         REQUIRE(fscanf(file, " local_cells %d %d %d", &ni, &nj, &nk) == 3);
         Slab local_slab({0, 0, 0}, {ni, nj, nk});
 
-        size_t size                       = ni * nj * nk;
-        const unsigned int num_total_vars = PhysicsBasedPreconditioner::num_sol_vars();
-        std::vector<double> solution_raw(num_total_vars * size);
-        std::vector<double> solution_dPd_raw(2 * size);
-        std::vector<double> conserved_variables_raw(num_total_vars * size);
-        std::vector<double> expected_primitive_variables_raw(num_total_vars * size);
-        std::vector<double> actual_primitive_variables_raw(num_total_vars * size);
-        PackedVariablesWithGhosts solution(solution_raw, ni, nj, nk, plan);
-        PackedVariables solution_dPd(solution_dPd_raw, ni, nj, nk);
-        PackedVariables conserved_variables(conserved_variables_raw, ni, nj, nk);
+        ConservedToPrimitiveTestSetup setup({ni, nj, nk}, plan, NaN, 0.0);
+        std::vector<double> expected_primitive_variables_raw(PhysicsBasedPreconditioner::num_sol_vars() * setup.size);
         PackedVariables expected_primitive_variables(expected_primitive_variables_raw, ni, nj, nk);
-        PackedVariables actual_primitive_variables(actual_primitive_variables_raw, ni, nj, nk);
-        Array3D<double> squared_sound_speed(ni, nj, nk);
-        PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
+        auto& actual_primitive_variables = setup.primitive;
 
         // Read the solution values (including the ghosts)
-        Array3DWithGhosts<double> solution_rho    = solution.singleVariableView(pbp.n_rho());
-        Array3DWithGhosts<double> solution_energy = solution.singleVariableView(pbp.n_energy());
-        Array3DWithGhosts<double> solution_vel_i  = solution.singleVariableView(pbp.n_vel_i());
-        Array3DWithGhosts<double> solution_vel_j  = solution.singleVariableView(pbp.n_vel_j());
-        Array3DWithGhosts<double> solution_vel_k  = solution.singleVariableView(pbp.n_vel_k());
+        Array3DWithGhosts<double> solution_rho    = setup.solution.singleVariableView(setup.pbp.n_rho());
+        Array3DWithGhosts<double> solution_energy = setup.solution.singleVariableView(setup.pbp.n_energy());
+        Array3DWithGhosts<double> solution_vel_i  = setup.solution.singleVariableView(setup.pbp.n_vel_i());
+        Array3DWithGhosts<double> solution_vel_j  = setup.solution.singleVariableView(setup.pbp.n_vel_j());
+        Array3DWithGhosts<double> solution_vel_k  = setup.solution.singleVariableView(setup.pbp.n_vel_k());
         for (int k = -1; k < nk + 1; k++)
         {
             for (int j = -1; j < nj + 1; j++)
@@ -140,12 +202,13 @@ namespace
 
         // Convenient store of the relevant variable indicies for this problem
         std::vector<unsigned int> relevant_var_indices(5);
-        relevant_var_indices = {pbp.n_rho(), pbp.n_energy(), pbp.n_vel_i(), pbp.n_vel_j(), pbp.n_vel_k()};
+        relevant_var_indices = {
+            setup.pbp.n_rho(), setup.pbp.n_energy(), setup.pbp.n_vel_i(), setup.pbp.n_vel_j(), setup.pbp.n_vel_k()};
         // Read the conserved values as a flat list of one element per row
         for (unsigned int idx = 0; idx < relevant_var_indices.size(); idx++)
         {
             unsigned int ivar        = relevant_var_indices[idx];
-            Array3D<double> var_view = conserved_variables.singleVariableView(ivar);
+            Array3D<double> var_view = setup.conserved.singleVariableView(ivar);
             for (int k = 0; k < nk; k++)
             {
                 for (int j = 0; j < nj; j++)
@@ -158,7 +221,7 @@ namespace
             }
         }
         // Read the conserved rho halo values in the negative direction as this is the only direction we read from in conservedToPrimitive
-        Array3DWithGhosts<double> delta_rho_g(conserved_variables.singleVariableView(pbp.n_rho()), plan);
+        Array3DWithGhosts<double> delta_rho_g(setup.conserved.singleVariableView(setup.pbp.n_rho()), plan);
         delta_rho_g.exchangeGhosts();  // Populate all halos to start with but negative ones will be overwritten shortly
         for (unsigned int axis = 0; axis < 3; axis++)
         {
@@ -199,21 +262,19 @@ namespace
         fclose(file);
 
         // The magnetic field is a copy and is not in the data; it is covered by the cases above
-        Array3D<double> actual_primitive_rho    = actual_primitive_variables.singleVariableView(pbp.n_rho());
-        Array3D<double> actual_primitive_energy = actual_primitive_variables.singleVariableView(pbp.n_energy());
-        std::vector<double> no_variables_raw;
-        PackedVariables no_variables(no_variables_raw, ni, nj, nk);
-        pbp.conservedToPrimitive(ndim,
-                                 nmom,
-                                 use_mhd,
-                                 plan,
-                                 no_variables,
-                                 conserved_variables,
-                                 no_variables,
-                                 no_variables,
-                                 actual_primitive_variables,
-                                 no_variables,
-                                 no_variables);
+        Array3D<double> actual_primitive_rho    = actual_primitive_variables.singleVariableView(setup.pbp.n_rho());
+        Array3D<double> actual_primitive_energy = actual_primitive_variables.singleVariableView(setup.pbp.n_energy());
+        setup.pbp.conservedToPrimitive(ndim,
+                                       nmom,
+                                       use_mhd,
+                                       plan,
+                                       setup.no_variables,
+                                       setup.conserved,
+                                       setup.no_variables,
+                                       setup.no_variables,
+                                       actual_primitive_variables,
+                                       setup.no_variables,
+                                       setup.no_variables);
 
         // Verify the actual primitive variable views have been populated with the expected values
         for (unsigned int k = 0; k < nk; k++)
@@ -222,21 +283,21 @@ namespace
             {
                 for (unsigned int i = 0; i < ni; i++)
                 {
-                    REQUIRE_THAT(
-                        actual_primitive_rho(i, j, k),
-                        Catch::Matchers::WithinRel(expected_primitive_variables.singleVariableView(pbp.n_rho())(i, j, k), 1e-12));
+                    REQUIRE_THAT(actual_primitive_rho(i, j, k),
+                                 Catch::Matchers::WithinRel(
+                                     expected_primitive_variables.singleVariableView(setup.pbp.n_rho())(i, j, k), 1e-12));
                     REQUIRE_THAT(actual_primitive_energy(i, j, k),
                                  Catch::Matchers::WithinRel(
-                                     expected_primitive_variables.singleVariableView(pbp.n_energy())(i, j, k), 1e-12));
-                    REQUIRE_THAT(actual_primitive_variables.singleVariableView(pbp.n_vel_i())(i, j, k),
+                                     expected_primitive_variables.singleVariableView(setup.pbp.n_energy())(i, j, k), 1e-12));
+                    REQUIRE_THAT(actual_primitive_variables.singleVariableView(setup.pbp.n_vel_i())(i, j, k),
                                  Catch::Matchers::WithinRel(
-                                     expected_primitive_variables.singleVariableView(pbp.n_vel_i())(i, j, k), 1e-12));
-                    REQUIRE_THAT(actual_primitive_variables.singleVariableView(pbp.n_vel_j())(i, j, k),
+                                     expected_primitive_variables.singleVariableView(setup.pbp.n_vel_i())(i, j, k), 1e-12));
+                    REQUIRE_THAT(actual_primitive_variables.singleVariableView(setup.pbp.n_vel_j())(i, j, k),
                                  Catch::Matchers::WithinRel(
-                                     expected_primitive_variables.singleVariableView(pbp.n_vel_j())(i, j, k), 1e-12));
-                    REQUIRE_THAT(actual_primitive_variables.singleVariableView(pbp.n_vel_k())(i, j, k),
+                                     expected_primitive_variables.singleVariableView(setup.pbp.n_vel_j())(i, j, k), 1e-12));
+                    REQUIRE_THAT(actual_primitive_variables.singleVariableView(setup.pbp.n_vel_k())(i, j, k),
                                  Catch::Matchers::WithinRel(
-                                     expected_primitive_variables.singleVariableView(pbp.n_vel_k())(i, j, k), 1e-12));
+                                     expected_primitive_variables.singleVariableView(setup.pbp.n_vel_k())(i, j, k), 1e-12));
                 }
             }
         }
@@ -245,23 +306,7 @@ namespace
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive rejects invalid input")
 {
-    const std::array<int, 3> nc     = {3, 3, 3};
-    const size_t size               = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
-    GhostExchangePlan<double> plan  = GhostExchangePlanTest::periodicPlan();
-    const unsigned int num_sol_vars = PhysicsBasedPreconditioner::num_sol_vars();
-    std::vector<double> solution_raw(num_sol_vars * size);
-    std::vector<double> solution_dPd_raw(PhysicsBasedPreconditioner::num_sol_dPd_vars() * size);
-    std::vector<double> squared_sound_speed_raw(size);
-    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
-    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
-    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
-    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
-    std::vector<double> conserved_raw(num_sol_vars * size);
-    std::vector<double> primitive_raw(num_sol_vars * size);
-    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
-    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
-    std::vector<double> no_variables_raw;
-    PackedVariables no_variables(no_variables_raw, nc[0], nc[1], nc[2]);
+    ConservedToPrimitiveTestSetup setup({3, 3, 3});
 
     SECTION("invalid input ndim and/or nmom")
     {
@@ -273,146 +318,155 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive rejects invalid inpu
                   {3, 2, "nmom must be at least ndim"}}
         })
         {
-            REQUIRE_THROWS_WITH(pbp.conservedToPrimitive(ndim,
-                                                         nmom,
-                                                         false,
-                                                         plan,
-                                                         no_variables,
-                                                         conserved,
-                                                         no_variables,
-                                                         no_variables,
-                                                         primitive,
-                                                         no_variables,
-                                                         no_variables),
+            REQUIRE_THROWS_WITH(setup.pbp.conservedToPrimitive(ndim,
+                                                               nmom,
+                                                               false,
+                                                               setup.plan,
+                                                               setup.no_variables,
+                                                               setup.conserved,
+                                                               setup.no_variables,
+                                                               setup.no_variables,
+                                                               setup.primitive,
+                                                               setup.no_variables,
+                                                               setup.no_variables),
                                 Catch::Matchers::ContainsSubstring(expected_err));
         }
     }
 
-    SECTION("active scalar inputs have matching counts")
+    SECTION("active scalar inputs don't have matching counts")
     {
-        std::vector<double> scalar_raw(size);
-        PackedVariables scalar(scalar_raw, nc[0], nc[1], nc[2]);
-        REQUIRE_THROWS_WITH(
-            pbp.conservedToPrimitive(
-                3, 3, false, plan, scalar, conserved, no_variables, no_variables, primitive, no_variables, no_variables),
-            Catch::Matchers::ContainsSubstring("The number of active scalars differs between the inputs"));
+        std::vector<double> scalar_raw(setup.size);
+        PackedVariables scalar(scalar_raw, setup.nc[0], setup.nc[1], setup.nc[2]);
+        REQUIRE_THROWS_WITH(setup.pbp.conservedToPrimitive(3,
+                                                           3,
+                                                           false,
+                                                           setup.plan,
+                                                           scalar,
+                                                           setup.conserved,
+                                                           setup.no_variables,
+                                                           setup.no_variables,
+                                                           setup.primitive,
+                                                           setup.no_variables,
+                                                           setup.no_variables),
+                            Catch::Matchers::ContainsSubstring("The number of active scalars differs between the inputs"));
     }
 }
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 3D with active scalars and MHD")
 {
-    const std::array<int, 3> nc     = {3, 4, 5};
-    const size_t size               = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
-    GhostExchangePlan<double> plan  = GhostExchangePlanTest::periodicPlan();
-    const unsigned int num_sol_vars = PhysicsBasedPreconditioner::num_sol_vars();
-    std::vector<double> solution_raw(num_sol_vars * size);
-    std::vector<double> solution_dPd_raw(PhysicsBasedPreconditioner::num_sol_dPd_vars() * size);
-    std::vector<double> squared_sound_speed_raw(size);
-    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
-    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
-    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
-    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
+    ConservedToPrimitiveTestSetup setup({3, 4, 5}, NaN);
 
-    initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {4.0, 5.0, 6.0});
+    // Inputs
+    const double input_sol_rho                           = 2.0;
+    const double input_conserved_rho                     = 3.0;
+    const double input_sol_energy                        = 3.0;
+    const double input_conserved_energy                  = 10.0;
+    const double input_conserved_scalar                  = 50.0;
+    const std::array<double, 3> input_sol_vel            = {4.0, 5.0, 6.0};
+    const std::array<double, 3> input_conserved_vel      = {20.0, 30.0, 40.0};
+    const std::array<double, 3> input_magnetic_primitive = {1.0, 2.0, 3.0};
 
-    std::vector<double> conserved_raw(num_sol_vars * size, 1.0);
-    std::vector<double> primitive_raw(num_sol_vars * size, NaN);
-    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
-    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
-    initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});
+    // Expected outputs
+    double expected_primitive_rho                           = input_conserved_rho;
+    const double expected_primitive_energy                  = 0.5;
+    const std::array<double, 2> expected_primitive_scalars  = {14.5, 13.0};
+    const std::array<double, 3> expected_primitive_vel      = {4.0, 7.5, 11.0};
+    const std::array<double, 3> expected_magnetic_primitive = input_magnetic_primitive;
 
-    std::vector<double> scalar_solution_raw(2 * size);
-    std::vector<double> scalar_conserved_raw(2 * size);
-    std::vector<double> scalar_primitive_raw(2 * size, NaN);
-    PackedVariables scalar_solution(scalar_solution_raw, nc[0], nc[1], nc[2]);
-    PackedVariables scalar_conserved(scalar_conserved_raw, nc[0], nc[1], nc[2]);
-    PackedVariables scalar_primitive(scalar_primitive_raw, nc[0], nc[1], nc[2]);
+    initializeVariables(setup.solution, setup.pbp, input_sol_rho, 0.0, input_sol_energy, input_sol_vel);
+    initializeVariables(setup.conserved, setup.pbp, input_conserved_rho, 0.0, input_conserved_energy, input_conserved_vel);
+
+    std::vector<double> scalar_solution_raw(2 * setup.size);
+    std::vector<double> scalar_conserved_raw(2 * setup.size);
+    std::vector<double> scalar_primitive_raw(2 * setup.size, NaN);
+    PackedVariables scalar_solution(scalar_solution_raw, setup.nc[0], setup.nc[1], setup.nc[2]);
+    PackedVariables scalar_conserved(scalar_conserved_raw, setup.nc[0], setup.nc[1], setup.nc[2]);
+    PackedVariables scalar_primitive(scalar_primitive_raw, setup.nc[0], setup.nc[1], setup.nc[2]);
     for (unsigned int scalar = 0; scalar < 2; scalar++)
     {
         scalar_solution.singleVariableView(scalar).fill(7.0 + scalar);
-        scalar_conserved.singleVariableView(scalar).fill(50.0);
+        scalar_conserved.singleVariableView(scalar).fill(input_conserved_scalar);
     }
 
-    std::vector<double> magnetic_conserved_raw(3 * size);
-    std::vector<double> magnetic_primitive_raw(3 * size, NaN);
-    PackedVariables magnetic_conserved(magnetic_conserved_raw, nc[0], nc[1], nc[2]);
-    PackedVariables magnetic_primitive(magnetic_primitive_raw, nc[0], nc[1], nc[2]);
+    std::vector<double> magnetic_conserved_raw(3 * setup.size);
+    std::vector<double> magnetic_primitive_raw(3 * setup.size, NaN);
+    PackedVariables magnetic_conserved(magnetic_conserved_raw, setup.nc[0], setup.nc[1], setup.nc[2]);
+    PackedVariables magnetic_primitive(magnetic_primitive_raw, setup.nc[0], setup.nc[1], setup.nc[2]);
     for (unsigned int axis = 0; axis < 3; axis++)
     {
-        magnetic_conserved.singleVariableView(axis).fill(8.0 + axis);
+        magnetic_conserved.singleVariableView(axis).fill(input_magnetic_primitive[axis]);
     }
 
-    pbp.conservedToPrimitive(3,
-                             3,
-                             true,
-                             plan,
-                             scalar_solution,
-                             conserved,
-                             scalar_conserved,
-                             magnetic_conserved,
-                             primitive,
-                             scalar_primitive,
-                             magnetic_primitive);
+    setup.pbp.conservedToPrimitive(3,
+                                   3,
+                                   true,
+                                   setup.plan,
+                                   scalar_solution,
+                                   setup.conserved,
+                                   scalar_conserved,
+                                   magnetic_conserved,
+                                   setup.primitive,
+                                   scalar_primitive,
+                                   magnetic_primitive);
 
-    requireAll(primitive.singleVariableView(pbp.n_rho()), 1.0);
-    requireAll(primitive.singleVariableView(pbp.n_energy()), (10.0 - 3.0) / 2.0);
+    requireAll(setup.primitive.singleVariableView(setup.pbp.n_rho()), expected_primitive_rho);
+    requireAll(setup.primitive.singleVariableView(setup.pbp.n_energy()), expected_primitive_energy);
     for (unsigned int scalar = 0; scalar < 2; scalar++)
     {
-        requireAll(scalar_primitive.singleVariableView(scalar), (50.0 - (7.0 + scalar)) / 2.0);
+        requireAll(scalar_primitive.singleVariableView(scalar), expected_primitive_scalars[scalar]);
     }
-    const std::array<unsigned int, 3> velocity_indices = velocityIndices(pbp);
+
+    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_i()), expected_primitive_vel[0]);
+    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_j()), expected_primitive_vel[1]);
+    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_k()), expected_primitive_vel[2]);
+
     for (unsigned int axis = 0; axis < 3; axis++)
     {
-        requireAll(primitive.singleVariableView(velocity_indices[axis]), (20.0 + 10.0 * axis - (4.0 + axis)) / 2.0);
-        requireAll(magnetic_primitive.singleVariableView(axis), 8.0 + axis);
+        requireAll(magnetic_primitive.singleVariableView(axis), expected_magnetic_primitive[axis]);
     }
 }
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity components and no MHD leaves the rest untouched")
 {
-    const std::array<int, 3> nc     = {3, 3, 1};
-    const size_t size               = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
-    GhostExchangePlan<double> plan  = GhostExchangePlanTest::periodicPlan();
-    const unsigned int num_sol_vars = PhysicsBasedPreconditioner::num_sol_vars();
-    std::vector<double> solution_raw(num_sol_vars * size);
-    std::vector<double> solution_dPd_raw(PhysicsBasedPreconditioner::num_sol_dPd_vars() * size);
-    std::vector<double> squared_sound_speed_raw(size);
-    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
-    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
-    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
-    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
-    initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {4.0, 5.0, 6.0});
+    ConservedToPrimitiveTestSetup setup({3, 3, 1}, NaN);
 
-    std::vector<double> conserved_raw(num_sol_vars * size, 1.0);
-    std::vector<double> primitive_raw(num_sol_vars * size, NaN);
-    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
-    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
-    initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});
+    // Inputs
+    const double input_sol_rho                      = 2.0;
+    const double input_conserved_rho                = 3.0;
+    const double input_sol_energy                   = 3.0;
+    const double input_conserved_energy             = 10.0;
+    const std::array<double, 3> input_sol_vel       = {4.0, 5.0, 6.0};
+    const std::array<double, 3> input_conserved_vel = {20.0, 30.0, 40.0};
 
-    std::vector<double> magnetic_conserved_raw(3 * size);
-    std::vector<double> magnetic_primitive_raw(3 * size, NaN);
-    PackedVariables magnetic_conserved(magnetic_conserved_raw, nc[0], nc[1], nc[2]);
-    PackedVariables magnetic_primitive(magnetic_primitive_raw, nc[0], nc[1], nc[2]);
-    std::vector<double> no_variables_raw;
-    PackedVariables no_variables(no_variables_raw, nc[0], nc[1], nc[2]);
+    // Expected outputs
+    const double expected_primitive_rho                = input_conserved_rho;
+    const double expected_primitive_energy             = 0.5;
+    const std::array<double, 3> expected_primitive_vel = {4.0, 7.5, NaN};
 
-    pbp.conservedToPrimitive(2,
-                             2,
-                             false,
-                             plan,
-                             no_variables,
-                             conserved,
-                             no_variables,
-                             magnetic_conserved,
-                             primitive,
-                             no_variables,
-                             magnetic_primitive);
+    initializeVariables(setup.solution, setup.pbp, input_sol_rho, 0.0, input_sol_energy, input_sol_vel);
+    initializeVariables(setup.conserved, setup.pbp, input_conserved_rho, 0.0, input_conserved_energy, input_conserved_vel);
 
-    requireAll(primitive.singleVariableView(pbp.n_rho()), 1.0);
-    requireAll(primitive.singleVariableView(pbp.n_energy()), (10.0 - 3.0) / 2.0);
-    requireAll(primitive.singleVariableView(pbp.n_vel_i()), (20.0 - 4.0) / 2.0);
-    requireAll(primitive.singleVariableView(pbp.n_vel_j()), (30.0 - 5.0) / 2.0);
-    requireAll(primitive.singleVariableView(pbp.n_vel_k()), NaN);
+    std::vector<double> magnetic_conserved_raw(3 * setup.size);
+    std::vector<double> magnetic_primitive_raw(3 * setup.size, NaN);
+    PackedVariables magnetic_conserved(magnetic_conserved_raw, setup.nc[0], setup.nc[1], setup.nc[2]);
+    PackedVariables magnetic_primitive(magnetic_primitive_raw, setup.nc[0], setup.nc[1], setup.nc[2]);
+    setup.pbp.conservedToPrimitive(2,
+                                   2,
+                                   false,
+                                   setup.plan,
+                                   setup.no_variables,
+                                   setup.conserved,
+                                   setup.no_variables,
+                                   magnetic_conserved,
+                                   setup.primitive,
+                                   setup.no_variables,
+                                   magnetic_primitive);
+
+    requireAll(setup.primitive.singleVariableView(setup.pbp.n_rho()), expected_primitive_rho);
+    requireAll(setup.primitive.singleVariableView(setup.pbp.n_energy()), expected_primitive_energy);
+    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_i()), expected_primitive_vel[0]);
+    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_j()), expected_primitive_vel[1]);
+    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_k()), expected_primitive_vel[2]);
     for (unsigned int axis = 0; axis < 3; axis++)
     {
         requireAll(magnetic_primitive.singleVariableView(axis), NaN);
@@ -421,66 +475,25 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive converts each velocity component")
 {
-    const std::array<int, 3> nc     = {4, 3, 3};
-    const size_t size               = static_cast<size_t>(nc[0]) * nc[1] * nc[2];
-    GhostExchangePlan<double> plan  = GhostExchangePlanTest::periodicPlan();
-    const unsigned int num_sol_vars = PhysicsBasedPreconditioner::num_sol_vars();
-    std::vector<double> solution_raw(num_sol_vars * size);
-    std::vector<double> solution_dPd_raw(PhysicsBasedPreconditioner::num_sol_dPd_vars() * size);
-    std::vector<double> squared_sound_speed_raw(size);
-    PackedVariablesWithGhosts solution(solution_raw, nc[0], nc[1], nc[2], plan);
-    PackedVariables solution_dPd(solution_dPd_raw, nc[0], nc[1], nc[2]);
-    Array3D<double> squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_raw);
-    PhysicsBasedPreconditioner pbp(solution, solution_dPd, squared_sound_speed);
-    Array3DWithGhosts<double> solution_rho = solution.singleVariableView(pbp.n_rho());
-    initializeVariables(solution, pbp, 2.0, 0.0, 3.0, {1.0, 2.0, 3.0});
+    ConservedToPrimitiveTestSetup setup({2, 2, 2}, NaN);
 
-    std::vector<double> conserved_raw(num_sol_vars * size, 1.0);
-    std::vector<double> primitive_raw(num_sol_vars * size, NaN);
-    PackedVariables conserved(conserved_raw, nc[0], nc[1], nc[2]);
-    PackedVariables primitive(primitive_raw, nc[0], nc[1], nc[2]);
-    initializeVariables(conserved, pbp, 1.0, 0.0, 10.0, {20.0, 30.0, 40.0});
-    Array3D<double> conserved_rho = conserved.singleVariableView(pbp.n_rho());
-    for (int k = 0; k < nc[2]; k++)
-    {
-        for (int j = 0; j < nc[1]; j++)
-        {
-            for (int i = 0; i < nc[0]; i++)
-            {
-                solution_rho(i, j, k)  = 2.0 + i + 2.0 * j + 3.0 * k;
-                conserved_rho(i, j, k) = 1.0 + i + 2.0 * j + 3.0 * k;
-            }
-        }
-    }
-    std::vector<double> no_variables_raw;
-    PackedVariables no_variables(no_variables_raw, nc[0], nc[1], nc[2]);
-    pbp.conservedToPrimitive(
-        3, 3, false, plan, no_variables, conserved, no_variables, no_variables, primitive, no_variables, no_variables);
+    initializeVariables(setup.solution, setup.pbp, 2.0, 0.0, 3.0, {1.0, 2.0, 3.0});
+    initializeVariables(setup.conserved, setup.pbp, 2.0, 0.0, 10.0, {8.0, 16.0, 24.0});
+    setup.pbp.conservedToPrimitive(3,
+                                   3,
+                                   false,
+                                   setup.plan,
+                                   setup.no_variables,
+                                   setup.conserved,
+                                   setup.no_variables,
+                                   setup.no_variables,
+                                   setup.primitive,
+                                   setup.no_variables,
+                                   setup.no_variables);
 
-    const std::array<unsigned int, 3> velocity_indices = velocityIndices(pbp);
-    for (unsigned int axis = 0; axis < 3; axis++)
-    {
-        Array3D<double> primitive_velocity = primitive.singleVariableView(velocity_indices[axis]);
-        const int di                       = axis == 0 ? 1 : 0;
-        const int dj                       = axis == 1 ? 1 : 0;
-        const int dk                       = axis == 2 ? 1 : 0;
-        for (int k = 0; k < nc[2]; k++)
-        {
-            for (int j = 0; j < nc[1]; j++)
-            {
-                for (int i = 0; i < nc[0]; i++)
-                {
-                    const int im                = (i - di + nc[0]) % nc[0];
-                    const int jm                = (j - dj + nc[1]) % nc[1];
-                    const int km                = (k - dk + nc[2]) % nc[2];
-                    const double rho_face       = 0.5 * (solution_rho(i, j, k) + solution_rho(im, jm, km));
-                    const double delta_rho_face = 0.5 * (conserved_rho(i, j, k) + conserved_rho(im, jm, km));
-                    const double expected       = (20.0 + 10.0 * axis - (1.0 + axis) * delta_rho_face) / rho_face;
-                    REQUIRE_THAT(primitive_velocity(i, j, k), Catch::Matchers::WithinRel(expected, 1e-14));
-                }
-            }
-        }
-    }
+    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_i()), 3.0);
+    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_j()), 6.0);
+    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_k()), 9.0);
 }
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_to_prim on the Roberts dynamo test on 1 rank")
