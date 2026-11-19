@@ -230,7 +230,7 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(const unsigned int ndim,
                     if (ax < ndim)
                     {
                         rho_f       = 0.5 * (sol_rho(i, j, k) + sol_rho(i - di, j - dj, k - dk));
-                        delta_rho_f = 0.5 * (delta_rho_g(i - di, j - dj, k - dk) + delta_rho_g(i, j, k));
+                        delta_rho_f = 0.5 * (delta_rho_g(i, j, k) + delta_rho_g(i - di, j - dj, k - dk));
                     }
                     else
                     {
@@ -238,8 +238,7 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(const unsigned int ndim,
                         rho_f       = sol_rho(i, j, k);
                         delta_rho_f = cv_rho(i, j, k);
                     }
-                    const double v   = sol_v(i, j, k);
-                    delta_v(i, j, k) = (-v * delta_rho_f + delta_rho_v(i, j, k)) / rho_f;
+                    delta_v(i, j, k) = (-sol_v(i, j, k) * delta_rho_f + delta_rho_v(i, j, k)) / rho_f;
                 }
             }
         }
