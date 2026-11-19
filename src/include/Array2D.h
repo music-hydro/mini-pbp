@@ -44,7 +44,10 @@ class Array2D : public Array3D<T>
      */
     using Array3D<T>::operator ();
 
-    T& operator ()(int idx1, int idx2) const
+    T& operator ()(int idx1, int idx2)
+    { return this->Array3D<T>::operator ()(idx1, idx2, 0); }
+
+    const T& operator ()(int idx1, int idx2) const
     { return this->Array3D<T>::operator ()(idx1, idx2, 0); }
 };
 

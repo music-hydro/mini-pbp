@@ -79,20 +79,36 @@ class Array3DWithGhosts : public Array3D<T>
      *
      * @return Reference to the element at the requested 3D coordinates
      */
-    T& operator ()(int i, int j, int k) const override
+    T& operator ()(int i, int j, int k) override
     {
         std::array<int, 3> indices = {i, j, k};
         for (unsigned int axis = 0; axis < 3; ++axis)
         {
-            Direction direction = Direction::POSITIVE;
-            if (indices[axis] == this->m_slab.start(axis) - 1)
-                direction = Direction::NEGATIVE;
-            else if (indices[axis] == this->m_slab.end(axis))
-                direction = Direction::POSITIVE;
-            else if (indices[axis] < this->m_slab.start(axis) - 1 || indices[axis] > this->m_slab.end(axis))
-                throw std::out_of_range("Requested cell out of slab range for axis " + std::to_string(axis));
-            else
-                continue;
+            Direction direction;
+            if (!determineAxisDirection(indices[axis], axis, direction)) continue;
+
+            Array2D<T>& current_ghost = ghost(axis, direction);
+            switch (axis)
+            {
+                case 0: return current_ghost(j, k);
+                case 1: return current_ghost(i, k);
+                case 2: return current_ghost(i, j);
+            }
+        }
+
+        return this->Array3D<T>::operator ()(i, j, k);
+    }
+
+    /**
+     * @copydoc Array3DWithGhosts::operator()(int, int, int)
+     */
+    const T& operator ()(int i, int j, int k) const override
+    {
+        std::array<int, 3> indices = {i, j, k};
+        for (unsigned int axis = 0; axis < 3; ++axis)
+        {
+            Direction direction;
+            if (!determineAxisDirection(indices[axis], axis, direction)) continue;
 
             const Array2D<T>& current_ghost = ghost(axis, direction);
             switch (axis)
@@ -103,8 +119,7 @@ class Array3DWithGhosts : public Array3D<T>
             }
         }
 
-        const unsigned int offset = (i * this->m_stride_i) + (j * this->m_stride_j) + (k * this->m_stride_k);
-        return this->m_data_origin[offset];
+        return this->Array3D<T>::operator ()(i, j, k);
     }
 
     /**
@@ -115,6 +130,9 @@ class Array3DWithGhosts : public Array3D<T>
      *
      * @returns A copy of the requested ghost plane.
      */
+    Array2D<T>& ghost(const unsigned int& axis, const Direction& direction)
+    { return m_ghosts.get(axis, direction); }
+
     const Array2D<T>& ghost(const unsigned int& axis, const Direction& direction) const
     { return m_ghosts.get(axis, direction); }
 
@@ -126,6 +144,9 @@ class Array3DWithGhosts : public Array3D<T>
      *
      * @returns A copy of the requested boundary plane.
      */
+    Array2D<T>& boundary(const unsigned int& axis, const Direction& direction)
+    { return m_boundaries.get(axis, direction); }
+
     const Array2D<T>& boundary(const unsigned int& axis, const Direction& direction) const
     { return m_boundaries.get(axis, direction); }
 
@@ -214,6 +235,36 @@ class Array3DWithGhosts : public Array3D<T>
 
   private:
     /**
+     * @brief Determine if the given index is at a boundary and return that boundaries direction
+     *
+     * @param[in]  index - The index along the current axis.
+     * @param[in]  axis - The current axis.
+     * @param[out] direction - If index is at a boundary, the direction of that boundary.
+     *
+     * @returns Flag to indicate if the cell at index is at a slab boundary.
+     *
+     * @throws std::out_of_range Thrown if index is out of the slab range
+     */
+    const bool determineAxisDirection(const int& index, const int& axis, Direction& direction) const
+    {
+        direction = Direction::POSITIVE;
+        if (index == this->m_slab.start(axis) - 1)
+        {
+            direction = Direction::NEGATIVE;
+            return true;
+        }
+        else if (index == this->m_slab.end(axis))
+        {
+            direction = Direction::POSITIVE;
+            return true;
+        }
+        else if (index < this->m_slab.start(axis) - 1 || index > this->m_slab.end(axis))
+            throw std::out_of_range("Requested cell out of slab range for axis " + std::to_string(axis));
+
+        return false;
+    }
+
+    /**
      * @brief Update the contiguous boundary planes to be sent via MPI.
      *
      * @details Values from the non-contiguous boundaries stored in the bulk inner
@@ -226,8 +277,8 @@ class Array3DWithGhosts : public Array3D<T>
         int in = this->m_slab.end(0), jn = this->m_slab.end(1), kn = this->m_slab.end(2);
         // Populate the contiguous boundary planes within m_boundaries
         // axis i
-        const Array2D<T>& i_negative_boundary = boundary(0U, Direction::NEGATIVE);
-        const Array2D<T>& i_positive_boundary = boundary(0U, Direction::POSITIVE);
+        Array2D<T>& i_negative_boundary = boundary(0U, Direction::NEGATIVE);
+        Array2D<T>& i_positive_boundary = boundary(0U, Direction::POSITIVE);
         for (int k = k0; k < kn; k++)
         {
             for (int j = j0; j < jn; j++)
@@ -238,8 +289,8 @@ class Array3DWithGhosts : public Array3D<T>
             }
         }
         // axis j
-        const Array2D<T>& j_negative_boundary = boundary(1U, Direction::NEGATIVE);
-        const Array2D<T>& j_positive_boundary = boundary(1U, Direction::POSITIVE);
+        Array2D<T>& j_negative_boundary = boundary(1U, Direction::NEGATIVE);
+        Array2D<T>& j_positive_boundary = boundary(1U, Direction::POSITIVE);
         for (int k = k0; k < kn; k++)
         {
             for (int i = i0; i < in; i++)
@@ -250,8 +301,8 @@ class Array3DWithGhosts : public Array3D<T>
             }
         }
         // axis k
-        const Array2D<T>& k_negative_boundary = boundary(2U, Direction::NEGATIVE);
-        const Array2D<T>& k_positive_boundary = boundary(2U, Direction::POSITIVE);
+        Array2D<T>& k_negative_boundary = boundary(2U, Direction::NEGATIVE);
+        Array2D<T>& k_positive_boundary = boundary(2U, Direction::POSITIVE);
         for (int j = j0; j < jn; j++)
         {
             for (int i = i0; i < in; i++)

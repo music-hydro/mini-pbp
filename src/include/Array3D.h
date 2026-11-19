@@ -146,16 +146,14 @@ class Array3D
      *
      * @return Reference to the element at the requested 3D coordinates
      */
-    virtual T& operator ()(int i, int j, int k) const
-    {
-        std::array<int, 3> indices = {i, j, k};
-        for (int axis = 0; axis < 3; axis++)
-            if (indices[axis] < this->m_slab.start(axis) || indices[axis] >= this->m_slab.end(axis))
-                throw std::out_of_range("Requested cell out of slab range for axis " + std::to_string(axis));
+    virtual const T& operator ()(int i, int j, int k) const
+    { return internalFetch(i, j, k); }
 
-        const unsigned int offset = (i * m_stride_i) + (j * m_stride_j) + (k * m_stride_k);
-        return m_data_origin[offset];
-    }
+    /**
+     * @copydoc Array3D::operator()(int, int, int)
+     */
+    virtual T& operator ()(int i, int j, int k)
+    { return internalFetch(i, j, k); }
 
     /**
      * @brief Getter for the slab this array represents
@@ -192,7 +190,7 @@ class Array3D
      *
      * @param val - Scalar value to fill the array with.
      */
-    void fill(const T& val) const
+    void fill(const T& val)
     {
         Slab slab = cellSlab();
         for (int k = slab.start(2); k < slab.end(2); k++)
@@ -256,6 +254,21 @@ class Array3D
     const Slab m_slab;
     /// @brief A flag to indicate if this is a sub array or a larger array.
     const bool m_is_sub_array;
+
+  private:
+    /**
+     * @copydoc Array3D::operator()(int, int, int)
+     */
+    T& internalFetch(int i, int j, int k) const
+    {
+        std::array<int, 3> indices = {i, j, k};
+        for (int axis = 0; axis < 3; axis++)
+            if (indices[axis] < this->m_slab.start(axis) || indices[axis] >= this->m_slab.end(axis))
+                throw std::out_of_range("Requested cell out of slab range for axis " + std::to_string(axis));
+
+        const unsigned int offset = (i * m_stride_i) + (j * m_stride_j) + (k * m_stride_k);
+        return m_data_origin[offset];
+    }
 };
 
 #endif  // Array3D_H

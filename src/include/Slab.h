@@ -9,6 +9,7 @@
 
 #include <array>
 #include <stdexcept>
+#include <string>
 
 class Slab
 {
