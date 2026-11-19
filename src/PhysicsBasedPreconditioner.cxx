@@ -41,8 +41,8 @@ void PhysicsBasedPreconditioner::setPressureRHS(const Array3D<double>& delta_rho
                                                 Array3D<double>& rhs_pressure,
                                                 Array3D<double>& rhs_energy)
 {
-    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(m_n_dPdrho);
-    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(m_n_dPdenergy);
+    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(n_dPdrho());
+    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(n_dPdenergy());
 
     // Arrays are column major, so loop with i innermost for unit stride access
     Slab rhs_pressure_slab = rhs_pressure.cellSlab();
@@ -77,8 +77,8 @@ void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double>& pre
                                                       const Array3D<double>& dp_rhs_press,
                                                       Array3D<double>& delta_energy)
 {
-    const Array3D<double> solution_pressure = m_solution.singleVariableView(m_n_pressure);
-    const Array3D<double> solution_rho      = m_solution.singleVariableView(m_n_rho);
+    const Array3D<double> solution_pressure = m_solution.singleVariableView(n_pressure());
+    const Array3D<double> solution_rho      = m_solution.singleVariableView(n_rho());
 
     Slab delta_e_slab = delta_energy.cellSlab();
     for (int k = delta_e_slab.start(2); k < delta_e_slab.end(2); k++)
@@ -100,8 +100,8 @@ void PhysicsBasedPreconditioner::reconstructDensityDelta(const Array3D<double>& 
                                                          const Array3D<double>& delta_energy,
                                                          Array3D<double>& delta_rho)
 {
-    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(m_n_dPdrho);
-    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(m_n_dPdenergy);
+    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(n_dPdrho());
+    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(n_dPdenergy());
 
     Slab delta_rho_slab = delta_rho.cellSlab();
     for (int k = delta_rho_slab.start(2); k < delta_rho_slab.end(2); k++)
@@ -146,8 +146,8 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(const unsigned int ndim,
     }
 
     // rho and e from the stored solution, rho with its ghosts
-    Array3DWithGhosts<double> sol_rho = m_solution.singleVariableView(m_n_rho);
-    const Array3D<double> sol_e       = m_solution.singleVariableView(m_n_energy);
+    Array3DWithGhosts<double> sol_rho = m_solution.singleVariableView(n_rho());
+    const Array3D<double> sol_e       = m_solution.singleVariableView(n_energy());
     const Array3D<double>& cv_rho     = delta_conserved.singleVariableView(n_rho());
     sol_rho.requireSameSlab(cv_rho, "solution rho and delta_conserved rho");
 
