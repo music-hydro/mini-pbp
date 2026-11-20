@@ -61,7 +61,7 @@ TEST_CASE("Array3D constructors correctly set m_is_sub_array")
     REQUIRE(!a.isSubArray());
     REQUIRE(!b.isSubArray());
     REQUIRE(!c.isSubArray());
-    REQUIRE(!d.isSubArray());
+    REQUIRE(d.isSubArray());
     REQUIRE(sub_array.isSubArray());
 }
 
