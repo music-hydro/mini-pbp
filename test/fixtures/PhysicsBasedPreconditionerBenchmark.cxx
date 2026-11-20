@@ -74,7 +74,7 @@ class PhysicsBasedPreconditionerBenchmark : protected PhysicsBasedPreconditioner
 
         prec_nvar = 1;
         pbp       = std::make_unique<PhysicsBasedPreconditioner>(
-            ndim, nmom, use_mhd, cell_widths, *solution, *solution_dPd, *squared_sound_speed, prec_nvar);
+            dt, ndim, nmom, use_mhd, cell_widths, *solution, *solution_dPd, *squared_sound_speed, prec_nvar);
     }
 };
 

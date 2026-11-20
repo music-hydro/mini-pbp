@@ -24,6 +24,7 @@ class PhysicsBasedPreconditionerTest
     const int ndim = 3, nmom = 3;
     const bool use_mhd                      = false;
     const std::array<double, 3> cell_widths = {0.0625, 0.0625, 0.0625};  // Taken from roberts dynamo
+    double dt = 4.5228571428571410E-004; // Taken from roberts dynamo
 
     /**
      * @brief Allocation the raw solution vectors with spacial indices `ni`, `nj` and `nk`.

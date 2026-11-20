@@ -122,7 +122,8 @@ namespace
             conserved(conserved_raw, nc[0], nc[1], nc[2]),
             primitive(primitive_raw, nc[0], nc[1], nc[2]),
             no_variables(no_variables_raw, nc[0], nc[1], nc[2]),
-            pbp(ndim, nmom, mhd_enabled, {0.0, 0.0, 0.0}, solution, solution_dPd, squared_sound_speed)
+            // dt shouldn't matter here as it is not used for conservedToPrimitive
+            pbp(1.0, ndim, nmom, mhd_enabled, {0.0, 0.0, 0.0}, solution, solution_dPd, squared_sound_speed)
         {
         }
     };

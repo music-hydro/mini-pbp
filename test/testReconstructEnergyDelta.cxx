@@ -54,7 +54,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
 
     REQUIRE(prec_nvar != 0);
 
-    PhysicsBasedPreconditioner pbp(ndim, nmom, use_mhd, cell_widths, *solution, *solution_dPd, *squared_sound_speed, prec_nvar);
+    PhysicsBasedPreconditioner pbp(dt, ndim, nmom, use_mhd, cell_widths, *solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
     REQUIRE_NOTHROW(
         pbp.reconstructEnergyDelta(preconditioned_delta_pressure, preconditioned_delta_energy, dp_rhs_press, delta_energy));
@@ -139,7 +139,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
     }
 
     int prec_nvar = 2;
-    PhysicsBasedPreconditioner pbp(ndim, nmom, use_mhd, cell_widths, *solution, *solution_dPd, *squared_sound_speed, prec_nvar);
+    PhysicsBasedPreconditioner pbp(dt, ndim, nmom, use_mhd, cell_widths, *solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
     REQUIRE_NOTHROW(
         pbp.reconstructEnergyDelta(preconditioned_delta_pressure, preconditioned_delta_energy, dp_rhs_press, delta_energy));
@@ -176,6 +176,8 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
 
 TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::reconstructEnergyDelta roberts dynamo problem")
 {
+    // Taken from MUSIC
+    const double dt = 1.0917241379310345E-004;
     const int ni   = 32;
     const int nj   = 32;
     const int nk   = 64;
@@ -191,7 +193,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::re
     alloc_solution(ni, nj, nk);
 
     int prec_nvar = 1;
-    PhysicsBasedPreconditioner pbp(ndim, nmom, use_mhd, cell_widths, *solution, *solution_dPd, *squared_sound_speed, prec_nvar);
+    PhysicsBasedPreconditioner pbp(dt, ndim, nmom, use_mhd, cell_widths, *solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
     int n_rho      = pbp.n_rho();
     int n_pressure = pbp.n_pressure();

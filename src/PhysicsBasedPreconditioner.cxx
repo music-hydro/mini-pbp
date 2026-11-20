@@ -6,7 +6,8 @@
 #include <stdexcept>
 #include <string>
 
-PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(const unsigned int ndim,
+PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(const double dt,
+                                                       const unsigned int ndim,
                                                        const unsigned int nmom,
                                                        const bool mhd_enabled,
                                                        const std::array<double, 3> cell_widths,
@@ -14,6 +15,7 @@ PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(const unsigned int ndim,
                                                        PackedVariables& solution_dPd,
                                                        Array3D<double>& squared_sound_speed,
                                                        const unsigned int prec_nvar) :
+    m_dt(dt),
     m_ndim(ndim),
     m_nmom(nmom),
     m_mhd_enabled(mhd_enabled),
