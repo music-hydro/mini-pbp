@@ -112,6 +112,14 @@ class PhysicsBasedPreconditioner
                               PackedVariables delta_primitive_magnetic_field);
 
     /**
+     * @brief Correct velocity components for pressure gradient.
+     *
+     * @param[in,out] delta_pressure - 3D View of the pressure delta with ghosts.
+     * @param[out] delta_velocities - Packed view of velocity deltas to be corrected.
+     */
+    void correctVelocity(Array3DWithGhosts<double>& delta_pressure, PackedVariables delta_velocities);
+
+    /**
      * @brief Getter for the number of packed variables in the solution
      */
     static unsigned int num_sol_vars()

@@ -266,3 +266,49 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(GhostExchangePlan<double>&
         }
     }
 }
+
+void PhysicsBasedPreconditioner::correctVelocity(Array3DWithGhosts<double>& delta_pressure, PackedVariables delta_velocities)
+{
+    // Verify the correct number of velocities have been provided
+    if (delta_velocities.numVariables() != m_ndim)
+        throw std::invalid_argument("Invalid number of velocity components: expected " + std::to_string(m_ndim) + ", found " +
+                                    std::to_string(delta_velocities.numVariables()));
+
+    // Verify we are working over the same slab
+    const Array3DWithGhosts<double> sol_rho = m_solution.singleVariableView(n_rho());
+    delta_pressure.requireSameSlab(sol_rho, "Pressure delta and solution density");
+
+    const DirectionalArray<int>& neighbours = delta_pressure.plan().neighbours();
+
+    delta_pressure.exchangeGhosts();
+
+    for (unsigned int axis = 0; axis < m_ndim; axis++)
+    {
+        Array3D<double> delta_vel = delta_velocities.singleVariableView(axis);
+        const Slab cell_slab      = delta_vel.cellSlab();
+        // Define axis shift to get to -ve neighbour
+        const int di = (axis == 0) ? 1 : 0;
+        const int dj = (axis == 1) ? 1 : 0;
+        const int dk = (axis == 2 && m_ndim == 3) ? 1 : 0;
+
+        // Correct velocity component with pressure gradient along ax: delta_v = delta_v - dt * grad(delta_P) / rho_f
+        for (int k = cell_slab.start(2); k < cell_slab.end(2); k++)
+        {
+            for (int j = cell_slab.start(1); j < cell_slab.end(1); j++)
+            {
+                for (int i = cell_slab.start(0); i < cell_slab.end(0); i++)
+                {
+                    const double pressure_gradient_at_face =
+                        (delta_pressure(i, j, k) - delta_pressure(i - di, j - dj, k - dk)) / m_cell_widths[axis];
+                    const double rho_at_face = 0.5 * (sol_rho(i, j, k) + sol_rho(i - di, j - dj, k - dk));
+                    delta_vel(i, j, k) += -m_dt * pressure_gradient_at_face / rho_at_face;
+                }
+            }
+        }
+
+        // Set the velocity delta to 0 on the negative domain boundary face, where the boundary conditions pin the normal
+        // velocity and so its perturbation. That face is face 0 along ax, if this rank solves it.
+        if (neighbours.get(axis, Direction::NEGATIVE) == MPI_PROC_NULL && cell_slab.start(axis) == 0)
+            delta_vel.fillBoundaryPlane(axis, Direction::NEGATIVE, 0.0);
+    }
+}
