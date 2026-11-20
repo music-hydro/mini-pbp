@@ -7,6 +7,7 @@
 #ifndef Array3D_H
 #define Array3D_H
 
+#include "DirectionalArray.h"
 #include "Slab.h"
 #include <memory>
 #include <stdexcept>
@@ -205,6 +206,25 @@ class Array3D
                 }
             }
         }
+    }
+
+    /**
+     * @brief Fill the boundary of a single axis in a given direction with one value
+     *
+     * @param[in] axis - The axis whose boundary should be set.
+     * @param[in] direction - The direction along the axis to be set.
+     * @param[in] value - The value to fill the boundary plane with.
+     */
+    void fillBoundaryPlane(const int axis, const Direction direction, const double value)
+    {
+        std::array<int, 3> start = m_slab.start();
+        std::array<int, 3> end   = m_slab.end();
+        if (direction == Direction::NEGATIVE) end[axis] = 1;
+        if (direction == Direction::POSITIVE) start[axis] = end[axis] - 1;
+        for (int k = start[2]; k < end[2]; k++)
+            for (int j = start[1]; j < end[1]; j++)
+                for (int i = start[0]; i < end[0]; i++)
+                    this->operator ()(i, j, k) = value;
     }
 
     /**

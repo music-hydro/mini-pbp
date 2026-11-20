@@ -1,4 +1,5 @@
 #include "Array3D.h"
+#include "fixtures/Array3DTest.cxx"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
@@ -214,4 +215,49 @@ TEST_CASE("Array3D::operator()(i,j,k) throws for out of range")
     REQUIRE_THROWS_WITH(a(100, 3, 3), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 0"));
     REQUIRE_THROWS_WITH(a(3, 45, 3), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 1"));
     REQUIRE_THROWS_WITH(a(3, 3, 22), Catch::Matchers::ContainsSubstring("Requested cell out of slab range for axis 2"));
+}
+
+TEST_CASE("Array3D::fillBoundaryPlane correctly fills boundary planes")
+{
+    // Define the problem
+    unsigned int n = 10;
+    size_t size    = n * n * n;
+
+    // Allocate a 1D array equal to the size of a 3D array
+    std::vector<double> input_1d(size);
+
+    Array3D<double> array_3d(n, n, n, input_1d);
+    array_3d.fill(100.0);
+    Array3DTest::requireAll(array_3d, 100.0);
+
+    for (unsigned int axis = 0; axis < 3; axis++)
+    {
+        array_3d.fillBoundaryPlane(axis, Direction::NEGATIVE, axis * 10.0 + (double)Direction::NEGATIVE);
+        array_3d.fillBoundaryPlane(axis, Direction::POSITIVE, axis * 10.0 + (double)Direction::POSITIVE);
+
+        for (int idx2 = 0; idx2 < n; idx2++)
+        {
+            for (int idx1 = 0; idx1 < n; idx1++)
+            {
+                if (axis == 0)
+                {
+                    // axis i
+                    REQUIRE(array_3d(0, idx1, idx2) == 0.0);
+                    REQUIRE(array_3d(n - 1, idx1, idx2) == 1.0);
+                }
+                else if (axis == 1)
+                {
+                    // axis j
+                    REQUIRE(array_3d(idx1, 0, idx2) == 10.0);
+                    REQUIRE(array_3d(idx1, n - 1, idx2) == 11.0);
+                }
+                else
+                {
+                    // axis k
+                    REQUIRE(array_3d(idx1, idx2, 0) == 20.0);
+                    REQUIRE(array_3d(idx1, idx2, n - 1) == 21.0);
+                }
+            }
+        }
+    }
 }
