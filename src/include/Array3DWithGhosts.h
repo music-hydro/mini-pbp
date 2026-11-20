@@ -212,6 +212,12 @@ class Array3DWithGhosts : public Array3D<T>
         }
     }
 
+    /**
+     * @brief Get the ghost exchange plan for this array
+     */
+    const GhostExchangePlan<double>& plan() const
+    { return m_plan; }
+
   private:
     /**
      * @brief Update the contiguous boundary planes to be sent via MPI.
