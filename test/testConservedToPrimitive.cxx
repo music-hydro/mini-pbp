@@ -1,6 +1,7 @@
 #include "Array3D.h"
 #include "Array3DWithGhosts.h"
 #include "DirectionalArray.h"
+#include "fixtures/Array3DTest.cxx"
 #include "fixtures/GhostExchangePlanTest.cxx"
 #include "GhostExchangePlan.h"
 #include "PackedVariables.h"
@@ -125,26 +126,6 @@ namespace
         {
         }
     };
-
-    /// @brief Every value of `a` equals `expected` (or is NaN when `expected` is NaN, i.e. not written)
-    void requireAll(const Array3D<double>& a, const double expected)
-    {
-        const Slab s = a.cellSlab();
-        for (int k = s.start(2); k < s.end(2); k++)
-        {
-            for (int j = s.start(1); j < s.end(1); j++)
-            {
-                for (int i = s.start(0); i < s.end(0); i++)
-                {
-                    if (std::isnan(expected)) { REQUIRE(std::isnan(a(i, j, k))); }
-                    else
-                    {
-                        REQUIRE_THAT(a(i, j, k), Catch::Matchers::WithinRel(expected, 1e-14));
-                    }
-                }
-            }
-        }
-    }
 
     /**
      * @brief Run PhysicsBasedPreconditioner::conservedToPrimitive on the Roberts Dynamo data of one rank and compare to expected results
@@ -373,20 +354,20 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 3D with active scala
                                    scalar_primitive,
                                    magnetic_primitive);
 
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_rho()), expected_primitive_rho);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_energy()), expected_primitive_energy);
+    Array3DTest::requireAll(setup.primitive.singleVariableView(setup.pbp.n_rho()), expected_primitive_rho);
+    Array3DTest::requireAll(setup.primitive.singleVariableView(setup.pbp.n_energy()), expected_primitive_energy);
     for (unsigned int scalar = 0; scalar < 2; scalar++)
     {
-        requireAll(scalar_primitive.singleVariableView(scalar), expected_primitive_scalars[scalar]);
+        Array3DTest::requireAll(scalar_primitive.singleVariableView(scalar), expected_primitive_scalars[scalar]);
     }
 
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_i()), expected_primitive_vel[0]);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_j()), expected_primitive_vel[1]);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_k()), expected_primitive_vel[2]);
+    Array3DTest::requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_i()), expected_primitive_vel[0]);
+    Array3DTest::requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_j()), expected_primitive_vel[1]);
+    Array3DTest::requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_k()), expected_primitive_vel[2]);
 
     for (unsigned int axis = 0; axis < 3; axis++)
     {
-        requireAll(magnetic_primitive.singleVariableView(axis), expected_magnetic_primitive[axis]);
+        Array3DTest::requireAll(magnetic_primitive.singleVariableView(axis), expected_magnetic_primitive[axis]);
     }
 }
 
@@ -423,14 +404,14 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive 2D with two velocity
                                    setup.no_variables,
                                    magnetic_primitive);
 
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_rho()), expected_primitive_rho);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_energy()), expected_primitive_energy);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_i()), expected_primitive_vel[0]);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_j()), expected_primitive_vel[1]);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_k()), expected_primitive_vel[2]);
+    Array3DTest::requireAll(setup.primitive.singleVariableView(setup.pbp.n_rho()), expected_primitive_rho);
+    Array3DTest::requireAll(setup.primitive.singleVariableView(setup.pbp.n_energy()), expected_primitive_energy);
+    Array3DTest::requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_i()), expected_primitive_vel[0]);
+    Array3DTest::requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_j()), expected_primitive_vel[1]);
+    Array3DTest::requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_k()), expected_primitive_vel[2]);
     for (unsigned int axis = 0; axis < 3; axis++)
     {
-        requireAll(magnetic_primitive.singleVariableView(axis), NaN);
+        Array3DTest::requireAll(magnetic_primitive.singleVariableView(axis), NaN);
     }
 }
 
@@ -449,9 +430,9 @@ TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive converts each veloci
                                    setup.no_variables,
                                    setup.no_variables);
 
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_i()), 3.0);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_j()), 6.0);
-    requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_k()), 9.0);
+    Array3DTest::requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_i()), 3.0);
+    Array3DTest::requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_j()), 6.0);
+    Array3DTest::requireAll(setup.primitive.singleVariableView(setup.pbp.n_vel_k()), 9.0);
 }
 
 TEST_CASE("PhysicsBasedPreconditioner::conservedToPrimitive matches MUSIC cons_to_prim on the Roberts dynamo test on 1 rank")
