@@ -19,6 +19,7 @@ class PhysicsBasedPreconditioner
      * @param[in] ndim - The number of dimensions (2 or 3).
      * @param[in] nmom - The number of velocity components (2 or 3, at least ndim).
      * @param[in] mhd_enabled - Whether the magnetic field components are present.
+     * @param[in] cell_widths - The width of a single cell along each axis.
      * @param[in] solution - The solution containing 3 packed variables (rho, then pressure and then energy)
      * @param[in] solution_dPd - The solution gradients containing 2 packed variables (dPd_rho and then dPd_energy)
      * @param[in] squared_sound_speed - 3D view of the squared sound speed within each each cell.
@@ -27,6 +28,7 @@ class PhysicsBasedPreconditioner
     PhysicsBasedPreconditioner(const unsigned int ndim,
                                const unsigned int nmom,
                                const bool mhd_enabled,
+                               const std::array<double, 3> cell_widths,
                                PackedVariablesWithGhosts& solution,
                                PackedVariables& solution_dPd,
                                Array3D<double>& squared_sound_speed,
@@ -200,6 +202,8 @@ class PhysicsBasedPreconditioner
     const unsigned int m_nmom;
     /// @brief Whether the magnetic field components are present.
     const bool m_mhd_enabled;
+    /// @brief The width of a single cell along each axis.
+    const std::array<double, 3> m_cell_widths;
     /// @brief Store of the solution
     PackedVariablesWithGhosts m_solution;
     /// @brief Store of the solution gradients

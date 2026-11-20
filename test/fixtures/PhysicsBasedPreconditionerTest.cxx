@@ -22,7 +22,8 @@ class PhysicsBasedPreconditionerTest
     std::unique_ptr<PackedVariables> solution_dPd;
     std::unique_ptr<Array3D<double>> squared_sound_speed;
     const int ndim = 3, nmom = 3;
-    const bool use_mhd = false;
+    const bool use_mhd                      = false;
+    const std::array<double, 3> cell_widths = {0.0625, 0.0625, 0.0625};  // Taken from roberts dynamo
 
     /**
      * @brief Allocation the raw solution vectors with spacial indices `ni`, `nj` and `nk`.

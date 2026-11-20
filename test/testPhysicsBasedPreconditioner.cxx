@@ -16,7 +16,7 @@ TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner throws if solu
     PackedVariables solution_dPd(solution_dPd_raw, n, n, n);
     Array3D<double> squared_sound_speed(n, n, n, squared_sound_speed_raw);
 
-    REQUIRE_THROWS_WITH(PhysicsBasedPreconditioner(3, 3, false, solution, solution_dPd, squared_sound_speed),
+    REQUIRE_THROWS_WITH(PhysicsBasedPreconditioner(3, 3, false, {0.0, 0.0, 0.0}, solution, solution_dPd, squared_sound_speed),
                         Catch::Matchers::ContainsSubstring("Solution should contain exactly " +
                                                            std::to_string(PhysicsBasedPreconditioner::num_sol_vars())));
 }
@@ -32,7 +32,7 @@ TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner throws if solu
     PackedVariables solution_dPd(solution_dPd_raw, n, n, n);
     Array3D<double> squared_sound_speed(n, n, n, squared_sound_speed_raw);
 
-    REQUIRE_THROWS_WITH(PhysicsBasedPreconditioner(3, 3, false, solution, solution_dPd, squared_sound_speed),
+    REQUIRE_THROWS_WITH(PhysicsBasedPreconditioner(3, 3, false, {0.0, 0.0, 0.0}, solution, solution_dPd, squared_sound_speed),
                         Catch::Matchers::ContainsSubstring("Solution gradients should contain exactly 2 variables"));
 }
 
@@ -57,7 +57,8 @@ TEST_CASE("PhysicsBasedPreconditioner::PhysicsBasedPreconditioner rejects invali
               {3, 2, "nmom must be at least ndim"}}
     })
     {
-        REQUIRE_THROWS_WITH(PhysicsBasedPreconditioner(ndim, nmom, false, solution, solution_dPd, squared_sound_speed),
-                            Catch::Matchers::ContainsSubstring(expected_err));
+        REQUIRE_THROWS_WITH(
+            PhysicsBasedPreconditioner(ndim, nmom, false, {0.0, 0.0, 0.0}, solution, solution_dPd, squared_sound_speed),
+            Catch::Matchers::ContainsSubstring(expected_err));
     }
 }
