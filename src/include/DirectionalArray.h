@@ -33,7 +33,7 @@ class DirectionalArray : public std::array<T, 6>
     { return (*this)[axis * 2U + direction]; }
 
     /**
-     * @copydoc get(const unsigned int&, const Direction&)
+     * @copydoc DirectionalArray::get(const unsigned int&, const Direction&)
      */
     const T& get(const unsigned int& axis, const Direction& direction) const
     { return (*this)[axis * 2U + direction]; }
