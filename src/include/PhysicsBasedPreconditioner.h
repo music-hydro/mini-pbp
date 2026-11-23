@@ -284,8 +284,8 @@ class PhysicsBasedPreconditioner
     /// @brief The number of packed variables that must be present in the solution gradients
     static const unsigned int m_num_sol_dPd_vars = 2;
     /// Indices for each variable
-    static const unsigned int m_n_rho       = 0;
-    static const unsigned int m_n_pressure  = 1;
+    static const unsigned int m_n_pressure  = 0;
+    static const unsigned int m_n_rho       = 1;
     static const unsigned int m_n_energy    = 2;
     static const unsigned int m_n_vel_i     = 3;
     static const unsigned int m_n_vel_j     = 4;
