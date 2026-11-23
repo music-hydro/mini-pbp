@@ -73,7 +73,8 @@ class PhysicsBasedPreconditionerBenchmark : protected PhysicsBasedPreconditioner
         rhs_energy                    = std::make_unique<Array3D<double>>(ni, nj, nk, *rhs_energy_raw);
 
         prec_nvar = 1;
-        pbp       = std::make_unique<PhysicsBasedPreconditioner>(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);
+        pbp       = std::make_unique<PhysicsBasedPreconditioner>(
+            ndim, nmom, use_mhd, *solution, *solution_dPd, *squared_sound_speed, prec_nvar);
     }
 };
 

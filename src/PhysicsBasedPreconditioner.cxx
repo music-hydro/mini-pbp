@@ -6,15 +6,25 @@
 #include <stdexcept>
 #include <string>
 
-PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(PackedVariablesWithGhosts& solution,
+PhysicsBasedPreconditioner::PhysicsBasedPreconditioner(const unsigned int ndim,
+                                                       const unsigned int nmom,
+                                                       const bool mhd_enabled,
+                                                       PackedVariablesWithGhosts& solution,
                                                        PackedVariables& solution_dPd,
                                                        Array3D<double>& squared_sound_speed,
                                                        const unsigned int prec_nvar) :
+    m_ndim(ndim),
+    m_nmom(nmom),
+    m_mhd_enabled(mhd_enabled),
     m_solution(solution),
     m_solution_dPd(solution_dPd),
     m_squared_sound_speed(squared_sound_speed),
     m_prec_nvar(prec_nvar)
 {
+    if (m_ndim != 2 && m_ndim != 3) { throw std::invalid_argument("ndim must be 2 or 3"); }
+    if (m_nmom != 2 && m_nmom != 3) { throw std::invalid_argument("nmom must be 2 or 3"); }
+    if (m_nmom < m_ndim) { throw std::invalid_argument("nmom must be at least ndim"); }
+
     // Verify the size of solutions
     int num_solution_variables = m_solution.numVariables();
     if (num_solution_variables != m_num_sol_vars)
@@ -120,10 +130,7 @@ void PhysicsBasedPreconditioner::reconstructDensityDelta(const Array3D<double>& 
 void PhysicsBasedPreconditioner::calculateSquaredSoundSpeed()
 { m_squared_sound_speed.fill(2.5266187266788758E007); }
 
-void PhysicsBasedPreconditioner::conservedToPrimitive(const unsigned int ndim,
-                                                      const unsigned int nmom,
-                                                      const bool mhd_enabled,
-                                                      const GhostExchangePlan<double>& plan,
+void PhysicsBasedPreconditioner::conservedToPrimitive(const GhostExchangePlan<double>& plan,
                                                       const PackedVariables active_scalars,
                                                       const PackedVariables delta_conserved,
                                                       const PackedVariables delta_conserved_rho_scalars,
@@ -132,15 +139,13 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(const unsigned int ndim,
                                                       PackedVariables delta_primitive_scalars,
                                                       PackedVariables delta_primitive_magnetic_field)
 {
-    if (ndim != 2 && ndim != 3) { throw std::invalid_argument("ndim must be 2 or 3"); }
-    if (nmom != 2 && nmom != 3) { throw std::invalid_argument("nmom must be 2 or 3"); }
-    if (nmom < ndim) { throw std::invalid_argument("nmom must be at least ndim"); }
     if (active_scalars.numVariables() != delta_conserved_rho_scalars.numVariables() ||
         active_scalars.numVariables() != delta_primitive_scalars.numVariables())
     {
         throw std::invalid_argument("The number of active scalars differs between the inputs");
     }
-    if (mhd_enabled && (delta_conserved_magnetic_field.numVariables() != 3 || delta_primitive_magnetic_field.numVariables() != 3))
+    if (m_mhd_enabled &&
+        (delta_conserved_magnetic_field.numVariables() != 3 || delta_primitive_magnetic_field.numVariables() != 3))
     {
         throw std::invalid_argument("MHD requires three magnetic field components");
     }
@@ -211,7 +216,7 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(const unsigned int ndim,
     // rather than over the cells slab, which may omit a solved boundary face. Averaging delta rho to the first face, or
     // to a solved positive boundary face, reads the NEGATIVE or POSITIVE ghost of rho and delta_rho_g.
     std::array<unsigned int, 3> velocities_indices = {n_vel_i(), n_vel_j(), n_vel_k()};
-    for (unsigned int ax = 0; ax < nmom; ax++)
+    for (unsigned int ax = 0; ax < m_nmom; ax++)
     {
         Array3D<double> delta_v           = delta_primitive.singleVariableView(velocities_indices[ax]);
         const Array3D<double> delta_rho_v = delta_conserved.singleVariableView(velocities_indices[ax]);
@@ -227,7 +232,7 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(const unsigned int ndim,
                 for (int i = s.start(0); i < s.end(0); i++)
                 {
                     double rho_f, delta_rho_f;
-                    if (ax < ndim)
+                    if (ax < m_ndim)
                     {
                         rho_f       = 0.5 * (sol_rho(i, j, k) + sol_rho(i - di, j - dj, k - dk));
                         delta_rho_f = 0.5 * (delta_rho_g(i, j, k) + delta_rho_g(i - di, j - dj, k - dk));
@@ -246,7 +251,7 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(const unsigned int ndim,
 
     // Magnetic field: the conversion is the identity. Copy over each component's own nodes rather than over the cells
     // slab: a component staggered along an axis may own a boundary face that the cells slab does not cover.
-    if (mhd_enabled)
+    if (m_mhd_enabled)
     {
         for (unsigned int ax = 0; ax < 3; ax++)
         {

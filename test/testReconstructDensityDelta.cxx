@@ -34,7 +34,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest,
     Array3D<double> delta_rho(n, n, n, delta_rho_raw);
 
     int prec_nvar = 1;
-    PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);
+    PhysicsBasedPreconditioner pbp(ndim, nmom, use_mhd, *solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
     REQUIRE_NOTHROW(pbp.reconstructDensityDelta(delta_pressure, delta_energy, delta_rho));
 
@@ -85,7 +85,7 @@ TEST_CASE_METHOD(PhysicsBasedPreconditionerTest, "PhysicsBasedPreconditioner::re
     alloc_solution(ni, nj, nk);
 
     int prec_nvar = 1;
-    PhysicsBasedPreconditioner pbp(*solution, *solution_dPd, *squared_sound_speed, prec_nvar);
+    PhysicsBasedPreconditioner pbp(ndim, nmom, use_mhd, *solution, *solution_dPd, *squared_sound_speed, prec_nvar);
 
     int n_dPdenergy = pbp.n_dPdenergy();
     int n_dPdrho    = pbp.n_dPdrho();
