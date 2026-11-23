@@ -25,6 +25,7 @@ class Array3D
      * @param[in] ni - The number of elements in the first direction.
      * @param[in] nj - The number of elements in the second direction.
      * @param[in] nk - The number of elements in the third direction.
+     * @param[in] data_owner - Shared pointer to the 1D data.
      */
     Array3D(const unsigned int ni,
             const unsigned int nj,
