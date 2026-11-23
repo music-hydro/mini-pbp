@@ -18,7 +18,7 @@ class Array3DWithGhostsTest : public MpiTest
   protected:
     std::shared_ptr<std::vector<double>> input_1d;
     std::shared_ptr<Array3D<double>> my_array;
-    std::shared_ptr<GhostExchangePlan<double>> my_plan;
+    std::shared_ptr<GhostExchangePlan> my_plan;
     std::shared_ptr<Array3DWithGhosts<double>> my_array_with_ghosts;
 
     /**
@@ -42,8 +42,7 @@ class Array3DWithGhostsTest : public MpiTest
 
         my_array = std::make_shared<Array3D<double>>(ni, nj, nk, *input_1d);
 
-        my_plan =
-            std::make_shared<GhostExchangePlan<double>>(m_local_boundary_conditions, m_neighbours, m_cartesian_communicator);
+        my_plan = std::make_shared<GhostExchangePlan>(m_local_boundary_conditions, m_neighbours, m_cartesian_communicator);
 
         // Create an Array3DWithGhosts instance wrapping the Array3D
         my_array_with_ghosts = std::make_shared<Array3DWithGhosts<double>>(*my_array, *my_plan);

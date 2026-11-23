@@ -20,7 +20,6 @@ enum BoundaryConditions
     INNER
 };
 
-template<typename T>
 class GhostExchangePlan
 {
     friend class Array3DWithGhostsTest;
@@ -29,7 +28,7 @@ class GhostExchangePlan
     /**
      * @brief Copy constructor
      */
-    GhostExchangePlan(const GhostExchangePlan<T>& parent) :
+    GhostExchangePlan(const GhostExchangePlan& parent) :
         m_boundary_conditions(parent.boundaryConditions()),
         m_neighbours(parent.neighbours()),
         m_communicator(parent.communicator())

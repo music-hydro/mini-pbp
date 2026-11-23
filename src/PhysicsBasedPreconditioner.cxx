@@ -130,7 +130,7 @@ void PhysicsBasedPreconditioner::reconstructDensityDelta(const Array3D<double>& 
 void PhysicsBasedPreconditioner::calculateSquaredSoundSpeed()
 { m_squared_sound_speed.fill(2.5266187266788758E007); }
 
-void PhysicsBasedPreconditioner::conservedToPrimitive(const GhostExchangePlan<double>& plan,
+void PhysicsBasedPreconditioner::conservedToPrimitive(const GhostExchangePlan& plan,
                                                       const PackedVariables active_scalars,
                                                       const PackedVariables delta_conserved,
                                                       const PackedVariables delta_conserved_rho_scalars,
