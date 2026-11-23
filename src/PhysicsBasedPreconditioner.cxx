@@ -51,8 +51,8 @@ void PhysicsBasedPreconditioner::setPressureRHS(const Array3D<double>& delta_rho
                                                 Array3D<double>& rhs_pressure,
                                                 Array3D<double>& rhs_energy)
 {
-    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(n_dPdrho());
-    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(n_dPdenergy());
+    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(SolutionDpdVariableIndices::RHO);
+    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(SolutionDpdVariableIndices::ENERGY);
 
     // Arrays are column major, so loop with i innermost for unit stride access
     Slab rhs_pressure_slab = rhs_pressure.cellSlab();
@@ -87,8 +87,8 @@ void PhysicsBasedPreconditioner::calculateEnergyDelta(const Array3D<double>& pre
                                                       const Array3D<double>& dp_rhs_press,
                                                       Array3D<double>& delta_energy)
 {
-    const Array3D<double> solution_pressure = m_solution.singleVariableView(n_pressure());
-    const Array3D<double> solution_rho      = m_solution.singleVariableView(n_rho());
+    const Array3D<double> solution_pressure = m_solution.singleVariableView(SolutionVariableIndices::PRESSURE);
+    const Array3D<double> solution_rho      = m_solution.singleVariableView(SolutionVariableIndices::RHO);
 
     Slab delta_e_slab = delta_energy.cellSlab();
     for (int k = delta_e_slab.start(2); k < delta_e_slab.end(2); k++)
@@ -110,8 +110,8 @@ void PhysicsBasedPreconditioner::reconstructDensityDelta(const Array3D<double>& 
                                                          const Array3D<double>& delta_energy,
                                                          Array3D<double>& delta_rho)
 {
-    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(n_dPdrho());
-    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(n_dPdenergy());
+    const Array3D<double> solution_dPdrho    = m_solution_dPd.singleVariableView(SolutionDpdVariableIndices::RHO);
+    const Array3D<double> solution_dPdenergy = m_solution_dPd.singleVariableView(SolutionDpdVariableIndices::ENERGY);
 
     Slab delta_rho_slab = delta_rho.cellSlab();
     for (int k = delta_rho_slab.start(2); k < delta_rho_slab.end(2); k++)
@@ -151,9 +151,9 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(GhostExchangePlan<double>&
     }
 
     // rho and e from the stored solution, rho with its ghosts
-    Array3DWithGhosts<double> sol_rho = m_solution.singleVariableView(n_rho());
-    const Array3D<double> sol_e       = m_solution.singleVariableView(n_energy());
-    const Array3D<double>& cv_rho     = delta_conserved.singleVariableView(n_rho());
+    Array3DWithGhosts<double> sol_rho = m_solution.singleVariableView(SolutionVariableIndices::RHO);
+    const Array3D<double> sol_e       = m_solution.singleVariableView(SolutionVariableIndices::ENERGY);
+    const Array3D<double>& cv_rho     = delta_conserved.singleVariableView(SolutionVariableIndices::RHO);
     sol_rho.requireSameSlab(cv_rho, "solution rho and delta_conserved rho");
 
     // rho one cell beyond the rank, read by the face averages
@@ -164,13 +164,13 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(GhostExchangePlan<double>&
     delta_rho_g.exchangeGhosts();
 
     // Density
-    Array3D<double> delta_primitive_rho = delta_primitive.singleVariableView(n_rho());
+    Array3D<double> delta_primitive_rho = delta_primitive.singleVariableView(SolutionVariableIndices::RHO);
     delta_primitive_rho.requireSameSlab(cv_rho, "delta_primitive rho and delta_conserved rho");
     cv_rho.deepCopy(delta_primitive_rho);
 
     // Energy
-    Array3D<double> delta_primitive_e     = delta_primitive.singleVariableView(n_energy());
-    Array3D<double> delta_conserved_rho_e = delta_conserved.singleVariableView(n_energy());
+    Array3D<double> delta_primitive_e     = delta_primitive.singleVariableView(SolutionVariableIndices::ENERGY);
+    Array3D<double> delta_conserved_rho_e = delta_conserved.singleVariableView(SolutionVariableIndices::ENERGY);
     delta_primitive_e.requireSameSlab(cv_rho, "delta_primitive e and delta_conserved rho");
     delta_primitive_e.requireSameSlab(delta_conserved_rho_e, "delta_primitive e and delta_conserved rho e");
     delta_primitive_e.requireSameSlab(sol_e, "delta_primitive e and solution e");
@@ -215,7 +215,11 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(GhostExchangePlan<double>&
     // Velocity: each component lives on the faces along its own axis, so convert it over that component's own nodes
     // rather than over the cells slab, which may omit a solved boundary face. Averaging delta rho to the first face, or
     // to a solved positive boundary face, reads the NEGATIVE or POSITIVE ghost of rho and delta_rho_g.
-    std::array<unsigned int, 3> velocities_indices = {n_vel_i(), n_vel_j(), n_vel_k()};
+    std::array<unsigned int, 3> velocities_indices = {
+        SolutionVariableIndices::VELOCITY_I,
+        SolutionVariableIndices::VELOCITY_J,
+        SolutionVariableIndices::VELOCITY_K,
+    };
     for (unsigned int ax = 0; ax < m_nmom; ax++)
     {
         Array3D<double> delta_v           = delta_primitive.singleVariableView(velocities_indices[ax]);
