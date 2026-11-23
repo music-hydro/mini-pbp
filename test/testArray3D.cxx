@@ -56,16 +56,16 @@ TEST_CASE("Array3D constructors correctly set m_is_sub_array")
     size_t size    = n * n * n;
     std::vector<double> raw(size);
 
-    // Array3D<double> a(n, n, n);
-    Array3D<double> a(n, n, n, &raw[0]);
-    Array3D<double> b(n, n, n, raw);
-    Array3D<double> c(a);
-    Array3D<double> sub_array(a, Slab({1, 4, 3}, {4, 7, 9}));
+    Array3D<double> a(n, n, n, std::make_shared<std::vector<double>>(size));
+    Array3D<double> b(n, n, n, &raw[0]);
+    Array3D<double> c(n, n, n, raw);
+    Array3D<double> d(b);
+    Array3D<double> sub_array(b, Slab({1, 4, 3}, {4, 7, 9}));
 
-    // REQUIRE(!a.isSubArray());
     REQUIRE(!a.isSubArray());
     REQUIRE(!b.isSubArray());
     REQUIRE(!c.isSubArray());
+    REQUIRE(!d.isSubArray());
     REQUIRE(sub_array.isSubArray());
 }
 
