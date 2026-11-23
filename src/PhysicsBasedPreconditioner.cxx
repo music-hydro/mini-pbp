@@ -130,11 +130,11 @@ void PhysicsBasedPreconditioner::reconstructDensityDelta(const Array3D<double>& 
 void PhysicsBasedPreconditioner::calculateSquaredSoundSpeed()
 { m_squared_sound_speed.fill(2.5266187266788758E007); }
 
-void PhysicsBasedPreconditioner::conservedToPrimitive(GhostExchangePlan<double>& plan,
-                                                      PackedVariables active_scalars,
-                                                      PackedVariables delta_conserved,
-                                                      PackedVariables delta_conserved_rho_scalars,
-                                                      PackedVariables delta_conserved_magnetic_field,
+void PhysicsBasedPreconditioner::conservedToPrimitive(const GhostExchangePlan<double>& plan,
+                                                      const PackedVariables active_scalars,
+                                                      const PackedVariables delta_conserved,
+                                                      const PackedVariables delta_conserved_rho_scalars,
+                                                      const PackedVariables delta_conserved_magnetic_field,
                                                       PackedVariables delta_primitive,
                                                       PackedVariables delta_primitive_scalars,
                                                       PackedVariables delta_primitive_magnetic_field)
@@ -169,8 +169,8 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(GhostExchangePlan<double>&
     cv_rho.deepCopy(delta_primitive_rho);
 
     // Energy
-    Array3D<double> delta_primitive_e     = delta_primitive.singleVariableView(n_energy());
-    Array3D<double> delta_conserved_rho_e = delta_conserved.singleVariableView(n_energy());
+    Array3D<double> delta_primitive_e           = delta_primitive.singleVariableView(n_energy());
+    const Array3D<double> delta_conserved_rho_e = delta_conserved.singleVariableView(n_energy());
     delta_primitive_e.requireSameSlab(cv_rho, "delta_primitive e and delta_conserved rho");
     delta_primitive_e.requireSameSlab(delta_conserved_rho_e, "delta_primitive e and delta_conserved rho e");
     delta_primitive_e.requireSameSlab(sol_e, "delta_primitive e and solution e");
