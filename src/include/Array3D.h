@@ -17,23 +17,31 @@ class Array3D
 {
   public:
     /**
-     * @brief Constructs an Array3D from array bounds alone.
+     * @brief Constructs an Array3D with shared data ownership.
      *
-     * @details the wrapped 1D data will be allocated by the constructor.
+     * @details the wrapped 1D data will be freed if, on deletion of this
+     *          instance, it is the last reference.
      *
      * @param[in] ni - The number of elements in the first direction.
      * @param[in] nj - The number of elements in the second direction.
      * @param[in] nk - The number of elements in the third direction.
      */
-    Array3D(const unsigned int ni, const unsigned int nj, const unsigned int nk) :
-        m_data_origin(new T[static_cast<size_t>(ni) * nj * nk]()),
+    Array3D(const unsigned int ni,
+            const unsigned int nj,
+            const unsigned int nk,
+            const std::shared_ptr<std::vector<T>>& data_owner) :
+        m_data_origin(data_owner->data()),
+        m_data_owner(data_owner),
         m_stride_i(1),
         m_stride_j(ni),
         m_stride_k(ni * nj),
         m_slab({0, 0, 0}, {(int)ni, (int)nj, (int)nk}),
-        m_is_sub_array(false),
-        m_owns_data(true)
+        m_is_sub_array(false)
     {
+        if (data_owner->size() != static_cast<size_t>(ni) * nj * nk)
+        {
+            throw std::invalid_argument("Size of 1D data is not equal to (ni * nj * nk)");
+        }
     }
 
     /**
@@ -44,14 +52,14 @@ class Array3D
      * @param[in] nk - The number of elements in the third direction.
      * @param[in] data_1D - Pointer to the input 1D array.
      */
-    Array3D(const unsigned int ni, const unsigned int nj, const unsigned int nk, double* const data_1D) :
+    Array3D(const unsigned int ni, const unsigned int nj, const unsigned int nk, T* const data_1D) :
         m_data_origin(data_1D),
+        m_data_owner(nullptr),
         m_stride_i(1),
         m_stride_j(ni),
         m_stride_k(ni * nj),
         m_slab({0, 0, 0}, {(int)ni, (int)nj, (int)nk}),
-        m_is_sub_array(false),
-        m_owns_data(false)
+        m_is_sub_array(false)
     {
     }
 
@@ -67,15 +75,15 @@ class Array3D
      */
     Array3D(const unsigned int ni, const unsigned int nj, const unsigned int nk, std::vector<T>& data_1D) :
         m_data_origin(&data_1D[0]),
+        m_data_owner(nullptr),
         m_stride_i(1),
         m_stride_j(ni),
         m_stride_k(ni * nj),
         m_slab({0, 0, 0}, {(int)ni, (int)nj, (int)nk}),
-        m_is_sub_array(false),
-        m_owns_data(false)
+        m_is_sub_array(false)
     {
         size_t domain_size = ni * nj * nk;
-        if (data_1D.size() != domain_size) { throw std::invalid_argument("Size of data_1D is not equal to (ni * nj * nk)"); }
+        if (data_1D.size() != domain_size) { throw std::invalid_argument("Size of 1D data is not equal to (ni * nj * nk)"); }
     }
 
     /**
@@ -89,12 +97,12 @@ class Array3D
      */
     Array3D(const Array3D<T>& parent, const Slab& sub_slab) :
         m_data_origin(parent.start()),
+        m_data_owner(parent.m_data_owner),
         m_stride_i(parent.m_stride_i),
         m_stride_j(parent.m_stride_j),
         m_stride_k(parent.m_stride_k),
         m_slab(sub_slab),
-        m_is_sub_array(true),
-        m_owns_data(false)
+        m_is_sub_array(true)
     {
         Slab parent_slab = parent.cellSlab();
         for (int axis = 0; axis < 3; axis++)
@@ -111,23 +119,13 @@ class Array3D
      */
     Array3D(const Array3D<T>& parent) :
         m_data_origin(parent.m_data_origin),
+        m_data_owner(parent.m_data_owner),
         m_stride_i(parent.m_stride_i),
         m_stride_j(parent.m_stride_j),
         m_stride_k(parent.m_stride_k),
         m_slab(parent.m_slab),
-        m_is_sub_array(parent.m_is_sub_array),
-        m_owns_data(false)
+        m_is_sub_array(parent.m_is_sub_array)
     {
-    }
-
-    /**
-     * @brief Destructor
-     *
-     * @details The 1D data will only be freed if it is owned by this instance.
-     */
-    ~Array3D()
-    {
-        if (m_owns_data) delete[] m_data_origin;
     }
 
     /**
@@ -261,6 +259,8 @@ class Array3D
   protected:
     /// @brief Pointer to array memory origin.
     T* const m_data_origin;
+    /// @brief Shared allocation owner. Empty for Array3D views of external data.
+    const std::shared_ptr<std::vector<T>> m_data_owner;
     /// @brief Index stride along the first dimension.
     const unsigned int m_stride_i;
     /// @brief Index stride along the second dimension.
@@ -271,8 +271,6 @@ class Array3D
     const Slab m_slab;
     /// @brief A flag to indicate if this is a sub array or a larger array.
     const bool m_is_sub_array;
-    /// @brief A flag to indicate if this instance owns the underlying data and must deallocate it on destruction.
-    const bool m_owns_data;
 };
 
 #endif  // Array3D_H
