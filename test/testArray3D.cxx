@@ -1,13 +1,17 @@
 #include "Array3D.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
+#include <memory>
 
 TEST_CASE("Array3D constructor errors for incorrectly sized inputs")
 {
     unsigned int n = 3;
     std::vector<double> x(3);
     REQUIRE_THROWS_WITH(Array3D(n, n, n, x),
-                        Catch::Matchers::ContainsSubstring("Size of data_1D is not equal to (ni * nj * nk)"));
+                        Catch::Matchers::ContainsSubstring("Size of 1D data is not equal to (ni * nj * nk)"));
+
+    REQUIRE_THROWS_WITH(Array3D(n, n, n, std::make_shared<std::vector<double>>(3)),
+                        Catch::Matchers::ContainsSubstring("Size of 1D data is not equal to (ni * nj * nk)"));
 }
 
 TEST_CASE("Array3D::subArray errors for an invalid sub slab")
@@ -52,17 +56,43 @@ TEST_CASE("Array3D constructors correctly set m_is_sub_array")
     size_t size    = n * n * n;
     std::vector<double> raw(size);
 
-    Array3D<double> a(n, n, n);
+    Array3D<double> a(n, n, n, std::make_shared<std::vector<double>>(size));
     Array3D<double> b(n, n, n, &raw[0]);
     Array3D<double> c(n, n, n, raw);
-    Array3D<double> d(a);
-    Array3D<double> sub_array(a, Slab({1, 4, 3}, {4, 7, 9}));
+    Array3D<double> d(b);
+    Array3D<double> sub_array(b, Slab({1, 4, 3}, {4, 7, 9}));
 
     REQUIRE(!a.isSubArray());
     REQUIRE(!b.isSubArray());
     REQUIRE(!c.isSubArray());
     REQUIRE(!d.isSubArray());
     REQUIRE(sub_array.isSubArray());
+}
+
+TEST_CASE("Array3D copy remains valid after original is destroyed")
+{
+    int ni = 4, nj = 5, nk = 6;
+    std::shared_ptr<std::vector<double>> data_1d = std::make_shared<std::vector<double>>(ni * nj * nk);
+    Array3D<double>* copy                        = nullptr;
+    Array3D<double>* sub_array                   = nullptr;
+    {
+        Array3D<double> original(ni, nj, nk, data_1d);
+        original(1, 2, 3) = 42.0;
+        copy              = new Array3D<double>(original);
+        sub_array         = new Array3D<double>(original, Slab({1, 1, 1}, {4, 4, 4}));
+
+        REQUIRE((*copy)(1, 2, 3) == 42.0);
+        REQUIRE(&(*copy)(1, 2, 3) == &original(1, 2, 3));
+        REQUIRE((*sub_array)(1, 2, 3) == 42.0);
+        REQUIRE(&(*sub_array)(1, 2, 3) == &original(1, 2, 3));
+    }
+
+    REQUIRE((*copy)(1, 2, 3) == 42.0);
+    REQUIRE((*sub_array)(1, 2, 3) == 42.0);
+    (*copy)(1, 2, 3) = 17.0;
+    REQUIRE((*copy)(1, 2, 3) == 17.0);
+    REQUIRE((*sub_array)(1, 2, 3) == 17.0);
+    delete copy, sub_array;
 }
 
 TEST_CASE("Array3D constructors preserve memory locations")

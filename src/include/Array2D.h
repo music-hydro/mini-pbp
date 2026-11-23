@@ -8,6 +8,7 @@
 #define Array2D_H
 
 #include "Array3D.h"
+#include <memory>
 
 template<typename T>
 class Array2D : public Array3D<T>
@@ -22,7 +23,7 @@ class Array2D : public Array3D<T>
      * @param[in] ax2 - The number of elements in the second direction.
      */
     Array2D(const unsigned int& ax1, const unsigned int& ax2) :
-        Array3D<T>(ax1, ax2, 1)
+        Array3D<T>(ax1, ax2, 1, std::make_shared<std::vector<T>>(static_cast<size_t>(ax1) * ax2))
     {
     }
 
@@ -30,7 +31,7 @@ class Array2D : public Array3D<T>
      * @brief Copy constructor
      */
     Array2D(const Array2D<T>& parent) :
-        Array3D<T>(parent, parent.cellSlab())
+        Array3D<T>(parent)
     {
     }
 
