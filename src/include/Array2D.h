@@ -34,19 +34,22 @@ class Array2D : public Array3D<T>
     {
     }
 
-    /**
-     * @brief access operator to return a reference to the given element.
-     *
-     * @param idx1 - The index in the first dimension.
-     * @param idx2 - The index in the second dimension.
-     *
-     * @return Reference to the element at the requested 2D coordinates
-     */
     using Array3D<T>::operator ();
 
+    /**
+     * @copydoc Array2D::operator()(int, int) const
+     */
     T& operator ()(int idx1, int idx2)
     { return this->Array3D<T>::operator ()(idx1, idx2, 0); }
 
+    /**
+     * @brief Access an element at the requested 2D coordinates.
+     *
+     * @param[in] idx1 The index in the first dimension.
+     * @param[in] idx2 The index in the second dimension.
+     *
+     * @return Reference to the requested element.
+     */
     const T& operator ()(int idx1, int idx2) const
     { return this->Array3D<T>::operator ()(idx1, idx2, 0); }
 };
