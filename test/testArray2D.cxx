@@ -17,12 +17,30 @@ TEST_CASE("Array2D copy constructor preserves memory locations")
     }
 }
 
+TEST_CASE("Array2D copy remains valid after original is destroyed")
+{
+    Array2D<double>* copy = nullptr;
+    {
+        Array2D<double> original(4, 5);
+        original(1, 2) = 42.0;
+        copy           = new Array2D<double>(original);
+
+        REQUIRE((*copy)(1, 2) == 42.0);
+        REQUIRE(&(*copy)(1, 2) == &original(1, 2));
+    }
+
+    REQUIRE((*copy)(1, 2) == 42.0);
+    (*copy)(1, 2) = 17.0;
+    REQUIRE((*copy)(1, 2) == 17.0);
+    delete copy;
+}
+
 TEST_CASE("Array2D(i,j) accesses contiguously")
 {
     const int ni = 30;
     const int nj = 40;
 
-    // Create an Array3D instance wrapping the 1D array
+    // Create an Array2D instance wrapping the 1D array
     Array2D<double> my_array(ni, nj);
 
     // Verify that looping through row-major i,j remains contiguous.
