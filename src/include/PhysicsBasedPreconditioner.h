@@ -16,6 +16,7 @@ class PhysicsBasedPreconditioner
     /**
      * @class Constructor
      *
+     * @param[in] dt - The timestep for this problem.
      * @param[in] ndim - The number of dimensions (2 or 3).
      * @param[in] nmom - The number of velocity components (2 or 3, at least ndim).
      * @param[in] mhd_enabled - Whether the magnetic field components are present.
@@ -24,7 +25,8 @@ class PhysicsBasedPreconditioner
      * @param[in] squared_sound_speed - 3D view of the squared sound speed within each each cell.
      * @param[in] prec_nvar - The number of variables to precondition (1: just pressure, 2: pressure and energy)
      */
-    PhysicsBasedPreconditioner(const unsigned int ndim,
+    PhysicsBasedPreconditioner(const double dt,
+                               const unsigned int ndim,
                                const unsigned int nmom,
                                const bool mhd_enabled,
                                PackedVariablesWithGhosts& solution,
@@ -200,6 +202,8 @@ class PhysicsBasedPreconditioner
     const unsigned int m_nmom;
     /// @brief Whether the magnetic field components are present.
     const bool m_mhd_enabled;
+    /// @brief The timestep for this problem.
+    const double m_dt;
     /// @brief Store of the solution
     PackedVariablesWithGhosts m_solution;
     /// @brief Store of the solution gradients
@@ -222,7 +226,7 @@ class PhysicsBasedPreconditioner
     static const unsigned int m_n_dPdrho    = 0;
     static const unsigned int m_n_dPdenergy = 1;
     // This is a temporary solution. The value has been taken from a run of music and should be calculated instead.
-    double m_dt = 1.0917241379310345E-004; /** timestep */
+    // double m_dt = 1.0917241379310345E-004; /** timestep */
 };
 
 #endif  // PhysicsBasedPreconditioner_H
