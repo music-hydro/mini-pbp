@@ -225,8 +225,6 @@ class PhysicsBasedPreconditioner
     static const unsigned int m_n_vel_k     = 5;
     static const unsigned int m_n_dPdrho    = 0;
     static const unsigned int m_n_dPdenergy = 1;
-    // This is a temporary solution. The value has been taken from a run of music and should be calculated instead.
-    // double m_dt = 1.0917241379310345E-004; /** timestep */
 };
 
 #endif  // PhysicsBasedPreconditioner_H
