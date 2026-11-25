@@ -33,6 +33,6 @@ TEST_CASE("GhostExchangePlan Constructor throws for boundary without a required 
                                   BoundaryConditions::ZERO_VALUE};
     }
 
-    REQUIRE_THROWS_WITH(GhostExchangePlan<double>(global_bcs, neighbours, MPI_COMM_WORLD),
+    REQUIRE_THROWS_WITH(GhostExchangePlan(global_bcs, neighbours, MPI_COMM_WORLD),
                         Catch::Matchers::ContainsSubstring(expected_error_message));
 }

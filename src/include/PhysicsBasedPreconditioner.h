@@ -98,7 +98,7 @@ class PhysicsBasedPreconditioner
      * @param[out] delta_primitive_scalars - Packed delta phi for each active scalar.
      * @param[out] delta_primitive_magnetic_field - Packed delta B for each component (three when MHD is enabled).
      */
-    void conservedToPrimitive(const GhostExchangePlan<double>& plan,
+    void conservedToPrimitive(const GhostExchangePlan& plan,
                               const PackedVariables active_scalars,
                               const PackedVariables delta_conserved,
                               const PackedVariables delta_conserved_rho_scalars,

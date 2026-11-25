@@ -19,14 +19,14 @@ class GhostExchangePlanTest
      *
      * @returns The arbitrary GhostExchangePlan
      */
-    static GhostExchangePlan<double> arbitraryPlan()
+    static GhostExchangePlan arbitraryPlan()
     {
         // The plan shouldn't matter here
         DirectionalArray<BoundaryConditions> bcs;
         bcs.fill(BoundaryConditions::INNER);
         DirectionalArray<int> neighbours;
         neighbours.fill(0);
-        GhostExchangePlan<double> plan(bcs, neighbours, MPI_COMM_WORLD);
+        GhostExchangePlan plan(bcs, neighbours, MPI_COMM_WORLD);
         return plan;
     }
 
@@ -35,13 +35,13 @@ class GhostExchangePlanTest
      *
      * @returns The periodic GhostExchangePlan
      */
-    static GhostExchangePlan<double> periodicPlan()
+    static GhostExchangePlan periodicPlan()
     {
         DirectionalArray<BoundaryConditions> bcs;
         bcs.fill(BoundaryConditions::PERIODIC);
         DirectionalArray<int> neighbours;
         neighbours.fill(0);
-        return GhostExchangePlan<double>(bcs, neighbours, MPI_COMM_SELF);
+        return GhostExchangePlan(bcs, neighbours, MPI_COMM_SELF);
     }
 };
 
