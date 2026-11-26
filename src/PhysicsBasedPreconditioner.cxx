@@ -267,13 +267,11 @@ void PhysicsBasedPreconditioner::conservedToPrimitive(const GhostExchangePlan& p
 }
 
 void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double>& solution_rho,
-                                                        const Array3D<DirectionalArray<double>>& laplacian_coefficients)
+                                                        const Array3D<DirectionalArray<double>>& laplacian_coefficients,
+                                                        const Array3D<double>& squared_sound_speed)
 {
     const GhostExchangePlan& plan = solution_rho.plan();
     solution_rho.exchangeGhosts();
-
-    // Compute squared sound speed
-    calculateSquaredSoundSpeed();
 
     m_global_pressure_column_indices.clear();
     m_global_pressure_row_indices.clear();
@@ -294,7 +292,7 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
 
                 const DirectionalArray<double> pressure_coefficients = pressureCoefficients(
                     i, j, k, solution_rho, laplacian_coefficients(i, j, k), solution_rho.neighbourLinkWeights(i, j, k));
-                const double J_PP = -m_dt * m_squared_sound_speed(i, j, k);
+                const double J_PP = -m_dt * squared_sound_speed(i, j, k);
 
                 double pressure_coefficient_sum = 0.0;
                 for (int axis = 0; axis < 3; axis++)

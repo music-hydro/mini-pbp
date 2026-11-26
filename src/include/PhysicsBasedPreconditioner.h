@@ -79,11 +79,13 @@ class PhysicsBasedPreconditioner
     /**
      * @brief Assembles the pressure matrix ready for preconditioning
      *
-     * @param[in] pressure - The pressure matrix to be assembled.
-     * @param[in] laplacian_coefficients
+     * @param[in] solution_rho - The solution density
+     * @param[in] laplacian_coefficients - The laplacian coefficients.
+     * @param[in] squared_sound_speed - The squared sound speed across the domain.
      */
-    void assemblePressureMatrix(Array3DWithGhosts<double>& pressure,
-                                const Array3D<DirectionalArray<double>>& laplacian_coefficients);
+    void assemblePressureMatrix(Array3DWithGhosts<double>& solution_rho,
+                                const Array3D<DirectionalArray<double>>& laplacian_coefficients,
+                                const Array3D<double>& squared_sound_speed);
 
     /**
      * @brief Convert the residual from conserved to primitive variables, the first step of the preconditioner (MUSIC
