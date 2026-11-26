@@ -20,6 +20,33 @@ the repository under [test/data](./test/data). These data file represent
 physics based inputs and expected outputs that have been translated over from
 the original MUSIC code.
 
+### Code coverage
+
+To generate a test coverage report. First build and runt he tests with the
+following command:
+
+```sh
+cmake -B build-coverage \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_CXX_FLAGS="--coverage -O0 -g"
+
+cmake --build build-coverage --target mini_pbp_unit_tests
+ctest --test-dir build-coverage --output-on-failure
+```
+
+Then, generate the coverage report:
+
+```sh
+gcovr --root "$PWD" \
+  --filter ".*src.*" \
+  --gcov-executable /opt/homebrew/bin/gcov-16 \
+  --html-details build-coverage/coverage.html \
+  --print-summary build-coverage
+```
+
+> You may need to update the `--gcov-executable` path to match your machine.
+> You will also need to [install gcovr](https://gcovr.com/en/stable/).
+
 ## Code formatting
 
 We have set rules for formatting this project. These rules are enforced through
