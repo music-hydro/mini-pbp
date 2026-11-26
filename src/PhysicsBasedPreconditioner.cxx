@@ -291,7 +291,7 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
             {
 
                 const DirectionalArray<double> pressure_coefficients = pressureCoefficients(
-                    i, j, k, solution_rho, laplacian_coefficients(i, j, k), solution_rho.neighbourLinkWeights(i, j, k));
+                    i, j, k, solution_rho, laplacian_coefficients(i, j, k), solution_rho.neighbourLinkWeights(i, j, k, m_ndim));
                 const double J_PP = -m_dt * squared_sound_speed(i, j, k);
 
                 double pressure_coefficient_sum = 0.0;
@@ -311,7 +311,7 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
                 m_pressure_matrix_for_solver.push_back(1.0 / m_dt - J_PP * pressure_coefficient_sum);
 
                 // Add neighbour cell values to the pressure matrix
-                for (int axis = 0; axis < 3; ++axis)
+                for (int axis = 0; axis < m_ndim; ++axis)
                 {
                     // Determine the neighbour cell positions
                     std::array<int, 3> negative_neighbour_position =
@@ -356,15 +356,17 @@ DirectionalArray<double> PhysicsBasedPreconditioner::pressureCoefficients(const 
     DirectionalArray<double> coefficients = laplacian_coefficients;
     double rho                            = solution_rho(i, j, k);
     DirectionalArray<double> rho_face;
+    rho_face.fill(rho);
 
     rho_face.get(0, Direction::NEGATIVE) = (solution_rho(i, j, k) + solution_rho(i - 1, j, k)) * 0.5;
     rho_face.get(0, Direction::POSITIVE) = (solution_rho(i + 1, j, k) + solution_rho(i, j, k)) * 0.5;
     rho_face.get(1, Direction::NEGATIVE) = (solution_rho(i, j, k) + solution_rho(i, j - 1, k)) * 0.5;
     rho_face.get(1, Direction::POSITIVE) = (solution_rho(i, j + 1, k) + solution_rho(i, j, k)) * 0.5;
-    // This is only really needed if we are working in 3D but so far we
-    // have assumed 3D and handled 2D by setting the length of k to 1.
-    rho_face.get(2, Direction::NEGATIVE) = (solution_rho(i, j, k) + solution_rho(i, j, k - 1)) * 0.5;
-    rho_face.get(2, Direction::POSITIVE) = (solution_rho(i, j, k + 1) + solution_rho(i, j, k)) * 0.5;
+    if (m_ndim == 3)
+    {
+        rho_face.get(2, Direction::NEGATIVE) = (solution_rho(i, j, k) + solution_rho(i, j, k - 1)) * 0.5;
+        rho_face.get(2, Direction::POSITIVE) = (solution_rho(i, j, k + 1) + solution_rho(i, j, k)) * 0.5;
+    }
 
     for (int signed_axis = 0; signed_axis < 6; ++signed_axis)
         coefficients[signed_axis] *= (rho / rho_face[signed_axis]) * weights[signed_axis];

@@ -2,6 +2,7 @@
 #include "Array3DWithGhosts.h"
 #include "DirectionalArray.h"
 #include "fixtures/MpiTest.cxx"
+#include "fixtures/PhysicsBasedPreconditionerTest.cxx"
 #include "GhostExchangePlan.h"
 #include "PhysicsBasedPreconditioner.h"
 #include <array>
@@ -10,68 +11,138 @@
 #include <memory>
 #include <mpi.h>
 
-TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix")
+struct AssemblePressureMatrixTestSetup
+{
+    DirectionalArray<BoundaryConditions> global_bcs;
+    std::array<int, 3> dimensions;
+    MPI_Comm communicator;
+    GhostExchangePlan plan;
+    std::array<unsigned int, 3> nc;
+    size_t size;
+    std::vector<DirectionalArray<double>> laplacian_coefficients_data;
+    Array3D<DirectionalArray<double>> laplacian_coefficients;
+    std::vector<double> solution_data;
+    std::vector<double> solution_dPd_data;
+    PackedVariablesWithGhosts solution;
+    PackedVariables solution_dPd;
+    std::vector<double> squared_sound_speed_data;
+    Array3D<double> squared_sound_speed;
+    PhysicsBasedPreconditioner pbp;
+
+    AssemblePressureMatrixTestSetup(const double dt,
+                                    const int ndim,
+                                    const int nmom,
+                                    const bool mhd_enabled,
+                                    const DirectionalArray<BoundaryConditions> global_bcs,
+                                    const std::array<int, 3>& cell_counts,
+                                    const double laplacian_coefficients_value,
+                                    const double sol_rho_value,
+                                    const double squared_sound_speed_value) :
+        dimensions(MpiTest::createCartesianDimensions()),
+        communicator(MpiTest::createCartesianTopology(dimensions, global_bcs)),
+        plan(Slab({0, 0, 0}, cell_counts), global_bcs, MpiTest::neighbours(communicator), dimensions, communicator),
+        nc({plan.localDomain().extent(0), plan.localDomain().extent(1), plan.localDomain().extent(2)}),
+        size(plan.localDomain().volume()),
+        laplacian_coefficients_data(size),
+        laplacian_coefficients(nc[0], nc[1], nc[2], laplacian_coefficients_data),
+        solution_data(PhysicsBasedPreconditioner::num_sol_vars() * size),
+        solution_dPd_data(PhysicsBasedPreconditioner::num_sol_dPd_vars() * size),
+        squared_sound_speed_data(size),
+        solution(solution_data, nc[0], nc[1], nc[2], plan),
+        solution_dPd(solution_dPd_data, nc[0], nc[1], nc[2]),
+        squared_sound_speed(nc[0], nc[1], nc[2], squared_sound_speed_data),
+        pbp(dt, ndim, nmom, mhd_enabled, solution, solution_dPd, squared_sound_speed)
+    {
+        for (int cell_idx = 0; cell_idx < size; cell_idx++)
+        {
+            DirectionalArray<double> laplacian_coefficient;
+            laplacian_coefficient.fill(laplacian_coefficients_value);
+            laplacian_coefficients_data[cell_idx] = laplacian_coefficient;
+        }
+        solution.singleVariableView(PhysicsBasedPreconditioner::n_rho()).fill(sol_rho_value);
+        squared_sound_speed.fill(squared_sound_speed_value);
+    }
+
+    void checkRow(int local_row, int expected_row, std::vector<int> expected_columns, std::vector<double> expected_values)
+    {
+        REQUIRE(pbp.globalPressureRowIndices().at(local_row) == expected_row);
+        size_t begin = pbp.globalPressureRowOffsets().at(local_row);
+        size_t end   = pbp.globalPressureRowOffsets().at(local_row + 1);
+        REQUIRE(end - begin == expected_columns.size());
+        for (size_t n = 0; n < expected_columns.size(); n++)
+        {
+            CAPTURE(begin, n);
+            CHECK(pbp.globalPressureColumnIndices()[begin + n] == expected_columns[n]);
+            CHECK(pbp.pressureMatrixForSolver()[begin + n] == expected_values[n]);
+        }
+    }
+};
+
+TEST_CASE("PhysicsBasedPreconditioner::assemblePressureMatrix 2D")
+{
+    const double dt         = 0.5;
+    const unsigned int ndim = 2;
+    const bool mhd_enabled  = true;
+    int ni = 3, nj = 3, nk = 1;
+
+    // Periodic in x and y; the k faces are never read in 2D
+    DirectionalArray<BoundaryConditions> global_bcs;
+    global_bcs.fill(BoundaryConditions::PERIODIC);
+    global_bcs.get(2, Direction::NEGATIVE) = BoundaryConditions::ZERO_DERIVATIVE;
+    global_bcs.get(2, Direction::POSITIVE) = BoundaryConditions::ZERO_DERIVATIVE;
+
+    AssemblePressureMatrixTestSetup setup(dt, ndim, ndim, mhd_enabled, global_bcs, {ni, nj, nk}, 4.0, 1.0, 2.0);
+    Array3DWithGhosts<double> solution_rho_with_ghosts = setup.solution.singleVariableView(PhysicsBasedPreconditioner::n_rho());
+
+    setup.pbp.assemblePressureMatrix(solution_rho_with_ghosts, setup.laplacian_coefficients, setup.squared_sound_speed);
+
+
+    REQUIRE(setup.pbp.pressureMatrixForSolver().size() == 45);
+    setup.checkRow(0, 0, {0, 2, 1, 6, 3}, {18, -4, -4, -4, -4});
+    setup.checkRow(4, 4, {4, 3, 5, 1, 7}, {18, -4, -4, -4, -4});
+}
+
+TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix satisfies the Roberts Dynamo test from MUSIC")
 {
     int num_ranks;
     MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
     if (num_ranks != 1 && num_ranks != 4) { SKIP("Test requires either 1 or 4 ranks"); }
 
+    const double dt         = 4.5228571428571410E-004;  // Taken from roberts dynamo
+    const unsigned int ndim = 3;
+    const bool mhd_enabled  = true;
+    int global_ni = 16, global_nj = 16, global_nk = 16;
+
     // Initialise problem
     DirectionalArray<BoundaryConditions> global_bcs;
     global_bcs.fill(BoundaryConditions::PERIODIC);
-    Slab global_slab({0, 0, 0}, {16, 16, 16});
 
-    // Set domain decompositions
-    std::array<int, 3> cart_dims = createCartesianDimensions();
-    MPI_Comm cart_comm           = createCartesianTopology(cart_dims, global_bcs);
+    AssemblePressureMatrixTestSetup setup(
+        dt, ndim, ndim, mhd_enabled, global_bcs, {global_ni, global_nj, global_nk}, 1.0, 1.0, 2.5266187266788758E007);
+
     int my_rank;
-    MPI_Comm_rank(cart_comm, &my_rank);
-    DirectionalArray<int> nghbrs = neighbours(cart_comm);
-    GhostExchangePlan plan(global_slab, global_bcs, nghbrs, cart_dims, cart_comm);
-    Slab local_section_of_global_slab = plan.localDomain();
+    MPI_Comm_rank(setup.communicator, &my_rank);
 
-    // Populate starting states
-    // Laplacian coefficients
+    // Populate Laplacian coefficients
     std::vector<DirectionalArray<double>> laplacian_coefficients_data;
-    int ni      = local_section_of_global_slab.extent(0);
-    int nj      = local_section_of_global_slab.extent(1);
-    int nk      = local_section_of_global_slab.extent(2);
-    size_t size = local_section_of_global_slab.volume();
-    for (int cell_idx = 0; cell_idx < size; cell_idx++)
-    {
-        DirectionalArray<double> laplacian_coefficient;
-        laplacian_coefficient.fill(2.5600000000000000E+002);
-        laplacian_coefficients_data.push_back(laplacian_coefficient);
-    }
-    Array3D<DirectionalArray<double>> laplacian_coefficients(ni, nj, nk, laplacian_coefficients_data);
-    std::vector<double> solution_data(size * PhysicsBasedPreconditioner::num_sol_vars());
-    std::vector<double> solution_dPd_data(size * PhysicsBasedPreconditioner::num_sol_dPd_vars());
-    PackedVariablesWithGhosts solution(solution_data, ni, nj, nk, plan);
-    PackedVariables solution_dPd(solution_dPd_data, ni, nj, nk);
+    for (int cell_idx = 0; cell_idx < setup.plan.localDomain().volume(); cell_idx++)
+        setup.laplacian_coefficients_data[cell_idx].fill(2.5600000000000000E+002);
 
-    // Fill arrays
-    solution.singleVariableView(PhysicsBasedPreconditioner::n_rho()).fill(1.0);
+    // populate solution arrays
+    Array3DWithGhosts<double> solution_rho_with_ghosts = setup.solution.singleVariableView(PhysicsBasedPreconditioner::n_rho());
+    solution_rho_with_ghosts.fill(1.0);
     // Fill with something easier to spot as these shouldn't be used by assemblePressureMatrix.
-    solution.singleVariableView(PhysicsBasedPreconditioner::n_pressure()).fill(0);
-    solution.singleVariableView(PhysicsBasedPreconditioner::n_energy()).fill(0);
-    solution_dPd.singleVariableView(PhysicsBasedPreconditioner::n_dPdenergy()).fill(0);
-    solution_dPd.singleVariableView(PhysicsBasedPreconditioner::n_dPdrho()).fill(0);
+    setup.solution.singleVariableView(PhysicsBasedPreconditioner::n_pressure()).fill(0);
+    setup.solution.singleVariableView(PhysicsBasedPreconditioner::n_energy()).fill(0);
+    setup.solution_dPd.singleVariableView(PhysicsBasedPreconditioner::n_dPdenergy()).fill(0);
+    setup.solution_dPd.singleVariableView(PhysicsBasedPreconditioner::n_dPdrho()).fill(0);
 
-    // Pressure
-    Array3DWithGhosts<double> solution_rho_with_ghosts = solution.singleVariableView(PhysicsBasedPreconditioner::n_rho());
-    // Squared sound speed
-    std::vector<double> squared_sound_speed_raw(ni * nj * nk);
-    Array3D<double> squared_sound_speed(ni, nj, nk, squared_sound_speed_raw);
+    setup.pbp.assemblePressureMatrix(solution_rho_with_ghosts, setup.laplacian_coefficients, setup.squared_sound_speed);
 
-    const double dt = 4.5228571428571410E-004;  // Taken from roberts dynamo
-    PhysicsBasedPreconditioner pbp(dt, 3, 3, true, solution, solution_dPd, squared_sound_speed);
-
-    pbp.assemblePressureMatrix(solution_rho_with_ghosts, laplacian_coefficients);
-
-    const std::vector<double>& actual_pressure_matrix_for_solver        = pbp.pressureMatrixForSolver();
-    const std::vector<long long>& actual_global_pressure_column_indices = pbp.globalPressureColumnIndices();
-    const std::vector<long long>& actual_global_pressure_row_indices    = pbp.globalPressureRowIndices();
-    const std::vector<long long>& actual_global_pressure_row_offsets    = pbp.globalPressureRowOffsets();
+    const std::vector<double>& actual_pressure_matrix_for_solver        = setup.pbp.pressureMatrixForSolver();
+    const std::vector<long long>& actual_global_pressure_column_indices = setup.pbp.globalPressureColumnIndices();
+    const std::vector<long long>& actual_global_pressure_row_indices    = setup.pbp.globalPressureRowIndices();
+    const std::vector<long long>& actual_global_pressure_row_offsets    = setup.pbp.globalPressureRowOffsets();
 
     // MUSIC matrix rows of this rank (before the D A D scaling): global row, global column, value
     std::string expected_output_file = TEST_DATA_DIR "/assemble_pressure_matrix_roberts_dynamo_" + std::to_string(num_ranks) +
