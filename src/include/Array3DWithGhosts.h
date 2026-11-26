@@ -238,17 +238,19 @@ class Array3DWithGhosts : public Array3D<T>
      *
      * @details 0 for reflective boundaries, 1 otherwise.
      *
-     * @param i - The cell index in the first dimension.
-     * @param j - The cell index in the second dimension.
-     * @param k - The cell index in the third dimension.
+     * @param[in] i - The cell index in the first dimension.
+     * @param[in] j - The cell index in the second dimension.
+     * @param[in] k - The cell index in the third dimension.
+     * @param[in] ndim - The number of dimensions to consider.
      *
      * @returns The weights in each direction
      */
-    DirectionalArray<T> neighbourLinkWeights(int i, int j, int k) const
+    DirectionalArray<T> neighbourLinkWeights(const int i, const int j, const int k, const unsigned int ndim) const
     {
         DirectionalArray<T> weights;
+        weights.fill(0.0);
         std::array<int, 3> indices = {i, j, k};
-        for (int axis = 0; axis < 3; axis++)
+        for (int axis = 0; axis < ndim; axis++)
         {
             weights.get(axis, Direction::NEGATIVE) =
                 (indices[axis] == this->cellSlab().start(axis) &&

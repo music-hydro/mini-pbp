@@ -6,7 +6,32 @@
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <mpi.h>
 
-TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourLinkWeights returns the correct weights")
+void verifyNeighbourLinkWeightsUpToNDIM(const unsigned int ndim, Array3DWithGhosts<double> my_array_with_ghosts)
+{
+    DirectionalArray<double> inner_cell_weights = my_array_with_ghosts.neighbourLinkWeights(1, 1, 1, ndim);
+    return;
+    for (int idx = 0; idx < 6; idx++)
+        REQUIRE(inner_cell_weights[idx] == 1.0);
+
+    // TODO: The expected values should be different for REFLECTIVE boundaries.
+    std::array<int, 3> coords = {1, 1, 1};
+    for (int axis = 0; axis < ndim; axis++)
+    {
+        coords[axis] = 0;
+        DirectionalArray<double> negative_boundary_cell_weights =
+            my_array_with_ghosts.neighbourLinkWeights(coords[0], coords[1], coords[2], ndim);
+        REQUIRE(negative_boundary_cell_weights.get(axis, Direction::NEGATIVE) == 0.0);
+        REQUIRE(negative_boundary_cell_weights.get(axis, Direction::POSITIVE) == 1.0);
+
+        coords[axis] = 2;
+        DirectionalArray<double> positive_boundary_cell_weights =
+            my_array_with_ghosts.neighbourLinkWeights(coords[0], coords[1], coords[2], ndim);
+        REQUIRE(positive_boundary_cell_weights.get(axis, Direction::NEGATIVE) == 0.0);
+        REQUIRE(positive_boundary_cell_weights.get(axis, Direction::POSITIVE) == 1.0);
+    }
+}
+
+TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourLinkWeights 3D returns the correct weights")
 {
     // Define the problem
     int n       = 3;
@@ -14,7 +39,6 @@ TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourLinkWeights returns the c
 
     // Allocate a 1D array equal to the size of a 3D array
     std::vector<double> input_1d = std::vector<double>(size);
-
     Array3D<double> my_array(n, n, n, input_1d);
 
     // The neighbouring ranks shouldn't matter
@@ -32,27 +56,49 @@ TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourLinkWeights returns the c
     GhostExchangePlan my_plan(global_slab, bcs, neighbours, m_dimensions, m_cartesian_communicator);
     Array3DWithGhosts<double> my_array_with_ghosts(my_array, my_plan);
 
-    DirectionalArray<double> inner_cell_weights = my_array_with_ghosts.neighbourLinkWeights(1, 1, 1);
-    return;
-    for (int idx = 0; idx < 6; idx++)
-        REQUIRE(inner_cell_weights[idx] == 1.0);
+    verifyNeighbourLinkWeightsUpToNDIM(3, my_array_with_ghosts);
+}
 
-    // TODO: The expected values should be different for REFLECTIVE boundaries.
-    std::array<int, 3> coords = {1, 1, 1};
-    for (int axis = 0; axis < 3; axis++)
-    {
-        coords[axis] = 0;
-        DirectionalArray<double> negative_boundary_cell_weights =
-            my_array_with_ghosts.neighbourLinkWeights(coords[0], coords[1], coords[2]);
-        REQUIRE(negative_boundary_cell_weights.get(axis, Direction::NEGATIVE) == 0.0);
-        REQUIRE(negative_boundary_cell_weights.get(axis, Direction::POSITIVE) == 1.0);
+TEST_CASE_METHOD(MpiTest, "Array3DWithGhosts::neighbourLinkWeights 2D returns the correct weights")
+{
+    const unsigned int ndim = 2;
+    // Define the problem
+    int n       = 3;
+    size_t size = n * n;
 
-        coords[axis] = 2;
-        DirectionalArray<double> positive_boundary_cell_weights =
-            my_array_with_ghosts.neighbourLinkWeights(coords[0], coords[1], coords[2]);
-        REQUIRE(positive_boundary_cell_weights.get(axis, Direction::NEGATIVE) == 0.0);
-        REQUIRE(positive_boundary_cell_weights.get(axis, Direction::POSITIVE) == 1.0);
-    }
+    // Allocate a 1D array equal to the size of a 3D array
+    std::vector<double> input_1d = std::vector<double>(size);
+    Array3D<double> my_array(n, n, 1, input_1d);
+
+    // The neighbouring ranks shouldn't matter
+    DirectionalArray<int> neighbours({0, 0, 0, 0, 0, 0});
+    DirectionalArray<BoundaryConditions> bcs({BoundaryConditions::INNER,
+                                              BoundaryConditions::INNER,
+                                              BoundaryConditions::REFLECTIVE,
+                                              BoundaryConditions::REFLECTIVE,
+                                              BoundaryConditions::INNER,
+                                              BoundaryConditions::INNER});
+
+    // Global slab shouldn't matter here.
+    Slab global_slab({0, 0, 0}, {n, n, 1});
+
+    GhostExchangePlan my_plan(global_slab, bcs, neighbours, m_dimensions, m_cartesian_communicator);
+    Array3DWithGhosts<double> my_array_with_ghosts(my_array, my_plan);
+
+    verifyNeighbourLinkWeightsUpToNDIM(ndim, my_array_with_ghosts);
+
+    // Weights for the third dimension should be zero
+    std::array<int, 3> coords = {1, 1, 0};
+    DirectionalArray<double> negative_boundary_cell_weights =
+        my_array_with_ghosts.neighbourLinkWeights(coords[0], coords[1], coords[2], ndim);
+    REQUIRE(negative_boundary_cell_weights.get(2, Direction::NEGATIVE) == 0.0);
+    REQUIRE(negative_boundary_cell_weights.get(2, Direction::POSITIVE) == 0.0);
+
+    coords[2] = 2;
+    DirectionalArray<double> positive_boundary_cell_weights =
+        my_array_with_ghosts.neighbourLinkWeights(coords[0], coords[1], coords[2], ndim);
+    REQUIRE(positive_boundary_cell_weights.get(2, Direction::NEGATIVE) == 0.0);
+    REQUIRE(positive_boundary_cell_weights.get(2, Direction::POSITIVE) == 0.0);
 }
 
 TEST_CASE_METHOD(Array3DWithGhostsTest, "Array3DWithGhosts(i,j,k) accesses contiguously")
