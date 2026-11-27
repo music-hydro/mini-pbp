@@ -8,7 +8,7 @@
 #include <mpi.h>
 #include <string>
 
-TEST_CASE_METHOD(MpiTest, "GhostExchangePlan::determineLocalBCs throws for invalid neighbours")
+TEST_CASE_METHOD(MpiTest, "GhostExchangePlan Constructor throws for boundary without a required neighbour")
 {
     DirectionalArray<int> invalid_neighbours;
     invalid_neighbours.fill(MPI_PROC_NULL);
