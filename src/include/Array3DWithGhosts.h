@@ -324,7 +324,7 @@ class Array3DWithGhosts : public Array3D<T>
     {
         Array2D<T> ghost_plane    = m_ghosts.get(axis, direction);
         Array2D<T> boundary_plane = m_boundaries.get(axis, direction);
-        BoundaryConditions bc     = m_plan.boundaryConditions().get(axis, direction);
+        BoundaryConditions bc     = m_plan.localBoundaryConditions().get(axis, direction);
 
         T parity;
         if (bc == BoundaryConditions::ZERO_VALUE)
