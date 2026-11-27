@@ -118,7 +118,17 @@ TEST_CASE("PhysicsBasedPreconditioner::assemblePressureMatrix open boundary keep
     int ni = 3, nj = 3, nk = 3;
 
     DirectionalArray<BoundaryConditions> global_bcs;
-    global_bcs.fill(BoundaryConditions::ZERO_DERIVATIVE);
+    double expected_pressure_at_edge;
+    SECTION("ZERO_DERIVATIVE boundary")
+    {
+        global_bcs.fill(BoundaryConditions::ZERO_DERIVATIVE);
+        expected_pressure_at_edge = 26.0;
+    }
+    SECTION("REFLECTIVE boundary")
+    {
+        global_bcs.fill(BoundaryConditions::REFLECTIVE);
+        expected_pressure_at_edge = 14.0;
+    }
 
     AssemblePressureMatrixTestSetup setup(dt, ndim, ndim, mhd_enabled, global_bcs, {ni, nj, nk}, 4.0, 1.0, 2.0);
     Array3DWithGhosts<double> solution_rho_with_ghosts = setup.solution.singleVariableView(PhysicsBasedPreconditioner::n_rho());
@@ -128,7 +138,8 @@ TEST_CASE("PhysicsBasedPreconditioner::assemblePressureMatrix open boundary keep
     // All centres and faces minus the faces on each global boundary
     REQUIRE(setup.pbp.pressureMatrixForSolver().size() == 135);
     // Corner cell: no neighbours outside the domain, but the diagonal still has all 6 faces
-    setup.checkRow(0, 0, {0, 1, 3, 9}, {26, -4, -4, -4});
+    setup.checkRow(0, 0, {0, 1, 3, 9}, {expected_pressure_at_edge, -4, -4, -4});
+    setup.checkRow(26, 26, {26, 25, 23, 17}, {expected_pressure_at_edge, -4, -4, -4});
     setup.checkRow(13, 13, {13, 12, 14, 10, 16, 4, 22}, {26, -4, -4, -4, -4, -4, -4});
 }
 

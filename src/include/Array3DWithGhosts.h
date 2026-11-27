@@ -370,6 +370,8 @@ class Array3DWithGhosts : public Array3D<T>
             parity = -1.0;
         else if (bc == BoundaryConditions::ZERO_DERIVATIVE)
             parity = 1.0;
+        else if (bc == BoundaryConditions::REFLECTIVE)
+            parity = -3.0;
         else
             throw std::runtime_error("Invalid boundary condition: " + std::to_string((int)bc));
 
