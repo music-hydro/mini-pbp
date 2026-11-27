@@ -254,9 +254,31 @@ class PhysicsBasedPreconditioner
      * @param[in] k - The global cell index in the third dimension.
      * @param[in] var_index - The index of the variable to be accessed.
      * @param[in] global_slab - Slab representing the global domain.
+     *
+     * @returns The global element index within the packed 1D solution if the requested cell exists, else -1.
      */
-    unsigned long long globalVarIndex(const int& i, const int& j, const int& k, const int& var_index, const Slab& global_slab)
-    { return i + global_slab.extent(0) * (j + global_slab.extent(1) * (k + global_slab.extent(2) * var_index)); }
+    long long globalVarIndex(const int& i, const int& j, const int& k, const unsigned int& var_index, const Slab& global_slab)
+    {
+        if (i < global_slab.start(0) || i >= global_slab.end(0) || j < global_slab.start(1) || j >= global_slab.end(1) ||
+            k < global_slab.start(2) || k >= global_slab.end(2) || var_index > num_sol_vars())
+            return -1;
+        return i + global_slab.extent(0) * (j + global_slab.extent(1) * (k + global_slab.extent(2) * var_index));
+    }
+
+    /**
+     * @brief Adds a new column index and pressure matrix value to the respective arrays.
+     *
+     * @details The values are only stored if the global_idx is valid.
+     *
+     * @param[in] column - The index of the column to add.
+     * @param[in] pressure - The pressure value to add.
+     */
+    void addPressureMatrixElement(long long column, double pressure)
+    {
+        if (column < 0 || column >= m_solution.totalDataSize()) return;
+        m_global_pressure_column_indices.push_back(column);
+        m_pressure_matrix_for_solver.push_back(pressure);
+    }
 
     /// @brief The number of dimensions (2 or 3).
     const unsigned int m_ndim;

@@ -43,7 +43,8 @@ class BasePackedVariables
         m_data_origin(packed_variables_1D.data()),
         m_ni(ni),
         m_nj(nj),
-        m_nk(nk)
+        m_nk(nk),
+        m_total_data_size(packed_variables_1D.size())
     {
         // Verify the size of solutions
         unsigned long long domain_size = m_ni * m_nj * m_nk;
@@ -95,6 +96,12 @@ class BasePackedVariables
     unsigned int nk() const
     { return m_nk; }
 
+    /**
+     * @brief Get the size of the full 1D packed array.
+     */
+    const unsigned long long totalDataSize()
+    { return m_total_data_size; }
+
   protected:
     /// @brief 3D views of the larger 1D array
     std::vector<std::shared_ptr<T>> m_packed_arrays;
@@ -104,6 +111,7 @@ class BasePackedVariables
     const unsigned int m_ni;
     const unsigned int m_nj;
     const unsigned int m_nk;
+    const unsigned long long m_total_data_size;
     /// The number of variables stored in the packed array
     unsigned int m_num_variables;
 

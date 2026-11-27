@@ -301,16 +301,16 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
                 if (pressure_coefficient_sum == 0.0) throw std::runtime_error("pressure_coefficient_sum is zero");
 
                 // Add the current cell's value to the pressure matrix
-                const unsigned long long global_index = globalVarIndex(i + plan.localDomain().start(0),
-                                                                       j + plan.localDomain().start(1),
-                                                                       k + plan.localDomain().start(2),
-                                                                       n_pressure(),
-                                                                       global_slab);
+                const long long global_index = globalVarIndex(i + plan.localDomain().start(0),
+                                                              j + plan.localDomain().start(1),
+                                                              k + plan.localDomain().start(2),
+                                                              n_pressure(),
+                                                              global_slab);
                 m_global_pressure_row_indices.push_back(global_index);
-                m_global_pressure_column_indices.push_back(global_index);
-                m_pressure_matrix_for_solver.push_back(1.0 / m_dt - J_PP * pressure_coefficient_sum);
+                // Add the cell centre value
+                addPressureMatrixElement(global_index, 1.0 / m_dt - J_PP * pressure_coefficient_sum);
 
-                // Add neighbour cell values to the pressure matrix
+                // Add cell face values to the pressure matrix
                 for (int axis = 0; axis < m_ndim; ++axis)
                 {
                     // Determine the neighbour cell positions
@@ -320,24 +320,21 @@ void PhysicsBasedPreconditioner::assemblePressureMatrix(Array3DWithGhosts<double
                         plan.neighbourCellPosition(i, j, k, axis, Direction::POSITIVE);
 
                     // Get the global var indices for each neighbour
-                    unsigned long long global_negative_neighbour_var_index = globalVarIndex(negative_neighbour_position[0],
-                                                                                            negative_neighbour_position[1],
-                                                                                            negative_neighbour_position[2],
-                                                                                            n_pressure(),
-                                                                                            global_slab);
-                    unsigned long long global_positive_neighbour_var_index = globalVarIndex(positive_neighbour_position[0],
-                                                                                            positive_neighbour_position[1],
-                                                                                            positive_neighbour_position[2],
-                                                                                            n_pressure(),
-                                                                                            global_slab);
+                    const long long global_negative_neighbour_var_index = globalVarIndex(negative_neighbour_position[0],
+                                                                                         negative_neighbour_position[1],
+                                                                                         negative_neighbour_position[2],
+                                                                                         n_pressure(),
+                                                                                         global_slab);
+                    const long long global_positive_neighbour_var_index = globalVarIndex(positive_neighbour_position[0],
+                                                                                         positive_neighbour_position[1],
+                                                                                         positive_neighbour_position[2],
+                                                                                         n_pressure(),
+                                                                                         global_slab);
 
-                    // Add the global indices to the column index map
-                    m_global_pressure_column_indices.push_back(global_negative_neighbour_var_index);
-                    m_global_pressure_column_indices.push_back(global_positive_neighbour_var_index);
-
-                    // Push the value for each neighbour into the pressure matrix
-                    m_pressure_matrix_for_solver.push_back(J_PP * pressure_coefficients.get(axis, Direction::NEGATIVE));
-                    m_pressure_matrix_for_solver.push_back(J_PP * pressure_coefficients.get(axis, Direction::POSITIVE));
+                    addPressureMatrixElement(global_negative_neighbour_var_index,
+                                             J_PP * pressure_coefficients.get(axis, Direction::NEGATIVE));
+                    addPressureMatrixElement(global_positive_neighbour_var_index,
+                                             J_PP * pressure_coefficients.get(axis, Direction::POSITIVE));
                 }
                 m_global_pressure_row_offsets.push_back(m_pressure_matrix_for_solver.size());
             }

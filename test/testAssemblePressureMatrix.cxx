@@ -71,7 +71,6 @@ struct AssemblePressureMatrixTestSetup
         REQUIRE(end - begin == expected_columns.size());
         for (size_t n = 0; n < expected_columns.size(); n++)
         {
-            CAPTURE(begin, n);
             CHECK(pbp.globalPressureColumnIndices()[begin + n] == expected_columns[n]);
             CHECK(pbp.pressureMatrixForSolver()[begin + n] == expected_values[n]);
         }
@@ -80,6 +79,10 @@ struct AssemblePressureMatrixTestSetup
 
 TEST_CASE("PhysicsBasedPreconditioner::assemblePressureMatrix 2D")
 {
+    int num_ranks;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
+    if (num_ranks != 1) { SKIP("Test requires exactly 1 rank"); }
+
     const double dt         = 0.5;
     const unsigned int ndim = 2;
     const bool mhd_enabled  = true;
@@ -97,12 +100,39 @@ TEST_CASE("PhysicsBasedPreconditioner::assemblePressureMatrix 2D")
     setup.pbp.assemblePressureMatrix(solution_rho_with_ghosts, setup.laplacian_coefficients, setup.squared_sound_speed);
 
 
-    REQUIRE(setup.pbp.pressureMatrixForSolver().size() == 45);
+    // 4 faces and one centre value for each cell
+    REQUIRE(setup.pbp.pressureMatrixForSolver().size() == ni * nj * 5);
     setup.checkRow(0, 0, {0, 2, 1, 6, 3}, {18, -4, -4, -4, -4});
     setup.checkRow(4, 4, {4, 3, 5, 1, 7}, {18, -4, -4, -4, -4});
 }
 
-TEST_CASE_METHOD(MpiTest, "PhysicsBasedPreconditioner::assemblePressureMatrix satisfies the Roberts Dynamo test from MUSIC")
+TEST_CASE("PhysicsBasedPreconditioner::assemblePressureMatrix open boundary keeps the face in the diagonal")
+{
+    int num_ranks;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
+    if (num_ranks != 1) { SKIP("Test requires exactly 1 rank"); }
+
+    const double dt         = 0.5;
+    const unsigned int ndim = 3;
+    const bool mhd_enabled  = true;
+    int ni = 3, nj = 3, nk = 3;
+
+    DirectionalArray<BoundaryConditions> global_bcs;
+    global_bcs.fill(BoundaryConditions::ZERO_DERIVATIVE);
+
+    AssemblePressureMatrixTestSetup setup(dt, ndim, ndim, mhd_enabled, global_bcs, {ni, nj, nk}, 4.0, 1.0, 2.0);
+    Array3DWithGhosts<double> solution_rho_with_ghosts = setup.solution.singleVariableView(PhysicsBasedPreconditioner::n_rho());
+
+    setup.pbp.assemblePressureMatrix(solution_rho_with_ghosts, setup.laplacian_coefficients, setup.squared_sound_speed);
+
+    // All centres and faces minus the faces on each global boundary
+    REQUIRE(setup.pbp.pressureMatrixForSolver().size() == 135);
+    // Corner cell: no neighbours outside the domain, but the diagonal still has all 6 faces
+    setup.checkRow(0, 0, {0, 1, 3, 9}, {26, -4, -4, -4});
+    setup.checkRow(13, 13, {13, 12, 14, 10, 16, 4, 22}, {26, -4, -4, -4, -4, -4, -4});
+}
+
+TEST_CASE("PhysicsBasedPreconditioner::assemblePressureMatrix satisfies the Roberts Dynamo test from MUSIC")
 {
     int num_ranks;
     MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
