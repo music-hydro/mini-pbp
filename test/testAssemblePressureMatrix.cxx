@@ -77,6 +77,38 @@ struct AssemblePressureMatrixTestSetup
     }
 };
 
+TEST_CASE("PhysicsBasedPreconditioner::assemblePressureMatrix 3D")
+{
+    int num_ranks;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
+    if (num_ranks != 1) { SKIP("Test requires exactly 1 rank"); }
+
+    const double dt         = 0.5;
+    const unsigned int ndim = 3;
+    const bool mhd_enabled  = true;
+    int ni = 3, nj = 3, nk = 3;
+
+    // Periodic in x and y; the k faces are never read in 2D
+    DirectionalArray<BoundaryConditions> global_bcs;
+    global_bcs.fill(BoundaryConditions::PERIODIC);
+
+    AssemblePressureMatrixTestSetup setup(dt, ndim, ndim, mhd_enabled, global_bcs, {ni, nj, nk}, 4.0, 1.0, 2.0);
+    Array3DWithGhosts<double> solution_rho_with_ghosts = setup.solution.singleVariableView(PhysicsBasedPreconditioner::n_rho());
+    solution_rho_with_ghosts(1, 1, 1)                  = 3.0;
+
+    setup.pbp.assemblePressureMatrix(solution_rho_with_ghosts, setup.laplacian_coefficients, setup.squared_sound_speed);
+
+    // 4 faces and one centre value for each cell
+    REQUIRE(setup.pbp.pressureMatrixForSolver().size() == ni * nj * nk * 7);
+    setup.checkRow(0, 0, {0, 2, 1, 6, 3, 18, 9}, {26, -4, -4, -4, -4, -4, -4});
+
+    // Verify coefficients are weighted by rho / rho_face
+    // Cell (1, 1, 1): rho 3, every face rho_f = 2, coef = 4 * 3 / 2 = 6
+    setup.checkRow(13, 13, {13, 12, 14, 10, 16, 4, 22}, {38, -6, -6, -6, -6, -6, -6});
+    // Cell (0, 1, 1): rho 1, its positive x face has rho_f = 2, coef = 4 * 1 / 2 = 2
+    setup.checkRow(12, 12, {12, 14, 13, 9, 15, 3, 21}, {24, -4, -2, -4, -4, -4, -4});
+}
+
 TEST_CASE("PhysicsBasedPreconditioner::assemblePressureMatrix 2D")
 {
     int num_ranks;
@@ -98,7 +130,6 @@ TEST_CASE("PhysicsBasedPreconditioner::assemblePressureMatrix 2D")
     Array3DWithGhosts<double> solution_rho_with_ghosts = setup.solution.singleVariableView(PhysicsBasedPreconditioner::n_rho());
 
     setup.pbp.assemblePressureMatrix(solution_rho_with_ghosts, setup.laplacian_coefficients, setup.squared_sound_speed);
-
 
     // 4 faces and one centre value for each cell
     REQUIRE(setup.pbp.pressureMatrixForSolver().size() == ni * nj * 5);
