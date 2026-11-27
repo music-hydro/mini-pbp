@@ -32,23 +32,37 @@ class MpiTest
      *          this rank and the ranks of its neighbours.
      */
     MpiTest() :
+        m_global_domain_slab({0, 0, 0}, {30, 40, 30}),
         m_global_bcs({BoundaryConditions::ZERO_VALUE,
                       BoundaryConditions::ZERO_VALUE,
                       BoundaryConditions::PERIODIC,
                       BoundaryConditions::PERIODIC,
                       BoundaryConditions::ZERO_DERIVATIVE,
                       BoundaryConditions::ZERO_DERIVATIVE}),
-        m_cartesian_communicator(createCartesianTopology(m_global_bcs)),
+        m_dimensions(createCartesianDimensions()),
+        m_cartesian_communicator(createCartesianTopology(m_dimensions, m_global_bcs)),
         m_cartesian_coordinates(cartesianCoordinates(m_cartesian_communicator)),
-        m_neighbours(neighbours(m_cartesian_communicator)),
-        m_local_boundary_conditions(localBoundaryConditions(m_global_bcs, m_neighbours))
+        m_neighbours(neighbours(m_cartesian_communicator))
     {
+    }
+
+    /**
+     * @brief Determine a 3D breakdown based on the number of MPI ranks.
+     */
+    static std::array<int, 3> createCartesianDimensions()
+    {
+        int num_ranks;
+        MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
+        std::array<int, 3> dimensions {};
+        MPI_Dims_create(num_ranks, 3, dimensions.data());
+        return dimensions;
     }
 
     /**
      * @brief Create a cartesian topology from all ranks within MPI_COMM_WORLD
      */
-    static MPI_Comm createCartesianTopology(const DirectionalArray<BoundaryConditions>& global_bcs)
+    static MPI_Comm createCartesianTopology(const std::array<int, 3>& dimensions,
+                                            const DirectionalArray<BoundaryConditions>& global_bcs)
     {
         int num_ranks;
         MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
@@ -64,11 +78,8 @@ class MpiTest
         for (int axis = 0; axis < 3; axis++)
             periods[axis] = (int)(global_bcs.get(axis, Direction::NEGATIVE) == BoundaryConditions::PERIODIC);
 
-        std::array<int, 3> dimensions {};
-        MPI_Dims_create(num_ranks, 3, dimensions.data());
-
         MPI_Comm cartesian_communicator;
-        MPI_Cart_create(MPI_COMM_WORLD, 3, dimensions.data(), periods.data(), true, &cartesian_communicator);
+        MPI_Cart_create(MPI_COMM_WORLD, 3, dimensions.data(), periods.data(), false, &cartesian_communicator);
         return cartesian_communicator;
     }
 
@@ -116,45 +127,24 @@ class MpiTest
     }
 
     /**
-     * @brief Get the boundary conditions for this ranks cells.
-     *
-     * @param[in] cartesian_communicator - The cartesian communicator to get
-     *                                     this ranks boundary conditions from.
-     * @param[in] global_bcs - The global boundary conditions for this problem.
-     * @param[in] neighbours - This ranks neighbours.
-     *
-     * @returns The boundary conditions for this ranks block of cells.
-     */
-    static DirectionalArray<BoundaryConditions> localBoundaryConditions(const DirectionalArray<BoundaryConditions>& global_bcs,
-                                                                        const DirectionalArray<int>& neighbours)
-    {
-        DirectionalArray<BoundaryConditions> bcs {};
-        for (int axis_direction = 0; axis_direction < 6; axis_direction++)
-        {
-            if (global_bcs[axis_direction] == BoundaryConditions::INNER) throw std::runtime_error("Found INNER");
-            bcs[axis_direction] =
-                neighbours[axis_direction] == MPI_PROC_NULL ? global_bcs[axis_direction] : BoundaryConditions::INNER;
-        }
-        return bcs;
-    }
-
-    /**
      * @brief Get the cartesian communicator.
      */
     MPI_Comm cartesian_communicator()
     { return m_cartesian_communicator; }
 
   protected:
+    /// @brief The global domain slab
+    const Slab m_global_domain_slab;
     /// @brief Global boundary conditions.
     const DirectionalArray<BoundaryConditions> m_global_bcs;
+    /// @brief The dimensions of cartesian MPI topology
+    const std::array<int, 3> m_dimensions;
     /// @brief The cartesian communicator.
     const MPI_Comm m_cartesian_communicator;
     /// @brief The coordinates of this rank in the cartesian communicator.
     const std::array<int, 3> m_cartesian_coordinates;
     /// @brief The ranks of this ranks neighbours: {-x, +x, -y, +y, -z, +z}.
     const DirectionalArray<int> m_neighbours;
-    /// @brief Boundary conditions for this ranks cells.
-    const DirectionalArray<BoundaryConditions> m_local_boundary_conditions;
 
     /**
      * @brief Get my rank in the given communicator.
