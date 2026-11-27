@@ -233,6 +233,45 @@ class Array3DWithGhosts : public Array3D<T>
         }
     }
 
+    /**
+     * @brief Get the weights associated with links to neighbouring cells.
+     *
+     * @details 0 for reflective boundaries, 1 otherwise.
+     *
+     * @param[in] i - The cell index in the first dimension.
+     * @param[in] j - The cell index in the second dimension.
+     * @param[in] k - The cell index in the third dimension.
+     * @param[in] ndim - The number of dimensions to consider.
+     *
+     * @returns The weights in each direction
+     */
+    DirectionalArray<T> neighbourLinkWeights(const int i, const int j, const int k, const unsigned int ndim) const
+    {
+        DirectionalArray<T> weights;
+        weights.fill(0.0);
+        std::array<int, 3> indices = {i, j, k};
+        for (int axis = 0; axis < ndim; axis++)
+        {
+            weights.get(axis, Direction::NEGATIVE) =
+                (indices[axis] == this->cellSlab().start(axis) &&
+                 m_plan.localBoundaryConditions().get(axis, Direction::NEGATIVE) == BoundaryConditions::REFLECTIVE) ?
+                    static_cast<T>(0.0) :
+                    static_cast<T>(1.0);
+            weights.get(axis, Direction::POSITIVE) =
+                (indices[axis] == this->cellSlab().end(axis) - 1 &&
+                 m_plan.localBoundaryConditions().get(axis, Direction::POSITIVE) == BoundaryConditions::REFLECTIVE) ?
+                    static_cast<T>(0.0) :
+                    static_cast<T>(1.0);
+        }
+        return weights;
+    }
+
+    /**
+     * @brief Get the ghost exchange plan used to define this array.
+     */
+    GhostExchangePlan plan()
+    { return m_plan; }
+
   private:
     /**
      * @brief Determine if the given index is at a boundary and return that boundaries direction
@@ -324,13 +363,15 @@ class Array3DWithGhosts : public Array3D<T>
     {
         Array2D<T> ghost_plane    = m_ghosts.get(axis, direction);
         Array2D<T> boundary_plane = m_boundaries.get(axis, direction);
-        BoundaryConditions bc     = m_plan.boundaryConditions().get(axis, direction);
+        BoundaryConditions bc     = m_plan.localBoundaryConditions().get(axis, direction);
 
         T parity;
         if (bc == BoundaryConditions::ZERO_VALUE)
             parity = -1.0;
         else if (bc == BoundaryConditions::ZERO_DERIVATIVE)
             parity = 1.0;
+        else if (bc == BoundaryConditions::REFLECTIVE)
+            parity = -3.0;
         else
             throw std::runtime_error("Invalid boundary condition: " + std::to_string((int)bc));
 

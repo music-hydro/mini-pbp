@@ -32,7 +32,7 @@ class PhysicsBasedPreconditionerTest
      * @param nj - Number of spacial elements in the jth direction.
      * @param nk - Number of spacial elements in the kth direction.
      */
-    void alloc_solution(int ni, int nj, int nk)
+    void alloc_solution(int ni, int nj, int nk, GhostExchangePlan plan = GhostExchangePlanTest::arbitraryPlan())
     {
         int size = ni * nj * nk;
 
@@ -55,7 +55,7 @@ class PhysicsBasedPreconditionerTest
             }
         }
 
-        solution = std::make_unique<PackedVariablesWithGhosts>(*solution_raw, ni, nj, nk, GhostExchangePlanTest::arbitraryPlan());
+        solution            = std::make_unique<PackedVariablesWithGhosts>(*solution_raw, ni, nj, nk, plan);
         solution_dPd        = std::make_unique<PackedVariables>(*solution_dPd_raw, ni, nj, nk);
         squared_sound_speed = std::make_unique<Array3D<double>>(ni, nj, nk, *squared_sound_speed_raw);
     }

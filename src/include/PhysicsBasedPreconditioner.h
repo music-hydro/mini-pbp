@@ -7,6 +7,9 @@
 #ifndef PhysicsBasedPreconditioner_H
 #define PhysicsBasedPreconditioner_H
 
+#include "Array3D.h"
+#include "Array3DWithGhosts.h"
+#include "DirectionalArray.h"
 #include "GhostExchangePlan.h"
 #include "PackedVariables.h"
 
@@ -64,13 +67,25 @@ class PhysicsBasedPreconditioner
     /**
      * @brief Reconstruct the density delta for the next timestep after preconditioning.
      *
-     * @param[in] delta_pressure - 3D View of the pressure delta.
-     * @param[in] delta_energy - 3D View of the energy delta.
+     * @param[in]  delta_pressure - 3D View of the pressure delta.
+     * @param[in]  delta_energy - 3D View of the energy delta.
      * @param[out] delta_rho - 3D view of the density delta to be calculated.
      */
     void reconstructDensityDelta(const Array3D<double>& delta_pressure,
                                  const Array3D<double>& delta_energy,
                                  Array3D<double>& delta_rho);
+
+
+    /**
+     * @brief Assembles the pressure matrix ready for preconditioning
+     *
+     * @param[in] solution_rho - The solution density
+     * @param[in] laplacian_coefficients - The laplacian coefficients.
+     * @param[in] squared_sound_speed - The squared sound speed across the domain.
+     */
+    void assemblePressureMatrix(Array3DWithGhosts<double>& solution_rho,
+                                const Array3D<DirectionalArray<double>>& laplacian_coefficients,
+                                const Array3D<double>& squared_sound_speed);
 
     /**
      * @brief Convert the residual from conserved to primitive variables, the first step of the preconditioner (MUSIC
@@ -172,6 +187,28 @@ class PhysicsBasedPreconditioner
     PackedVariablesWithGhosts solution() const
     { return m_solution; }
 
+    /**
+     * @brief Get a read-only version of the pressure matrix to be sent to the solver.
+     */
+    const std::vector<double>& pressureMatrixForSolver() const
+    { return m_pressure_matrix_for_solver; }
+
+    /**
+     * @brief Get a read-only version of the pressure column indices to be sent to the solver.
+     */
+    const std::vector<long long>& globalPressureColumnIndices() const
+    { return m_global_pressure_column_indices; }
+
+    /**
+     * @brief Get a read-only version of the pressure row indices to be sent to the solver.
+     */
+    const std::vector<long long>& globalPressureRowIndices() const
+    { return m_global_pressure_row_indices; }
+
+    const std::vector<long long>& globalPressureRowOffsets() const
+    { return m_global_pressure_row_offsets; }
+
+
   private:
     /**
      * @brief Compute squared sound speed from the solution variables.
@@ -195,6 +232,53 @@ class PhysicsBasedPreconditioner
                               const Array3D<double>& dp_rhs_press,
                               Array3D<double>& delta_energy);
 
+    /**
+     * @brief Get the pressure coefficients for a given cell
+     *
+     * @param i - The index in the first dimension.
+     * @param j - The index in the second dimension.
+     * @param k - The index in the third dimension.
+     */
+    DirectionalArray<double> pressureCoefficients(const int& i,
+                                                  const int& j,
+                                                  const int& k,
+                                                  const Array3DWithGhosts<double>& solution_rho,
+                                                  const DirectionalArray<double>& laplacian_coefficients,
+                                                  const DirectionalArray<double>& weights);
+
+    /**
+     * @brief Get the index of a variable value at a a specific cell centre.
+     *
+     * @param[in] i - The global cell index in the first dimension.
+     * @param[in] j - The global cell index in the second dimension.
+     * @param[in] k - The global cell index in the third dimension.
+     * @param[in] var_index - The index of the variable to be accessed.
+     * @param[in] global_slab - Slab representing the global domain.
+     *
+     * @returns The global element index within the packed 1D solution if the requested cell exists, else -1.
+     */
+    long long globalVarIndex(const int& i, const int& j, const int& k, const unsigned int& var_index, const Slab& global_slab)
+    {
+        if (i < global_slab.start(0) || i >= global_slab.end(0) || j < global_slab.start(1) || j >= global_slab.end(1) ||
+            k < global_slab.start(2) || k >= global_slab.end(2) || var_index > num_sol_vars())
+            return -1;
+        return i + global_slab.extent(0) * (j + global_slab.extent(1) * (k + global_slab.extent(2) * var_index));
+    }
+
+    /**
+     * @brief Adds a new column index and pressure matrix value to the respective arrays.
+     *
+     * @details The values are only stored if the global_idx is valid.
+     *
+     * @param[in] column - The index of the column to add.
+     * @param[in] pressure - The pressure value to add.
+     */
+    void addPressureMatrixElement(long long column, double pressure)
+    {
+        if (column < 0 || column >= m_solution.totalDataSize()) return;
+        m_global_pressure_column_indices.push_back(column);
+        m_pressure_matrix_for_solver.push_back(pressure);
+    }
 
     /// @brief The number of dimensions (2 or 3).
     const unsigned int m_ndim;
@@ -210,6 +294,13 @@ class PhysicsBasedPreconditioner
     PackedVariables m_solution_dPd;
     /// @brief Squared sound speed
     Array3D<double> m_squared_sound_speed;
+    /// @brief Pressure matrix to be sent to solver
+    std::vector<double> m_pressure_matrix_for_solver;
+    /// @brief Map of global column indices for m_pressure_matrix_for_solver
+    std::vector<long long> m_global_pressure_column_indices;
+    /// @brief Map of global row indices for m_pressure_matrix_for_solver
+    std::vector<long long> m_global_pressure_row_indices;
+    std::vector<long long> m_global_pressure_row_offsets;
     /// @brief Flag to indicate whether to precondition the pressure equation only (`prec_nvar=1`), or both pressure and energy equations (`prec_nvar=2`)
     unsigned int m_prec_nvar;
     /// @brief The number of packed variables that must be present in the solution
@@ -217,8 +308,8 @@ class PhysicsBasedPreconditioner
     /// @brief The number of packed variables that must be present in the solution gradients
     static const unsigned int m_num_sol_dPd_vars = 2;
     /// Indices for each variable
-    static const unsigned int m_n_rho       = 0;
-    static const unsigned int m_n_pressure  = 1;
+    static const unsigned int m_n_pressure  = 0;
+    static const unsigned int m_n_rho       = 1;
     static const unsigned int m_n_energy    = 2;
     static const unsigned int m_n_vel_i     = 3;
     static const unsigned int m_n_vel_j     = 4;
