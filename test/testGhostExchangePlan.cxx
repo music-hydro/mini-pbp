@@ -13,27 +13,28 @@ TEST_CASE_METHOD(MpiTest, "GhostExchangePlan::determineLocalBCs throws for inval
     DirectionalArray<int> invalid_neighbours;
     invalid_neighbours.fill(MPI_PROC_NULL);
     DirectionalArray<BoundaryConditions> global_bcs;
-    std::string error_msg;
+    std::string expected_error_message;
 
-    SECTION("No neighbour for PERIODIC boundary")
+    SECTION("PERIODIC boundary without neighbour")
     {
         global_bcs.fill(BoundaryConditions::PERIODIC);
-        error_msg = "No neighbour found at periodic boundary";
+        expected_error_message = "No neighbour found at periodic boundary";
         // The first error will come from the -ve ith direction. Therefore, the error message depends on
         // the valid neighbours in that direction. I.e. if the valid neighbours exists, the local boundary
         // will have been set to INNER.
-        if (m_neighbours.get(0U, Direction::NEGATIVE) != MPI_PROC_NULL) error_msg = "No neighbour found at inner boundary";
+        if (m_neighbours.get(0U, Direction::NEGATIVE) != MPI_PROC_NULL)
+            expected_error_message = "No neighbour found at inner boundary";
     }
 
-    SECTION("No neighbour for INNER boundary")
+    SECTION("INNER boundary without neighbour")
     {
         global_bcs.fill(BoundaryConditions::INNER);
-        error_msg = "No neighbour found at inner boundary";
+        expected_error_message = "No neighbour found at inner boundary";
     }
 
     REQUIRE_THROWS_WITH(
         GhostExchangePlan(m_global_domain_slab, global_bcs, invalid_neighbours, m_dimensions, m_cartesian_communicator),
-        Catch::Matchers::ContainsSubstring(error_msg));
+        Catch::Matchers::ContainsSubstring(expected_error_message));
 }
 
 TEST_CASE_METHOD(MpiTest, "GhostExchangePlan Verify local domain and bcs are correct")
@@ -62,13 +63,6 @@ TEST_CASE_METHOD(MpiTest, "GhostExchangePlan Verify local domain and bcs are cor
 
 
     // Domain is broken down in only the first 2 dimensions (i and j)
-    // ^ +j
-    // --- ---  |
-    // | 1 | 3 |  --> +x
-    // --- ---
-    // | 0 | 2 |
-    // --- ---
-    //
     if (num_ranks == 4)
     {
         if (rank == 0)
@@ -102,15 +96,6 @@ TEST_CASE_METHOD(MpiTest, "GhostExchangePlan Verify local domain and bcs are cor
     }
 
     // Domain is broken down in all 3 dimensions (i, then k, then j)
-    // ^ +j
-    // --- ---  |
-    // | 2 | 6 |  --> +x
-    // --- ---         --- ---
-    // | 0 | 4 | => +k | 3 | 7 |
-    // --- ---         --- ---
-    // | 1 | 5 |
-    // --- ---
-    ///
     if (num_ranks == 8)
     {
         if (rank == 0)
